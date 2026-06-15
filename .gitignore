@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+release/
+.electron-vite/
+*.log
+.DS_Store
+.electron-cache/
+build/
+data/
+doc/

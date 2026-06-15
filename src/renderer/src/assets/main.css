@@ -1,0 +1,184 @@
+:root {
+  --base-font-size: 14px;
+
+  /* Dark theme (default) */
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d2d;
+  --bg-hover: #3a3a3a;
+  --bg-active: #094771;
+  --border-color: #3a3a3a;
+  --text-primary: #d4d4d4;
+  --text-secondary: #9d9d9d;
+  --text-accent: #569cd6;
+  --text-danger: #f44747;
+  --text-success: #4ec9b0;
+  --text-warning: #dcdcaa;
+  --scrollbar-track: #1e1e1e;
+  --scrollbar-thumb: #424242;
+  --tab-height: 30px;
+  --titlebar-height: 32px;
+}
+
+[data-theme='light'] {
+  --bg-primary: #f3f3f3;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8e8e8;
+  --bg-hover: #d0d0d0;
+  --bg-active: #0078d4;
+  --border-color: #c8c8c8;
+  --text-primary: #1e1e1e;
+  --text-secondary: #6a6a6a;
+  --text-accent: #0070c1;
+  --text-danger: #d32f2f;
+  --text-success: #007462;
+  --text-warning: #7b5900;
+  --scrollbar-track: #f3f3f3;
+  --scrollbar-thumb: #b0b0b0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #app {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--base-font-size);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--base-font-size);
+}
+button:hover { background: var(--bg-hover); border-radius: 4px; }
+
+input, textarea {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 3px;
+  padding: 4px 8px;
+  outline: none;
+  font-size: var(--base-font-size);
+}
+input:focus, textarea:focus { border-color: var(--text-accent); }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 1000;
+  min-width: 160px;
+  padding: 4px 0;
+}
+.context-menu-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.context-menu-item:hover { background: var(--bg-hover); }
+.context-menu-item.danger { color: var(--text-danger); }
+.context-menu-sep { height: 1px; background: var(--border-color); margin: 4px 0; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 540px;
+}
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.btn-primary {
+  background: var(--text-accent);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: var(--bg-hover); }
+.btn-danger {
+  background: var(--text-danger);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-danger:hover { opacity: 0.85; }
+
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tag-modified { background: #d97706; color: #fff; }
+.tag-added { background: #16a34a; color: #fff; }
+.tag-deleted { background: #dc2626; color: #fff; }
+.tag-renamed { background: #7c3aed; color: #fff; }
+.tag-conflict { background: #dc2626; color: #fff; }
