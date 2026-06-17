@@ -33,11 +33,21 @@ let resizeObs: ResizeObserver | null = null
 let autoSaveTimer: number | null = null
 let initialized = false
 
+function log(msg: string) {
+  // Debug logging disabled
+  // console.log(`[EditorTab] ${msg}`)
+}
+
 function isScratchPath(fp: string): boolean {
   return fp.startsWith('untitled://')
 }
 
 onMounted(async () => {
+  log('onMounted tabId=' + props.tab.id.slice(0, 8) + ' type=' + props.tab.type)
+  log('settingsStore.settings keys=' + Object.keys(settingsStore.settings).join(','))
+  log('settingsStore.settings.editorWordWrap=' + (settingsStore.settings as any).editorWordWrap)
+  log('settingsStore.settings.wordWrap=' + (settingsStore.settings as any).wordWrap)
+
   await nextTick()
   const saved = props.tab.editorOpenFiles || []
   const active = props.tab.editorActiveFile || null
@@ -52,6 +62,7 @@ onMounted(async () => {
   } else {
     createScratch()
   }
+  window.addEventListener('editor-toggle-wordwrap', onToggleWordWrapEvent)
 })
 
 function createScratch() {
@@ -77,6 +88,14 @@ function initMonaco(fp: string, content: string) {
     modelIsOwned = true
   }
 
+  // Read wordWrap directly from settings
+  const rawWW = (settingsStore.settings as any).editorWordWrap
+  const rawWW2 = (settingsStore.settings as any).wordWrap
+  const ww: 'off' | 'on' | 'wordWrapColumn' | 'bounded' =
+    (rawWW === 'off' || rawWW === 'on' || rawWW === 'wordWrapColumn' || rawWW === 'bounded') ? rawWW : 'on'
+  const wwc: number = (settingsStore.settings as any).editorWordWrapColumn || 80
+  log('initMonaco: rawWW=' + rawWW + ' rawWW2=' + rawWW2 + ' resolvedWW=' + ww + ' wwc=' + wwc)
+
   editor = monaco.editor.create(monacoEl.value, {
     model,
     theme: settingsStore.settings.theme === 'dark' ? 'vs-dark' : 'vs',
@@ -88,8 +107,14 @@ function initMonaco(fp: string, content: string) {
     lineNumbers: 'on',
     glyphMargin: false,
     folding: true,
-    bracketPairColorization: { enabled: true }
+    bracketPairColorization: { enabled: true },
+    wordWrap: ww,
+    wordWrapColumn: wwc
   })
+
+  // Verify what Monaco actually got
+  const actualWW = editor.getOption(monaco.editor.EditorOption.wordWrap)
+  log('initMonaco: Monaco actual wordWrap option=' + actualWW + ' (0=off,1=on,2=wordWrapColumn,3=bounded)')
 
   editor.onDidChangeModelContent(() => {
     if (!modified.value) {
@@ -99,7 +124,35 @@ function initMonaco(fp: string, content: string) {
     scheduleAutoSave()
   })
 
+  // Cmd/Ctrl+S save
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveCurrentFile())
+
+  // Ctrl+Shift+P → open global command palette
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
+    log('Ctrl+Shift+P pressed, dispatching open-command-palette')
+    window.dispatchEvent(new CustomEvent('open-command-palette'))
+  })
+
+  // Alt+Z → toggle word wrap
+  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyZ, () => {
+    log('Alt+Z pressed, toggling word wrap')
+    toggleWordWrap()
+  })
+
+  // Register as a Monaco action so F1 command palette can find it
+  try {
+    editor.addAction({
+      id: 'editor.action.toggleWordWrap',
+      label: 'Toggle Word Wrap',
+      run: () => {
+        log('F1 action Toggle Word Wrap triggered')
+        toggleWordWrap()
+      }
+    })
+    log('addAction editor.action.toggleWordWrap registered OK')
+  } catch (e) {
+    log('addAction FAILED: ' + String(e))
+  }
 
   resizeObs = new ResizeObserver(() => editor?.layout())
   if (monacoEl.value) resizeObs.observe(monacoEl.value)
@@ -201,10 +254,30 @@ function persistTabState() {
   })
 }
 
+function toggleWordWrap() {
+  if (!editor) {
+    log('toggleWordWrap: editor is null, skipping')
+    return
+  }
+  const current = editor.getOption(monaco.editor.EditorOption.wordWrap)
+  log('toggleWordWrap: current Monaco wordWrap=' + current + ' (0=off,1=on,2=col,3=bounded)')
+  const next = current === 0 ? 'on' : 'off'
+  log('toggleWordWrap: setting to ' + next)
+  editor.updateOptions({ wordWrap: next })
+  const after = editor.getOption(monaco.editor.EditorOption.wordWrap)
+  log('toggleWordWrap: after updateOptions, Monaco wordWrap=' + after)
+}
+
+function onToggleWordWrapEvent() {
+  log('received editor-toggle-wordwrap event')
+  toggleWordWrap()
+}
+
 onActivated(() => {
   editor?.focus()
 })
 
+// Watch settings — same pattern that already works for theme/fontSize
 watch(() => settingsStore.settings.theme, (t) => {
   monaco.editor.setTheme(t === 'dark' ? 'vs-dark' : 'vs')
 })
@@ -212,11 +285,27 @@ watch(() => settingsStore.settings.fontSize, (s) => {
   editor?.updateOptions({ fontSize: s })
 })
 
+watch(() => settingsStore.settings.editorWordWrap, (newVal, oldVal) => {
+  log('watch editorWordWrap fired: oldVal=' + oldVal + ' newVal=' + newVal)
+  if (!editor) { log('watch: editor is null, skipping'); return }
+  const wwc = (settingsStore.settings as any).editorWordWrapColumn || 80
+  editor.updateOptions({ wordWrap: newVal || 'on', wordWrapColumn: wwc })
+  const after = editor.getOption(monaco.editor.EditorOption.wordWrap)
+  log('watch: after updateOptions, Monaco wordWrap=' + after)
+})
+
+watch(() => settingsStore.settings.editorWordWrapColumn, (newVal) => {
+  log('watch editorWordWrapColumn fired: newVal=' + newVal)
+  if (!editor) return
+  editor.updateOptions({ wordWrapColumn: newVal || 80 })
+})
+
 onBeforeUnmount(() => {
   resizeObs?.disconnect()
   editor?.dispose()
   if (modelIsOwned) model?.dispose()
   if (autoSaveTimer !== null) clearTimeout(autoSaveTimer)
+  window.removeEventListener('editor-toggle-wordwrap', onToggleWordWrapEvent)
 })
 
 // Expose openFile so FileTreePanel / FileTreeRight can call it via template ref
@@ -236,4 +325,3 @@ defineExpose({ openFile })
   overflow: hidden;
 }
 </style>
-

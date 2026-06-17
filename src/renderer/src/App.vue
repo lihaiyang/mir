@@ -84,6 +84,9 @@ onMounted(async () => {
     layout.doPersist()
     tabStore.doPersist()
   })
+
+  // Listen for editor asking to open the global command palette
+  window.addEventListener('open-command-palette', onOpenCommandPalette)
 })
 
 // Splitter drag
@@ -123,6 +126,19 @@ function registerBuiltinCommands() {
     keybinding: 'Ctrl+,',
     run: () => { showSettings.value = true }
   })
+  registerCommand({
+    id: 'editor.toggleWordWrap',
+    label: t('commandPalette.toggleWordWrap'),
+    run: () => {
+      // Toggle the global setting so every open editor updates via its watcher.
+      const cur = settingsStore.settings.editorWordWrap
+      settingsStore.update({ editorWordWrap: cur === 'off' ? 'on' : 'off' })
+    }
+  })
+}
+
+function onOpenCommandPalette() {
+  showPalette.value = true
 }
 
 function setupShortcuts() {
@@ -139,6 +155,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKey)
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('mouseup', onMouseUp)
+  window.removeEventListener('open-command-palette', onOpenCommandPalette)
 })
 </script>
 

@@ -57,6 +57,19 @@
               <label class="settings-label">{{ $t('settings.autoSave') }}</label>
               <input type="number" v-model.number="draft.autoSaveInterval" min="0" max="60" class="settings-input" />
             </div>
+            <div class="settings-group">
+              <label class="settings-label">{{ $t('settings.wordWrap') }}</label>
+              <select v-model="draft.editorWordWrap" class="settings-select">
+                <option value="off">{{ $t('settings.wordWrapOff') }}</option>
+                <option value="on">{{ $t('settings.wordWrapOn') }}</option>
+                <option value="wordWrapColumn">{{ $t('settings.wordWrapColumn') }}</option>
+                <option value="bounded">{{ $t('settings.wordWrapBounded') }}</option>
+              </select>
+            </div>
+            <div v-if="draft.editorWordWrap === 'wordWrapColumn' || draft.editorWordWrap === 'bounded'" class="settings-group">
+              <label class="settings-label">{{ $t('settings.wordWrapColumn') }}</label>
+              <input type="number" v-model.number="draft.editorWordWrapColumn" min="20" max="500" class="settings-input" />
+            </div>
           </template>
 
           <!-- Git -->
