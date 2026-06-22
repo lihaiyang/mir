@@ -49,7 +49,16 @@ jobs:
 
       - name: Configure VS toolchain (Windows)
         if: runner.os == 'Windows'
-        run: npm config set msvs_version 2022
+        shell: pwsh
+        run: |
+          # @electron/node-gyp's PowerShell VS auto-detection crashes on this
+          # image (ERR_CHILD_PROCESS_STDIO_MAXB). Point it straight at VS2022
+          # via VCINSTALLDIR / GYP_MSVS_VERSION so it skips detection entirely.
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          Write-Host "VS install: $vs"
+          $vc = Join-Path $vs 'VC'
+          echo "VCINSTALLDIR=$vc" >> $env:GITHUB_ENV
+          echo "GYP_MSVS_VERSION=2022" >> $env:GITHUB_ENV
 
       - name: Build & package (${{ matrix.name }})
         run: ${{ matrix.build_cmd }}
