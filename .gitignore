@@ -7,5 +7,7 @@ release/
 .DS_Store
 .electron-cache/
 build/
+!build/icon.icns
+!build/icon.png
 data/
 doc/
