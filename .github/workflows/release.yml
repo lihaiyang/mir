@@ -26,7 +26,7 @@ jobs:
             artifact_glob: release/*.dmg
           - os: windows-latest
             name: win-x64
-            build_cmd: npm run rebuild && npm run build && npx electron-builder --win --x64 --publish=never
+            build_cmd: npx electron-rebuild -f -w node-pty && npm run build && npx electron-builder --win --x64 --publish=never
             artifact_glob: release/*.exe
 
     runs-on: ${{ matrix.os }}
@@ -41,17 +41,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Configure VS toolchain (Windows)
+        if: runner.os == 'Windows'
+        run: npm config set msvs_version 2022
+
       - name: Build & package (${{ matrix.name }})
         run: ${{ matrix.build_cmd }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GYP_MSVS_VERSION: 2022
 
       - name: Upload artifacts to release
         env:
