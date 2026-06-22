@@ -24,7 +24,7 @@ jobs:
             name: mac-arm64
             build_cmd: npm run rebuild && npm run build && npx electron-builder --mac --arm64 --publish=never
             artifact_glob: release/*.dmg
-          - os: windows-2019
+          - os: windows-latest
             name: win-x64
             build_cmd: npm run rebuild && npm run build && npx electron-builder --win --x64 --publish=never
             artifact_glob: release/*.exe
@@ -51,6 +51,7 @@ jobs:
         run: ${{ matrix.build_cmd }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GYP_MSVS_VERSION: 2022
 
       - name: Upload artifacts to release
         env:
