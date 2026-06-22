@@ -26,7 +26,7 @@ jobs:
             artifact_glob: release/*.dmg
           - os: windows-2022
             name: win-x64
-            build_cmd: node scripts/patch-node-gyp.js && npm config set python python && npx electron-rebuild -f -w node-pty && npm run build && npx electron-builder --win --x64 --publish=never
+            build_cmd: node scripts/patch-node-gyp.js && export PYTHON="$pythonLocation/python.exe" && npx electron-rebuild -f -w node-pty && npm run build && npx electron-builder --win --x64 --publish=never
             artifact_glob: release/*.exe
 
     runs-on: ${{ matrix.os }}
