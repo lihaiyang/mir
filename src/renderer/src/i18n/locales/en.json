@@ -101,7 +101,12 @@
     "prevTab": "Prev Tab",
     "commandPalette": "Command Palette",
     "find": "Find",
-    "save_": "Save"
+    "save_": "Save",
+    "wordWrap": "Word Wrap",
+    "wordWrapOff": "Off",
+    "wordWrapOn": "On",
+    "wordWrapColumn": "Column",
+    "wordWrapBounded": "Bounded"
   },
   "git": {
     "noProject": "No project selected",
@@ -200,6 +205,7 @@
   "commandPalette": {
     "placeholder": "Type a command...",
     "noResults": "No matching commands",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "toggleWordWrap": "Toggle Editor Word Wrap"
   }
 }

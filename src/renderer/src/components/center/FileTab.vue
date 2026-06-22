@@ -28,6 +28,10 @@ let editor: monaco.editor.IStandaloneCodeEditor | null = null
 let model: monaco.editor.ITextModel | null = null
 let resizeObs: ResizeObserver | null = null
 let autoSaveTimer: number | null = null
+// Track the live word-wrap state per editor instance so toggle is reliable.
+// (Monaco's getOption returns the string value, but comparing against the
+// internal enum is fragile — we track it ourselves instead.)
+let currentWordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded' = 'on'
 
 onMounted(async () => {
   if (!filePath) return
@@ -63,7 +67,9 @@ function initEditor(content: string) {
     lineNumbers: 'on',
     glyphMargin: false,
     folding: true,
-    bracketPairColorization: { enabled: true }
+    bracketPairColorization: { enabled: true },
+    wordWrap: resolveWordWrap(),
+    wordWrapColumn: resolveWordWrapColumn()
   })
 
   editor.onDidChangeModelContent(() => {
@@ -76,6 +82,23 @@ function initEditor(content: string) {
 
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save())
 
+  // Ctrl+Shift+P → open the global command palette instead of Monaco's built-in one
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
+    window.dispatchEvent(new CustomEvent('open-command-palette'))
+  })
+
+  // Register Toggle Word Wrap as a single Monaco action — this covers three entry
+  // points at once: the F1 command palette, the editor right-click (context) menu,
+  // and the Alt+Z keyboard shortcut (same as VS Code). On macOS Alt maps to Option (⌥).
+  editor.addAction({
+    id: 'editor.action.toggleWordWrap',
+    label: 'Toggle Word Wrap',
+    keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyZ],
+    contextMenuGroupId: '2_view',
+    contextMenuOrder: 1,
+    run: () => toggleWordWrap()
+  })
+
   // Jump to line if specified (e.g. from search results)
   if (props.tab.fileLine) {
     editor.revealLineInCenter(props.tab.fileLine)
@@ -84,6 +107,25 @@ function initEditor(content: string) {
 
   resizeObs = new ResizeObserver(() => editor?.layout())
   if (monacoEl.value) resizeObs.observe(monacoEl.value)
+
+  currentWordWrap = resolveWordWrap()
+}
+
+function resolveWordWrap(): 'off' | 'on' | 'wordWrapColumn' | 'bounded' {
+  const v = settingsStore.settings.editorWordWrap
+  if (v === 'off' || v === 'on' || v === 'wordWrapColumn' || v === 'bounded') return v
+  return 'on'
+}
+
+function resolveWordWrapColumn(): number {
+  return settingsStore.settings.editorWordWrapColumn || 80
+}
+
+function toggleWordWrap() {
+  if (!editor) return
+  const next: 'off' | 'on' = currentWordWrap === 'off' ? 'on' : 'off'
+  currentWordWrap = next
+  editor.updateOptions({ wordWrap: next })
 }
 
 function detectLanguage(fp: string): string {
@@ -121,6 +163,14 @@ watch(() => settingsStore.settings.theme, (t) => {
 })
 watch(() => settingsStore.settings.fontSize, (s) => {
   editor?.updateOptions({ fontSize: s })
+})
+watch(() => settingsStore.settings.editorWordWrap, () => {
+  const ww = resolveWordWrap()
+  currentWordWrap = ww
+  editor?.updateOptions({ wordWrap: ww, wordWrapColumn: resolveWordWrapColumn() })
+})
+watch(() => settingsStore.settings.editorWordWrapColumn, () => {
+  editor?.updateOptions({ wordWrapColumn: resolveWordWrapColumn() })
 })
 watch(() => props.tab.fileLine, (line) => {
   if (line && editor) {

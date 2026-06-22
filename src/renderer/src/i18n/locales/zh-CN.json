@@ -101,7 +101,12 @@
     "prevTab": "上一标签",
     "commandPalette": "命令面板",
     "find": "查找",
-    "save_": "保存"
+    "save_": "保存",
+    "wordWrap": "自动换行",
+    "wordWrapOff": "关闭",
+    "wordWrapOn": "开启",
+    "wordWrapColumn": "固定列宽",
+    "wordWrapBounded": "视口边界"
   },
   "git": {
     "noProject": "没有选中的项目",
@@ -200,6 +205,7 @@
   "commandPalette": {
     "placeholder": "输入命令...",
     "noResults": "没有匹配的命令",
-    "openSettings": "打开设置"
+    "openSettings": "打开设置",
+    "toggleWordWrap": "切换编辑器自动换行"
   }
 }
