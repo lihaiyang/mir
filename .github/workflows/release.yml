@@ -63,4 +63,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
+          gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
           gh release upload "$TAG" ${{ matrix.artifact_glob }} --clobber
