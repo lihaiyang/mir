@@ -19,21 +19,6 @@ export interface UpdaterEvent {
   manual?: boolean
 }
 
-interface GhAsset {
-  name: string
-  browser_download_url: string
-  size: number
-}
-
-interface GhRelease {
-  tag_name: string
-  name: string | null
-  body: string | null
-  prerelease: boolean
-  assets: GhAsset[]
-  html_url: string
-}
-
 let getMainWindow: () => BrowserWindow | null = () => null
 let downloadedFilePath: string | null = null
 let downloadedVersion: string | null = null
@@ -60,44 +45,28 @@ function isNewer(remote: string, local: string): boolean {
   return rp.patch > lp.patch
 }
 
-function fetchJson(url: string, redirects = 0): Promise<unknown> {
+// Avoid api.github.com (60 req/hr unauthenticated rate limit).
+// github.com/{repo}/releases/latest returns a 302 redirect to
+// .../tag/vX.Y.Z — we capture the Location header without following it.
+function fetchLatestVersion(): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (redirects > 5) {
-      reject(new Error('too many redirects'))
-      return
-    }
     const req = https.get(
-      url,
-      { headers: { 'User-Agent': UA, Accept: 'application/vnd.github+json' } },
+      `https://github.com/${REPO}/releases/latest`,
+      { headers: { 'User-Agent': UA } },
       (res) => {
         const status = res.statusCode ?? 0
-        if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
-          const loc = res.headers.location
-          res.resume()
-          if (loc) {
-            fetchJson(loc, redirects + 1).then(resolve, reject)
-          } else {
-            reject(new Error('redirect without location'))
+        const loc = res.headers.location
+        res.resume()
+        if ((status === 301 || status === 302) && loc) {
+          const match = loc.match(/\/(?:tag|releases)\/v?([^/]+?)(?:$|[?#])/)
+          if (match) {
+            resolve(match[1])
+            return
           }
+          reject(new Error(`cannot parse version from redirect: ${loc}`))
           return
         }
-        if (status !== 200) {
-          res.resume()
-          reject(new Error(`HTTP ${status}`))
-          return
-        }
-        let data = ''
-        res.setEncoding('utf-8')
-        res.on('data', (c: string) => {
-          data += c
-        })
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data))
-          } catch (e) {
-            reject(e)
-          }
-        })
+        reject(new Error(`unexpected status ${status}`))
       }
     )
     req.on('error', reject)
@@ -182,19 +151,10 @@ function downloadFile(
   })
 }
 
-function pickAsset(assets: GhAsset[]): GhAsset | null {
-  const dmgs = assets.filter((a) => a.name.toLowerCase().endsWith('.dmg'))
-  if (dmgs.length === 0) return null
-  const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
-  const archMatch = dmgs.find((a) => a.name.toLowerCase().includes(arch))
-  return archMatch ?? dmgs[0]
-}
-
 async function checkForUpdate(manual: boolean): Promise<void> {
   emit({ status: 'checking', manual })
   try {
-    const release = (await fetchJson(`https://api.github.com/repos/${REPO}/releases/latest`)) as GhRelease
-    const remoteVersion = release.tag_name.replace(/^v/, '')
+    const remoteVersion = await fetchLatestVersion()
     const localVersion = app.getVersion()
 
     if (!isNewer(remoteVersion, localVersion)) {
@@ -208,17 +168,16 @@ async function checkForUpdate(manual: boolean): Promise<void> {
       return
     }
 
-    const asset = pickAsset(release.assets)
-    if (!asset) {
-      emit({ status: 'error', version: remoteVersion, message: 'No dmg asset found in release', manual })
-      return
-    }
+    // Construct the dmg download URL from the known electron-builder naming pattern.
+    const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
+    const assetName = `MIR-${remoteVersion}-${arch}.dmg`
+    const assetUrl = `https://github.com/${REPO}/releases/download/v${remoteVersion}/${assetName}`
 
     emit({ status: 'available', version: remoteVersion, manual })
 
-    const dest = path.join(os.tmpdir(), asset.name)
+    const dest = path.join(os.tmpdir(), assetName)
     emit({ status: 'downloading', version: remoteVersion, progress: 0, manual })
-    await downloadFile(asset.browser_download_url, dest, (p) => {
+    await downloadFile(assetUrl, dest, (p) => {
       emit({ status: 'downloading', version: remoteVersion, progress: p, manual })
     })
 
