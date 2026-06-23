@@ -2,7 +2,7 @@ import { app, BrowserWindow, session, nativeImage, Menu, MenuItemConstructorOpti
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { setupIpcHandlers } from './ipc'
-import { initUpdater, checkForUpdateNow } from './updater'
+import { initUpdater, checkForUpdateNow, setUpdaterStateListener, UpdaterEvent } from './updater'
 
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
@@ -17,15 +17,14 @@ function setupBrowserSession(): void {
   session.fromPartition('persist:browser', { cache: true })
 }
 
-function setupMenu(): void {
-  if (process.platform !== 'darwin') return
+function buildAppMenu(label: string, enabled: boolean): void {
   const template: MenuItemConstructorOptions[] = [
     {
       label: app.name,
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        { label: '检查更新…', click: () => { checkForUpdateNow(true).catch(() => {}) } },
+        { label, enabled, click: () => { checkForUpdateNow(true).catch(() => {}) } },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -41,6 +40,28 @@ function setupMenu(): void {
     { role: 'windowMenu' }
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+function setupMenu(): void {
+  if (process.platform !== 'darwin') return
+  buildAppMenu('检查更新…', true)
+}
+
+let lastMenuLabel = ''
+function updateMenuForState(e: UpdaterEvent): void {
+  if (process.platform !== 'darwin') return
+  let label = '检查更新…'
+  let enabled = true
+  if (e.status === 'checking') {
+    label = '正在检查更新…'
+    enabled = false
+  } else if (e.status === 'available' || e.status === 'downloading') {
+    label = `正在下载 v${e.version ?? ''}… ${e.progress ?? 0}%`
+    enabled = false
+  }
+  if (label === lastMenuLabel) return
+  lastMenuLabel = label
+  buildAppMenu(label, enabled)
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -113,6 +134,7 @@ app.whenReady().then(() => {
   setupIpcHandlers()
   createWindow()
   initUpdater(() => mainWindow)
+  setUpdaterStateListener(updateMenuForState)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -24,8 +24,14 @@ let downloadedFilePath: string | null = null
 let downloadedVersion: string | null = null
 let busy = false
 let activeManual = false
+let stateListener: ((event: UpdaterEvent) => void) | null = null
+
+export function setUpdaterStateListener(cb: (event: UpdaterEvent) => void): void {
+  stateListener = cb
+}
 
 function emit(event: UpdaterEvent): void {
+  stateListener?.(event)
   const win = getMainWindow()
   if (win && !win.isDestroyed()) {
     win.webContents.send('updater:event', event)
@@ -121,9 +127,16 @@ function downloadFile(
       }
       const total = parseInt(res.headers['content-length'] ?? '0', 10)
       let received = 0
+      let lastPct = -1
       res.on('data', (chunk: Buffer) => {
         received += chunk.length
-        if (total) onProgress(Math.min(100, Math.round((received / total) * 100)))
+        if (total) {
+          const pct = Math.min(100, Math.round((received / total) * 100))
+          if (pct !== lastPct) {
+            lastPct = pct
+            onProgress(pct)
+          }
+        }
       })
       res.pipe(file)
       file.on('finish', () => {
