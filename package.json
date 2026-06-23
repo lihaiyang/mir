@@ -1,6 +1,6 @@
 {
   "name": "mir",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Multi-pane IDE for AI agent management",
   "main": "out/main/index.js",
   "scripts": {
@@ -21,6 +21,11 @@
     "email": "mir@example.com"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lihaiyang/mir.git"
+  },
+  "homepage": "https://github.com/lihaiyang/mir",
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
     "@types/node": "^22.0.0",
@@ -123,6 +128,5 @@
       "cache": ".electron-cache"
     },
     "afterPack": "scripts/linux-after-pack.js"
-  },
-  "homepage": "https://github.com/mir-ide/mir"
+  }
 }

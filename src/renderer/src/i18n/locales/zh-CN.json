@@ -207,5 +207,10 @@
     "noResults": "没有匹配的命令",
     "openSettings": "打开设置",
     "toggleWordWrap": "切换编辑器自动换行"
+  },
+  "updater": {
+    "downloading": "正在下载新版本 {version}…",
+    "ready": "新版本 {version} 已就绪，安装包已打开，请将 MIR 拖入应用程序文件夹。",
+    "reopen": "重新打开安装包"
   }
 }

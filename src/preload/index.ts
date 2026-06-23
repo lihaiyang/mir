@@ -61,5 +61,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // App
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
-  getPath: (name: string) => ipcRenderer.invoke('app:getPath', name)
+  getPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
+
+  // Updater (macOS: auto-check/download from GitHub Releases, open dmg to drag-install)
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  applyUpdate: () => ipcRenderer.invoke('updater:apply'),
+  onUpdaterEvent: (cb: (event: UpdaterEvent) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, event: UpdaterEvent) => cb(event)
+    ipcRenderer.on('updater:event', listener)
+    return () => ipcRenderer.removeListener('updater:event', listener)
+  }
 })

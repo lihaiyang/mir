@@ -2,6 +2,7 @@ import { app, BrowserWindow, session, nativeImage } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { setupIpcHandlers } from './ipc'
+import { initUpdater } from './updater'
 
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
@@ -15,6 +16,8 @@ function setupBrowserSession(): void {
   // Pre-create the partition session to ensure service worker storage works
   session.fromPartition('persist:browser', { cache: true })
 }
+
+let mainWindow: BrowserWindow | null = null
 
 function configureWebviewSession(webContents: Electron.WebContents): void {
   const ses = webContents.session
@@ -52,6 +55,7 @@ function createWindow(): void {
       webviewTag: true
     }
   })
+  mainWindow = win
 
   // Inject the webview-specific preload so navigator.serviceWorker.register
   // is patched before any page script in the embedded browser runs.
@@ -81,6 +85,7 @@ app.whenReady().then(() => {
   setupBrowserSession()
   setupIpcHandlers()
   createWindow()
+  initUpdater(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

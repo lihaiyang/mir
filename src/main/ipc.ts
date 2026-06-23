@@ -7,6 +7,7 @@ import Store from 'electron-store'
 import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess } from './pty'
 import { runGitCommand } from './git'
 import { searchInProject } from './search'
+import { checkForUpdateNow, applyUpdate } from './updater'
 
 const execAsync = promisify(exec)
 
@@ -151,4 +152,12 @@ export function setupIpcHandlers(): void {
   // --- App ---
   ipcMain.handle('app:getVersion', () => app.getVersion())
   ipcMain.handle('app:getPath', (_e, name: 'home' | 'appData' | 'userData' | 'sessionData' | 'temp' | 'exe' | 'module' | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos' | 'recent' | 'logs' | 'crashDumps') => app.getPath(name))
+
+  // --- Updater (macOS: download dmg from GitHub Releases, user drags to install) ---
+  ipcMain.handle('updater:check', async () => {
+    await checkForUpdateNow()
+  })
+  ipcMain.handle('updater:apply', async () => {
+    await applyUpdate()
+  })
 }

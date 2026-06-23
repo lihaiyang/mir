@@ -32,6 +32,7 @@
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
     <CommandPalette v-if="showPalette" @close="showPalette = false" />
     <ContextMenuHost />
+    <UpdateToast />
   </div>
 </template>
 
@@ -50,6 +51,7 @@ import RightPane from './components/right/RightPane.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import ContextMenuHost from './components/ContextMenuHost.vue'
 import CommandPalette from './components/CommandPalette.vue'
+import UpdateToast from './components/UpdateToast.vue'
 import { registerCommand } from './composables/useCommandPalette'
 
 const { locale, t } = useI18n()

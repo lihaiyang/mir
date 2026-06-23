@@ -207,5 +207,10 @@
     "noResults": "No matching commands",
     "openSettings": "Open Settings",
     "toggleWordWrap": "Toggle Editor Word Wrap"
+  },
+  "updater": {
+    "downloading": "Downloading new version {version}…",
+    "ready": "Version {version} is ready. The installer has been opened — drag MIR into your Applications folder.",
+    "reopen": "Reopen installer"
   }
 }

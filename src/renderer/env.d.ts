@@ -58,6 +58,9 @@ interface ElectronAPI {
   searchRun: (opts: unknown) => Promise<SearchMatch[]>
   getVersion: () => Promise<string>
   getPath: (name: string) => Promise<string>
+  checkForUpdates: () => Promise<void>
+  applyUpdate: () => Promise<void>
+  onUpdaterEvent: (cb: (event: UpdaterEvent) => void) => () => void
 }
 
 interface GitStatus {
@@ -89,6 +92,15 @@ interface SearchMatch {
   line: number
   col: number
   text: string
+}
+
+type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'ready' | 'error'
+
+interface UpdaterEvent {
+  status: UpdaterStatus
+  version?: string
+  progress?: number
+  message?: string
 }
 
 declare interface Window {
