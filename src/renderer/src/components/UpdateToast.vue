@@ -1,6 +1,12 @@
 <template>
   <Transition name="updater-slide">
     <div v-if="visible" class="update-toast">
+      <template v-if="state.status === 'checking'">
+        <div class="row checking-row">
+          <span class="spinner" />
+          <span class="text">{{ t('updater.checking') }}</span>
+        </div>
+      </template>
       <template v-if="state.status === 'downloading'">
         <div class="row">
           <span class="text">{{ t('updater.downloading', { version: state.version }) }}</span>
@@ -49,7 +55,7 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null
 const visible = computed(() => {
   if (dismissed.value) return false
   const e = state.value
-  if (e.status === 'downloading' || e.status === 'ready') return true
+  if (e.status === 'checking' || e.status === 'downloading' || e.status === 'ready') return true
   if (e.manual && (e.status === 'not-available' || e.status === 'error')) return true
   return false
 })
@@ -81,7 +87,7 @@ watch(
   () => state.value.status,
   (s) => {
     const e = state.value
-    if (s === 'downloading' || s === 'ready') {
+    if (s === 'checking' || s === 'downloading' || s === 'ready') {
       dismissed.value = false
       clearHideTimer()
     } else if (s === 'not-available' && e.manual) {
@@ -127,6 +133,21 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--text-accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: updater-spin 0.7s linear infinite;
+}
+@keyframes updater-spin {
+  to { transform: rotate(360deg); }
+}
+.checking-row {
+  justify-content: flex-start;
 }
 .text {
   font-size: 12px;

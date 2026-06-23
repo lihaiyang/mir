@@ -209,6 +209,7 @@
     "toggleWordWrap": "Toggle Editor Word Wrap"
   },
   "updater": {
+    "checking": "Checking for updates…",
     "downloading": "Downloading new version {version}…",
     "ready": "Version {version} is ready. The installer has been opened — drag MIR into your Applications folder.",
     "reopen": "Reopen installer",
