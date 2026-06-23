@@ -19,12 +19,24 @@
           <button class="btn" @click="dismiss">{{ t('common.close') }}</button>
         </div>
       </template>
+      <template v-else-if="state.status === 'not-available'">
+        <div class="row">
+          <span class="text">{{ t('updater.upToDate') }}</span>
+          <button class="btn" @click="dismiss">{{ t('common.close') }}</button>
+        </div>
+      </template>
+      <template v-else-if="state.status === 'error'">
+        <div class="row">
+          <span class="text error">{{ t('updater.checkError', { message: state.message }) }}</span>
+          <button class="btn" @click="dismiss">{{ t('common.close') }}</button>
+        </div>
+      </template>
     </div>
   </Transition>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -32,12 +44,30 @@ const { t } = useI18n()
 const state = ref<UpdaterEvent>({ status: 'idle' })
 const dismissed = ref(false)
 let off: (() => void) | null = null
+let hideTimer: ReturnType<typeof setTimeout> | null = null
 
 const visible = computed(() => {
   if (dismissed.value) return false
-  const s = state.value.status
-  return s === 'downloading' || s === 'ready'
+  const e = state.value
+  if (e.status === 'downloading' || e.status === 'ready') return true
+  if (e.manual && (e.status === 'not-available' || e.status === 'error')) return true
+  return false
 })
+
+function clearHideTimer(): void {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
+
+function scheduleHide(ms: number): void {
+  clearHideTimer()
+  hideTimer = setTimeout(() => {
+    dismissed.value = true
+    hideTimer = null
+  }, ms)
+}
 
 function reopen(): void {
   window.electronAPI.applyUpdate()
@@ -47,15 +77,32 @@ function dismiss(): void {
   dismissed.value = true
 }
 
+watch(
+  () => state.value.status,
+  (s) => {
+    const e = state.value
+    if (s === 'downloading' || s === 'ready') {
+      dismissed.value = false
+      clearHideTimer()
+    } else if (s === 'not-available' && e.manual) {
+      dismissed.value = false
+      scheduleHide(3000)
+    } else if (s === 'error' && e.manual) {
+      dismissed.value = false
+      scheduleHide(6000)
+    }
+  }
+)
+
 onMounted(() => {
   off = window.electronAPI.onUpdaterEvent((e) => {
     state.value = e
-    if (e.status === 'downloading') dismissed.value = false
   })
 })
 
 onUnmounted(() => {
   off?.()
+  clearHideTimer()
 })
 </script>
 
@@ -85,6 +132,9 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--text-primary);
   line-height: 1.4;
+}
+.text.error {
+  color: var(--text-danger);
 }
 .pct {
   font-size: 12px;

@@ -101,6 +101,7 @@ interface UpdaterEvent {
   version?: string
   progress?: number
   message?: string
+  manual?: boolean
 }
 
 declare interface Window {

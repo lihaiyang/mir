@@ -1,8 +1,8 @@
-import { app, BrowserWindow, session, nativeImage } from 'electron'
+import { app, BrowserWindow, session, nativeImage, Menu, MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { setupIpcHandlers } from './ipc'
-import { initUpdater } from './updater'
+import { initUpdater, checkForUpdateNow } from './updater'
 
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
@@ -15,6 +15,32 @@ if (process.platform === 'linux') {
 function setupBrowserSession(): void {
   // Pre-create the partition session to ensure service worker storage works
   session.fromPartition('persist:browser', { cache: true })
+}
+
+function setupMenu(): void {
+  if (process.platform !== 'darwin') return
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { label: '检查更新…', click: () => { checkForUpdateNow(true).catch(() => {}) } },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' }
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -83,6 +109,7 @@ app.whenReady().then(() => {
   }
 
   setupBrowserSession()
+  setupMenu()
   setupIpcHandlers()
   createWindow()
   initUpdater(() => mainWindow)

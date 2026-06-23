@@ -16,6 +16,7 @@ export interface UpdaterEvent {
   version?: string
   progress?: number
   message?: string
+  manual?: boolean
 }
 
 interface GhAsset {
@@ -189,51 +190,51 @@ function pickAsset(assets: GhAsset[]): GhAsset | null {
   return archMatch ?? dmgs[0]
 }
 
-async function checkForUpdate(): Promise<void> {
-  emit({ status: 'checking' })
+async function checkForUpdate(manual: boolean): Promise<void> {
+  emit({ status: 'checking', manual })
   try {
     const release = (await fetchJson(`https://api.github.com/repos/${REPO}/releases/latest`)) as GhRelease
     const remoteVersion = release.tag_name.replace(/^v/, '')
     const localVersion = app.getVersion()
 
     if (!isNewer(remoteVersion, localVersion)) {
-      emit({ status: 'not-available' })
+      emit({ status: 'not-available', manual })
       return
     }
 
     // Already downloaded this version — just re-open.
     if (downloadedVersion === remoteVersion && downloadedFilePath && fs.existsSync(downloadedFilePath)) {
-      emit({ status: 'ready', version: remoteVersion })
+      emit({ status: 'ready', version: remoteVersion, manual })
       return
     }
 
     const asset = pickAsset(release.assets)
     if (!asset) {
-      emit({ status: 'error', version: remoteVersion, message: 'No dmg asset found in release' })
+      emit({ status: 'error', version: remoteVersion, message: 'No dmg asset found in release', manual })
       return
     }
 
-    emit({ status: 'available', version: remoteVersion })
+    emit({ status: 'available', version: remoteVersion, manual })
 
     const dest = path.join(os.tmpdir(), asset.name)
-    emit({ status: 'downloading', version: remoteVersion, progress: 0 })
+    emit({ status: 'downloading', version: remoteVersion, progress: 0, manual })
     await downloadFile(asset.browser_download_url, dest, (p) => {
-      emit({ status: 'downloading', version: remoteVersion, progress: p })
+      emit({ status: 'downloading', version: remoteVersion, progress: p, manual })
     })
 
     downloadedFilePath = dest
     downloadedVersion = remoteVersion
-    emit({ status: 'ready', version: remoteVersion })
+    emit({ status: 'ready', version: remoteVersion, manual })
 
     // Auto-open the dmg so the user can drag to Applications.
     const openErr = await shell.openPath(dest)
     if (openErr) {
-      emit({ status: 'error', version: remoteVersion, message: openErr })
+      emit({ status: 'error', version: remoteVersion, message: openErr, manual })
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn('[updater] check failed:', message)
-    emit({ status: 'error', message })
+    emit({ status: 'error', message, manual })
   }
 }
 
@@ -243,16 +244,16 @@ export function initUpdater(getWin: () => BrowserWindow | null): void {
   if (!app.isPackaged) return
 
   setTimeout(() => {
-    checkForUpdate().catch(() => {})
+    checkForUpdate(false).catch(() => {})
   }, INITIAL_DELAY)
   setInterval(() => {
-    checkForUpdate().catch(() => {})
+    checkForUpdate(false).catch(() => {})
   }, CHECK_INTERVAL)
 }
 
-export async function checkForUpdateNow(): Promise<void> {
+export async function checkForUpdateNow(manual = false): Promise<void> {
   if (process.platform !== 'darwin') return
-  await checkForUpdate()
+  await checkForUpdate(manual)
 }
 
 export async function applyUpdate(): Promise<void> {
