@@ -1,22 +1,7 @@
 <template>
   <Transition name="updater-slide">
     <div v-if="visible" class="update-toast">
-      <template v-if="state.status === 'checking'">
-        <div class="row checking-row">
-          <span class="spinner" />
-          <span class="text">{{ t('updater.checking') }}</span>
-        </div>
-      </template>
-      <template v-if="state.status === 'downloading'">
-        <div class="row">
-          <span class="text">{{ t('updater.downloading', { version: state.version }) }}</span>
-          <span class="pct">{{ state.progress ?? 0 }}%</span>
-        </div>
-        <div class="bar">
-          <div class="fill" :style="{ width: (state.progress ?? 0) + '%' }" />
-        </div>
-      </template>
-      <template v-else-if="state.status === 'ready'">
+      <template v-if="state.status === 'ready'">
         <div class="row">
           <span class="text">{{ t('updater.ready', { version: state.version }) }}</span>
         </div>
@@ -55,7 +40,7 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null
 const visible = computed(() => {
   if (dismissed.value) return false
   const e = state.value
-  if (e.status === 'checking' || e.status === 'downloading' || e.status === 'ready') return true
+  if (e.status === 'ready') return true
   if (e.manual && (e.status === 'not-available' || e.status === 'error')) return true
   return false
 })
@@ -87,7 +72,7 @@ watch(
   () => state.value.status,
   (s) => {
     const e = state.value
-    if (s === 'checking' || s === 'downloading' || s === 'ready') {
+    if (s === 'ready') {
       dismissed.value = false
       clearHideTimer()
     } else if (s === 'not-available' && e.manual) {
@@ -134,21 +119,6 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 10px;
 }
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--text-accent);
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: updater-spin 0.7s linear infinite;
-}
-@keyframes updater-spin {
-  to { transform: rotate(360deg); }
-}
-.checking-row {
-  justify-content: flex-start;
-}
 .text {
   font-size: 12px;
   color: var(--text-primary);
@@ -156,23 +126,6 @@ onUnmounted(() => {
 }
 .text.error {
   color: var(--text-danger);
-}
-.pct {
-  font-size: 12px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-.bar {
-  height: 4px;
-  background: var(--bg-tertiary);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.fill {
-  height: 100%;
-  background: var(--text-accent);
-  transition: width 0.2s ease;
 }
 .actions {
   justify-content: flex-end;

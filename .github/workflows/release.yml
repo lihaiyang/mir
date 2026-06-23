@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to attach artifacts to (e.g. v0.1.7)'
+        description: 'Release tag to attach artifacts to (e.g. v0.1.13)'
         required: true
-        default: 'v0.1.7'
+        default: 'v0.1.13'
   push:
     tags:
       - 'v*'
@@ -15,24 +15,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            name: mac-arm64
-            build_cmd: npm run rebuild && npm run build && npx electron-builder --mac --arm64 --publish=never
-            artifact_glob: release/*.dmg
-          - os: windows-2022
-            name: win-x64
-            build_cmd: node scripts/patch-node-gyp.js && export PYTHON="$pythonLocation/python.exe" && npx electron-rebuild -f -w node-pty && npm run build && npx electron-builder --win --x64 --publish=never
-            artifact_glob: release/*.exe
-
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+  build-mac:
+    runs-on: macos-latest
 
     steps:
       - name: Checkout
@@ -44,17 +28,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Setup Python (Windows, for node-gyp)
-        if: runner.os == 'Windows'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Build & package (${{ matrix.name }})
-        run: ${{ matrix.build_cmd }}
+      - name: Build & package
+        run: npm run rebuild && npm run build && npx electron-builder --mac --arm64 --publish=never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -64,4 +42,4 @@ jobs:
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
-          gh release upload "$TAG" ${{ matrix.artifact_glob }} --clobber
+          gh release upload "$TAG" release/*.dmg --clobber

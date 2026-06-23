@@ -22,6 +22,8 @@ export interface UpdaterEvent {
 let getMainWindow: () => BrowserWindow | null = () => null
 let downloadedFilePath: string | null = null
 let downloadedVersion: string | null = null
+let busy = false
+let activeManual = false
 
 function emit(event: UpdaterEvent): void {
   const win = getMainWindow()
@@ -152,19 +154,27 @@ function downloadFile(
 }
 
 async function checkForUpdate(manual: boolean): Promise<void> {
-  emit({ status: 'checking', manual })
+  if (busy) {
+    // A check is already in flight. If this is a manual request, upgrade
+    // the running check so its result events are treated as manual.
+    if (manual) activeManual = true
+    return
+  }
+  busy = true
+  activeManual = manual
   try {
+    emit({ status: 'checking', manual: activeManual })
     const remoteVersion = await fetchLatestVersion()
     const localVersion = app.getVersion()
 
     if (!isNewer(remoteVersion, localVersion)) {
-      emit({ status: 'not-available', manual })
+      emit({ status: 'not-available', manual: activeManual })
       return
     }
 
     // Already downloaded this version — just re-open.
     if (downloadedVersion === remoteVersion && downloadedFilePath && fs.existsSync(downloadedFilePath)) {
-      emit({ status: 'ready', version: remoteVersion, manual })
+      emit({ status: 'ready', version: remoteVersion, manual: activeManual })
       return
     }
 
@@ -173,27 +183,29 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     const assetName = `MIR-${remoteVersion}-${arch}.dmg`
     const assetUrl = `https://github.com/${REPO}/releases/download/v${remoteVersion}/${assetName}`
 
-    emit({ status: 'available', version: remoteVersion, manual })
+    emit({ status: 'available', version: remoteVersion, manual: activeManual })
 
     const dest = path.join(os.tmpdir(), assetName)
-    emit({ status: 'downloading', version: remoteVersion, progress: 0, manual })
+    emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
     await downloadFile(assetUrl, dest, (p) => {
-      emit({ status: 'downloading', version: remoteVersion, progress: p, manual })
+      emit({ status: 'downloading', version: remoteVersion, progress: p, manual: activeManual })
     })
 
     downloadedFilePath = dest
     downloadedVersion = remoteVersion
-    emit({ status: 'ready', version: remoteVersion, manual })
+    emit({ status: 'ready', version: remoteVersion, manual: activeManual })
 
     // Auto-open the dmg so the user can drag to Applications.
     const openErr = await shell.openPath(dest)
     if (openErr) {
-      emit({ status: 'error', version: remoteVersion, message: openErr, manual })
+      emit({ status: 'error', version: remoteVersion, message: openErr, manual: activeManual })
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn('[updater] check failed:', message)
-    emit({ status: 'error', message, manual })
+    emit({ status: 'error', message, manual: activeManual })
+  } finally {
+    busy = false
   }
 }
 
