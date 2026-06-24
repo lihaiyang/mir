@@ -17,14 +17,14 @@ function setupBrowserSession(): void {
   session.fromPartition('persist:browser', { cache: true })
 }
 
-// Build the app menu once. The updater item is given a stable id so we can
-// mutate its label/enabled in place — this updates the native NSMenuItem
-// even while the menu is open. Rebuilding the whole menu via
-// setApplicationMenu does NOT refresh an already-open menu on macOS, but
-// mutating the existing item's properties does.
-let updaterMenuItem: Electron.MenuItem | null = null
+// Updater menu state — tracked in variables so buildAppMenu always uses
+// the latest label. We rebuild the menu on each state change (reliable for
+// closed menus) AND try to mutate the item in place (for open menus).
+let updaterLabel = '检查更新…'
+let updaterEnabled = true
+let appMenu: Electron.Menu | null = null
 
-function setupMenu(): void {
+function buildAppMenu(): void {
   if (process.platform !== 'darwin') return
   const template: MenuItemConstructorOptions[] = [
     {
@@ -34,7 +34,8 @@ function setupMenu(): void {
         { type: 'separator' },
         {
           id: 'updater',
-          label: '检查更新…',
+          label: updaterLabel,
+          enabled: updaterEnabled,
           click: () => { checkForUpdateNow(true).catch(() => {}) }
         },
         { label: '打开下载页面…', click: () => { openReleasesPage() } },
@@ -52,15 +53,16 @@ function setupMenu(): void {
     { role: 'viewMenu' },
     { role: 'windowMenu' }
   ]
-  const menu = Menu.buildFromTemplate(template)
-  updaterMenuItem = menu.getMenuItemById('updater')
-  Menu.setApplicationMenu(menu)
+  appMenu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(appMenu)
 }
 
-let lastMenuLabel = ''
+function setupMenu(): void {
+  buildAppMenu()
+}
+
 function updateMenuForState(e: UpdaterEvent): void {
   if (process.platform !== 'darwin') return
-  if (!updaterMenuItem) return
   let label = '检查更新…'
   let enabled = true
   if (e.status === 'checking') {
@@ -73,10 +75,17 @@ function updateMenuForState(e: UpdaterEvent): void {
     label = `正在解压 v${e.version ?? ''}…`
     enabled = false
   }
-  if (label === lastMenuLabel) return
-  lastMenuLabel = label
-  updaterMenuItem.label = label
-  updaterMenuItem.enabled = enabled
+  if (label === updaterLabel && enabled === updaterEnabled) return
+  updaterLabel = label
+  updaterEnabled = enabled
+  // Rebuild the whole menu — reliably updates when menu is closed.
+  buildAppMenu()
+  // Also try in-place mutation for when the menu is currently open.
+  const item = appMenu?.getMenuItemById('updater')
+  if (item) {
+    item.label = label
+    item.enabled = enabled
+  }
 }
 
 let mainWindow: BrowserWindow | null = null
