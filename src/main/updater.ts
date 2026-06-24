@@ -411,6 +411,47 @@ function computeDelta(
   }
   if (currentRange) ranges.push(currentRange)
 
+  // Merge ranges that are close together. If the gap (copy blocks) between
+  // two download ranges is small, it's cheaper to download the gap too
+  // (one HTTP request) than to issue a separate request for the next range
+  // (each request pays TLS + redirect latency). Threshold: 512KB — if the
+  // gap is smaller than this, merge it into a single range.
+  const MERGE_THRESHOLD = 512 * 1024
+  if (ranges.length > 1) {
+    // Walk ranges and merge adjacent ones with small gaps
+    const mergedRanges: RangeRequest[] = [ranges[0]]
+    for (let ri = 1; ri < ranges.length; ri++) {
+      const prev = mergedRanges[mergedRanges.length - 1]
+      const cur = ranges[ri]
+      const gap = cur.startOffset - prev.endOffset
+      if (gap <= MERGE_THRESHOLD) {
+        // Merge cur into prev: extend prev to cover the gap + cur
+        prev.endBlock = cur.endBlock
+        prev.endOffset = cur.endOffset
+        totalDownload += gap
+      } else {
+        mergedRanges.push(cur)
+      }
+    }
+
+    // Rebuild blockPlan: any copy block that falls within a merged range
+    // (i.e. between the original start and end of a merged range) becomes
+    // a download block, since it's now part of a downloaded region.
+    const newBlockPlan: BlockPlanEntry[] = []
+    for (let i = 0; i < blockPlan.length; i++) {
+      let inRange = false
+      for (const r of mergedRanges) {
+        if (i >= r.startBlock && i <= r.endBlock) {
+          inRange = true
+          break
+        }
+      }
+      newBlockPlan.push(inRange ? { type: 'download' } : blockPlan[i])
+    }
+
+    return { ranges: mergedRanges, totalDownload, blockPlan: newBlockPlan }
+  }
+
   return { ranges, totalDownload, blockPlan }
 }
 
