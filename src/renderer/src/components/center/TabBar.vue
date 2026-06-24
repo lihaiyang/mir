@@ -7,7 +7,7 @@
       :class="{ active: tab.id === activeTabId, modified: tab.modified }"
       draggable="true"
       @click="tabStore.setActiveTab(projectId, tab.id)"
-      @mousedown.middle.prevent="tabStore.closeTab(projectId, tab.id)"
+      @mousedown.middle.prevent="confirmCloseTab(tab)"
       @contextmenu.prevent="showTabMenu($event, tab, idx)"
       @dragstart="onTabDragStart($event, tab, idx)"
       @dragover.prevent
@@ -31,7 +31,7 @@
       <span v-if="tab.modified" class="tab-modified-dot"></span>
       <button
         class="tab-close"
-        @click.stop="tabStore.closeTab(projectId, tab.id)"
+        @click.stop="confirmCloseTab(tab)"
       ></button>
     </div>
     <div class="tab-toolbar" ref="toolbarRef">
@@ -248,9 +248,9 @@ function showTabMenu(e: MouseEvent, tab: Tab, _idx: number) {
     { label: t('tab.rename'), action: () => startTabRename(tab) },
     { label: t('tab.duplicate'), action: () => tabStore.duplicateTab(props.projectId, tab.id) },
     { separator: true },
-    { label: t('tab.close'), action: () => tabStore.closeTab(props.projectId, tab.id) },
-    { label: t('tab.closeOthers'), action: () => tabStore.closeOtherTabs(props.projectId, tab.id) },
-    { label: t('tab.closeToRight'), action: () => tabStore.closeTabsToRight(props.projectId, props.groupId, tab.id) },
+    { label: t('tab.close'), action: () => confirmCloseTab(tab) },
+    { label: t('tab.closeOthers'), action: () => confirmCloseOtherTabs(tab.id) },
+    { label: t('tab.closeToRight'), action: () => confirmCloseTabsToRight(tab.id) },
     { separator: true },
     {
       label: t('tab.closePane'),
@@ -258,6 +258,29 @@ function showTabMenu(e: MouseEvent, tab: Tab, _idx: number) {
       action: () => tabStore.closePane(props.projectId, props.groupId)
     }
   ])
+}
+
+function confirmCloseTab(tab: Tab): void {
+  if (tab.modified && !confirm(t('editor.unsavedCloseConfirm', { name: tab.title }))) return
+  tabStore.closeTab(props.projectId, tab.id)
+}
+
+function confirmCloseOtherTabs(keepTabId: string): void {
+  const group = tabStore.getGroup(props.projectId, props.groupId)
+  if (!group) return
+  const modified = group.tabs.filter(t => t.id !== keepTabId && t.modified)
+  if (modified.length > 0 && !confirm(t('editor.unsavedCloseOthers', { count: String(modified.length) }))) return
+  tabStore.closeOtherTabs(props.projectId, keepTabId)
+}
+
+function confirmCloseTabsToRight(fromTabId: string): void {
+  const group = tabStore.getGroup(props.projectId, props.groupId)
+  if (!group) return
+  const idx = group.tabs.findIndex(t => t.id === fromTabId)
+  if (idx === -1) return
+  const modified = group.tabs.slice(idx + 1).filter(t => t.modified)
+  if (modified.length > 0 && !confirm(t('editor.unsavedCloseRight', { count: String(modified.length) }))) return
+  tabStore.closeTabsToRight(props.projectId, props.groupId, fromTabId)
 }
 
 function startTabRename(tab: Tab) {

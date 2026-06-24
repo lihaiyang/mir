@@ -21,6 +21,7 @@
         :project-id="projectId"
         :depth="depth + 1"
         :show-hidden="showHidden"
+        :refresh-nonce="refreshNonce"
         @open-in-editor="$emit('open-in-editor', $event)"
         @refresh="$emit('refresh')"
       />
@@ -29,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLayoutStore } from '../../stores/layout'
 import { useContextMenu } from '../../composables/useContextMenu'
@@ -40,7 +41,7 @@ import { useFileTree, type FileNode } from '../../composables/useFileTree'
 
 const { t } = useI18n()
 
-const props = defineProps<{ node: FileNode; projectId: string; depth: number; showHidden: boolean }>()
+const props = defineProps<{ node: FileNode; projectId: string; depth: number; showHidden: boolean; refreshNonce: number }>()
 const emit = defineEmits<{
   (e: 'open-in-editor', path: string): void
   (e: 'refresh'): void
@@ -60,6 +61,12 @@ onMounted(() => {
     expanded.value = layoutStore.getExpandedState(props.projectId, props.node.path)
     if (expanded.value) loadChildren()
   }
+})
+
+// When the parent triggers a refresh (refreshNonce changes), reload children
+// of any expanded directory so the whole tree stays in sync, not just the root.
+watch(() => props.refreshNonce, () => {
+  if (props.node.isDirectory && expanded.value) loadChildren()
 })
 
 async function loadChildren() {

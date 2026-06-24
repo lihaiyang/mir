@@ -18,6 +18,7 @@
           :project-id="activeProject.id"
           :depth="0"
           :show-hidden="showHidden"
+          :refresh-nonce="refreshNonce"
           @open-in-editor="openInEditor"
           @refresh="loadTree"
         />
@@ -65,10 +66,12 @@ const rootName = computed(() => activeProject.value?.path.split('/').pop() || ''
 
 const nodes = ref<FileNode[]>([])
 const showHidden = ref(false)
+const refreshNonce = ref(0)
 
 async function loadTree() {
   if (!activeProject.value) return
   nodes.value = await readDir(activeProject.value.path, showHidden.value)
+  refreshNonce.value++
 }
 
 watch(() => activeProject.value?.id, () => loadTree(), { immediate: true })

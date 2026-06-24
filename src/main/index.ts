@@ -20,9 +20,9 @@ function setupBrowserSession(): void {
 // Updater menu state — tracked in variables so buildAppMenu always uses
 // the latest label. We rebuild the menu on each state change (reliable for
 // closed menus) AND try to mutate the item in place (for open menus).
-let updaterLabel = '检查更新…'
-let updaterEnabled = true
-let appMenu: Electron.Menu | null = null
+  let updaterLabel = `检查更新… (v${app.getVersion()})`
+  let updaterEnabled = true
+  let appMenu: Electron.Menu | null = null
 
 function buildAppMenu(): void {
   if (process.platform !== 'darwin') return
@@ -63,7 +63,7 @@ function setupMenu(): void {
 
 function updateMenuForState(e: UpdaterEvent): void {
   if (process.platform !== 'darwin') return
-  let label = '检查更新…'
+  let label = `检查更新… (v${app.getVersion()})`
   let enabled = true
   if (e.status === 'checking') {
     label = '正在检查更新…'

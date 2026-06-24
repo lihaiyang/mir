@@ -202,6 +202,9 @@
     "markAsRead": "标记为已读"
   },
   "editor": {
+    "unsavedCloseConfirm": "「{name}」有未保存的修改，确定关闭吗？",
+    "unsavedCloseOthers": "有 {count} 个标签存在未保存的修改，确定关闭吗？",
+    "unsavedCloseRight": "右侧有 {count} 个标签存在未保存的修改，确定关闭吗？"
   },
   "commandPalette": {
     "placeholder": "输入命令...",
