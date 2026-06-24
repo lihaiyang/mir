@@ -38,6 +38,11 @@ interface RangeRequest {
   endOffset: number // exclusive
 }
 
+// For each new block: either copy from old zip (at a specific offset) or download.
+type BlockPlanEntry =
+  | { type: 'copy'; oldOffset: number; oldSize: number }
+  | { type: 'download' }
+
 // Centralized logging — writes to a file in the cache dir so we can
 // debug update issues even when console output is invisible in packaged apps.
 let _cacheDir: string | null = null
@@ -346,58 +351,67 @@ function computeOffsets(sizes: number[]): number[] {
   return offsets
 }
 
-// Compare old and new blockmaps, return list of byte ranges that need downloading.
-function computeDelta(oldBm: Blockmap, newBm: Blockmap): { ranges: RangeRequest[]; totalDownload: number } {
+// Compare old and new blockmaps using content-addressable matching.
+// Instead of comparing block[i] vs block[i] (which fails when ZIP content
+// shifts due to a changed file earlier in the archive), we build a map of
+// old checksums and match each new block by its checksum regardless of
+// position. This recognizes unchanged blocks even after offset shifts.
+function computeDelta(
+  oldBm: Blockmap,
+  newBm: Blockmap
+): { ranges: RangeRequest[]; totalDownload: number; blockPlan: BlockPlanEntry[] } {
   const oldF = oldBm.files[0]
   const newF = newBm.files[0]
   if (!oldF || !newF) {
-    // Can't compute delta, signal full download needed
-    return { ranges: [], totalDownload: -1 }
+    return { ranges: [], totalDownload: -1, blockPlan: [] }
   }
 
   const oldOffsets = computeOffsets(oldF.sizes)
   const newOffsets = computeOffsets(newF.sizes)
-  const oldLen = oldF.checksums.length
-  const newLen = newF.checksums.length
-  const minLen = Math.min(oldLen, newLen)
 
+  // Build checksum → old block info map. If duplicate checksums exist
+  // (unlikely but possible), first match wins.
+  const oldChecksumMap = new Map<string, { offset: number; size: number }>()
+  for (let i = 0; i < oldF.checksums.length; i++) {
+    if (!oldChecksumMap.has(oldF.checksums[i])) {
+      oldChecksumMap.set(oldF.checksums[i], { offset: oldOffsets[i], size: oldF.sizes[i] })
+    }
+  }
+
+  const blockPlan: BlockPlanEntry[] = []
   const ranges: RangeRequest[] = []
   let totalDownload = 0
   let currentRange: RangeRequest | null = null
 
-  for (let i = 0; i < newLen; i++) {
-    let needsDownload: boolean
-    if (i < minLen) {
-      // Same block index — compare checksums
-      needsDownload = oldF.checksums[i] !== newF.checksums[i]
-    } else {
-      // New blocks beyond old file — must download
-      needsDownload = true
-    }
+  for (let i = 0; i < newF.checksums.length; i++) {
+    const checksum = newF.checksums[i]
+    const oldMatch = oldChecksumMap.get(checksum)
 
-    if (needsDownload) {
-      const start = newOffsets[i]
-      const end = start + newF.sizes[i]
-      if (currentRange && currentRange.endBlock === i - 1) {
-        // Extend current range
-        currentRange.endBlock = i
-        currentRange.endOffset = end
-      } else {
-        // Start new range
-        if (currentRange) ranges.push(currentRange)
-        currentRange = { startBlock: i, endBlock: i, startOffset: start, endOffset: end }
-      }
-      totalDownload += newF.sizes[i]
-    } else {
+    if (oldMatch) {
+      // Block content unchanged (same checksum) — copy from old zip at old offset
       if (currentRange) {
         ranges.push(currentRange)
         currentRange = null
       }
+      blockPlan.push({ type: 'copy', oldOffset: oldMatch.offset, oldSize: oldMatch.size })
+    } else {
+      // Block is new/changed — needs downloading
+      const start = newOffsets[i]
+      const end = start + newF.sizes[i]
+      if (currentRange && currentRange.endBlock === i - 1) {
+        currentRange.endBlock = i
+        currentRange.endOffset = end
+      } else {
+        if (currentRange) ranges.push(currentRange)
+        currentRange = { startBlock: i, endBlock: i, startOffset: start, endOffset: end }
+      }
+      totalDownload += newF.sizes[i]
+      blockPlan.push({ type: 'download' })
     }
   }
   if (currentRange) ranges.push(currentRange)
 
-  return { ranges, totalDownload }
+  return { ranges, totalDownload, blockPlan }
 }
 
 // Download a specific byte range from a URL (following redirects).
@@ -437,20 +451,20 @@ function downloadRange(url: string, start: number, end: number): Promise<Buffer>
   return promise
 }
 
-// Assemble the new zip using delta: copy unchanged blocks from old zip,
-// insert downloaded changed blocks. Returns path to the assembled zip.
+// Assemble the new zip using delta: copy unchanged blocks from old zip
+// (at their old offsets, which may differ from new offsets due to shifts),
+// insert downloaded changed blocks.
 async function assembleDeltaZip(
   oldZipPath: string,
   oldBm: Blockmap,
   newBm: Blockmap,
   ranges: RangeRequest[],
+  blockPlan: BlockPlanEntry[],
   destPath: string,
   assetUrl: string,
   onProgress: (p: number) => void
 ): Promise<void> {
-  const oldF = oldBm.files[0]
   const newF = newBm.files[0]
-  const oldOffsets = computeOffsets(oldF.sizes)
   const newOffsets = computeOffsets(newF.sizes)
 
   // Download all changed ranges
@@ -467,33 +481,29 @@ async function assembleDeltaZip(
     }
   }
 
-  // Assemble: for each block in new file, either copy from old zip or from downloaded range
+  // Assemble: for each block, either copy from old zip or from downloaded range
   const oldFd = await fsp.open(oldZipPath, 'r')
   const newFd = await fsp.open(destPath, 'w')
   try {
-    for (let i = 0; i < newF.checksums.length; i++) {
+    for (let i = 0; i < blockPlan.length; i++) {
+      const plan = blockPlan[i]
       const newSize = newF.sizes[i]
       const newOffset = newOffsets[i]
 
-      // Find which range this block belongs to (if any)
-      const range = ranges.find(r => i >= r.startBlock && i <= r.endBlock)
-      if (range) {
-        // Block is in a downloaded range — extract from the range buffer
-        const buf = rangeBuffers.get(range.startBlock)!
-        const offsetWithinRange = newOffset - range.startOffset
-        const slice = buf.subarray(offsetWithinRange, offsetWithinRange + newSize)
-        await newFd.write(slice, 0, newSize, newOffset)
-      } else {
-        // Block unchanged — copy from old zip
-        // Need to find the corresponding old block. Since checksums match,
-        // the block index in old file is the same (i < oldF.checksums.length)
-        if (i < oldF.checksums.length) {
-          const oldOffset = oldOffsets[i]
-          const oldSize = oldF.sizes[i]
-          const buf = Buffer.alloc(oldSize)
-          await oldFd.read(buf, 0, oldSize, oldOffset)
-          await newFd.write(buf, 0, oldSize, newOffset)
+      if (plan.type === 'download') {
+        // Find which range this block belongs to
+        const range = ranges.find(r => i >= r.startBlock && i <= r.endBlock)
+        if (range) {
+          const buf = rangeBuffers.get(range.startBlock)!
+          const offsetWithinRange = newOffset - range.startOffset
+          const slice = buf.subarray(offsetWithinRange, offsetWithinRange + newSize)
+          await newFd.write(slice, 0, newSize, newOffset)
         }
+      } else {
+        // Copy unchanged block from old zip at the matched old offset
+        const buf = Buffer.alloc(plan.oldSize)
+        await oldFd.read(buf, 0, plan.oldSize, plan.oldOffset)
+        await newFd.write(buf, 0, plan.oldSize, newOffset)
       }
     }
     onProgress(100)
@@ -621,8 +631,7 @@ async function checkForUpdate(manual: boolean): Promise<void> {
           logToFile(`downloading new blockmap from ${blockmapUrl}`)
           const newBm = await downloadBlockmap(blockmapUrl)
           logToFile(`new blockmap downloaded OK, checksums=${newBm.files[0]?.checksums.length}`)
-          const { ranges, totalDownload } = computeDelta(oldBm, newBm)
-          const oldZipSize = fs.statSync(cacheZipPath(localVersion)).size
+          const { ranges, totalDownload, blockPlan } = computeDelta(oldBm, newBm)
           const newZipSize = newF_totalSize(newBm)
           logToFile(`delta computed: ranges=${ranges.length}, totalDownload=${totalDownload} bytes (${Math.round(totalDownload / 1024 / 1024)}MB), newZipSize=${newZipSize} bytes, threshold=${Math.round(newZipSize * 0.8)}`)
 
@@ -641,6 +650,7 @@ async function checkForUpdate(manual: boolean): Promise<void> {
               oldBm,
               newBm,
               ranges,
+              blockPlan,
               zipPath,
               assetUrl,
               (p) => {
