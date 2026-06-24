@@ -542,6 +542,9 @@ async function assembleDeltaZip(
   const rangeBuffers = new Map<number, Buffer>() // keyed by startBlock
   const totalDownload = ranges.reduce((sum, r) => sum + (r.endOffset - r.startOffset), 0)
 
+  logToFile(`downloading ${ranges.length} ranges in parallel, total=${totalDownload} bytes (${Math.round(totalDownload / 1024 / 1024)}MB)`)
+  const dlStart = Date.now()
+
   const downloadPromises = ranges.map(async (range) => {
     const buf = await downloadRange(cdnUrl, range.startOffset, range.endOffset)
     rangeBuffers.set(range.startBlock, buf)
@@ -558,6 +561,9 @@ async function assembleDeltaZip(
     return buf
   })
   await Promise.all(progressTracker)
+
+  const dlMs = Date.now() - dlStart
+  logToFile(`download complete in ${dlMs}ms (${Math.round(totalDownload / 1024 / (dlMs / 1000))} KB/s)`)
 
   // Build a run-length plan: merge consecutive blocks of the same type
   // into a single operation. Consecutive 'copy' blocks become one big
@@ -599,6 +605,7 @@ async function assembleDeltaZip(
 
   logToFile(`assembly runs: ${runs.length} (from ${blockPlan.length} blocks), copy runs: ${runs.filter(r => r.type === 'copy').length}`)
 
+  const copyStart = Date.now()
   // Execute runs. Copy runs use streaming (createReadStream→pipe→writeStream)
   // for better throughput on large contiguous regions. Download runs write
   // from the in-memory range buffers.
@@ -629,6 +636,7 @@ async function assembleDeltaZip(
       })
     }
     onProgress(100)
+    logToFile(`assembly (stream copy) complete in ${Date.now() - copyStart}ms`)
   } finally {
     // newFd already closed above; ensure cleanup on error
     try { await newFd.close() } catch { /* already closed */ }
