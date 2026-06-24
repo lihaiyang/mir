@@ -106,7 +106,8 @@
     "wordWrapOff": "Off",
     "wordWrapOn": "On",
     "wordWrapColumn": "Column",
-    "wordWrapBounded": "Bounded"
+    "wordWrapBounded": "Bounded",
+    "autoUpdate": "Auto Update"
   },
   "git": {
     "noProject": "No project selected",

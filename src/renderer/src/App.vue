@@ -74,6 +74,7 @@ onMounted(async () => {
   await tabStore.load()
   await webPageStore.load()
   settingsStore.applyTheme()
+  window.electronAPI.setAutoUpdate(settingsStore.settings.autoUpdate).catch(() => {})
   setupShortcuts()
   registerBuiltinCommands()
 

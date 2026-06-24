@@ -60,6 +60,7 @@ interface ElectronAPI {
   getPath: (name: string) => Promise<string>
   checkForUpdates: () => Promise<void>
   applyUpdate: () => Promise<void>
+  setAutoUpdate: (enabled: boolean) => Promise<void>
   onUpdaterEvent: (cb: (event: UpdaterEvent) => void) => () => void
 }
 

@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Updater (macOS: auto-check/download from GitHub Releases, open dmg to drag-install)
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   applyUpdate: () => ipcRenderer.invoke('updater:apply'),
+  setAutoUpdate: (enabled: boolean) => ipcRenderer.invoke('updater:setAutoUpdate', enabled),
   onUpdaterEvent: (cb: (event: UpdaterEvent) => void) => {
     const listener = (_e: Electron.IpcRendererEvent, event: UpdaterEvent) => cb(event)
     ipcRenderer.on('updater:event', listener)

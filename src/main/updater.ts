@@ -5,11 +5,15 @@ import * as fsp from 'fs/promises'
 import * as path from 'path'
 import * as os from 'os'
 import { execFile, spawn } from 'child_process'
+import Store from 'electron-store'
 
 const REPO = 'lihaiyang/mir'
+const RELEASES_URL = `https://github.com/${REPO}/releases/latest`
 const CHECK_INTERVAL = 60 * 60 * 1000
 const INITIAL_DELAY = 10 * 1000
 const UA = 'mir-updater'
+
+const mainStore = new Store({ name: 'mir-state' })
 
 type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'extracting' | 'ready' | 'error'
 
@@ -322,22 +326,66 @@ async function checkForUpdate(manual: boolean): Promise<void> {
   }
 }
 
+let autoUpdateEnabled = true
+let initialTimer: ReturnType<typeof setTimeout> | null = null
+let intervalTimer: ReturnType<typeof setInterval> | null = null
+
+function readAutoUpdateSetting(): boolean {
+  const stored = mainStore.get('settings') as { autoUpdate?: boolean } | undefined
+  return stored?.autoUpdate !== false
+}
+
+function clearTimers(): void {
+  if (initialTimer) {
+    clearTimeout(initialTimer)
+    initialTimer = null
+  }
+  if (intervalTimer) {
+    clearInterval(intervalTimer)
+    intervalTimer = null
+  }
+}
+
+function startTimers(): void {
+  clearTimers()
+  initialTimer = setTimeout(() => {
+    checkForUpdate(false).catch(() => {})
+  }, INITIAL_DELAY)
+  intervalTimer = setInterval(() => {
+    checkForUpdate(false).catch(() => {})
+  }, CHECK_INTERVAL)
+}
+
+export function setAutoUpdate(enabled: boolean): void {
+  autoUpdateEnabled = enabled
+  if (process.platform !== 'darwin') return
+  if (!app.isPackaged) return
+  if (enabled) {
+    startTimers()
+  } else {
+    clearTimers()
+  }
+}
+
+export function isAutoUpdateEnabled(): boolean {
+  return autoUpdateEnabled
+}
+
 export function initUpdater(getWin: () => BrowserWindow | null): void {
   getMainWindow = getWin
   if (process.platform !== 'darwin') return
   if (!app.isPackaged) return
-
-  setTimeout(() => {
-    checkForUpdate(false).catch(() => {})
-  }, INITIAL_DELAY)
-  setInterval(() => {
-    checkForUpdate(false).catch(() => {})
-  }, CHECK_INTERVAL)
+  autoUpdateEnabled = readAutoUpdateSetting()
+  if (autoUpdateEnabled) startTimers()
 }
 
 export async function checkForUpdateNow(manual = false): Promise<void> {
   if (process.platform !== 'darwin') return
   await checkForUpdate(manual)
+}
+
+export function openReleasesPage(): void {
+  void shell.openExternal(RELEASES_URL)
 }
 
 // Find the real installed location by walking up from the running exe path

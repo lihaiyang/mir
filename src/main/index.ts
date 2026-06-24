@@ -2,7 +2,7 @@ import { app, BrowserWindow, session, nativeImage, Menu, MenuItemConstructorOpti
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { setupIpcHandlers } from './ipc'
-import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, UpdaterEvent } from './updater'
+import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, openReleasesPage, UpdaterEvent } from './updater'
 
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
@@ -37,6 +37,7 @@ function setupMenu(): void {
           label: '检查更新…',
           click: () => { checkForUpdateNow(true).catch(() => {}) }
         },
+        { label: '打开下载页面…', click: () => { openReleasesPage() } },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },

@@ -37,6 +37,10 @@
               <label class="settings-label">{{ $t('settings.uiFontSize') }}</label>
               <input type="number" v-model.number="draft.fontSize" min="10" max="24" class="settings-input" />
             </div>
+            <div class="settings-group settings-group-row">
+              <label class="settings-label" style="flex:1">{{ $t('settings.autoUpdate') }}</label>
+              <input type="checkbox" v-model="draft.autoUpdate" />
+            </div>
           </template>
 
           <!-- Terminal -->
@@ -136,7 +140,11 @@ const sections = computed(() => [
 const activeSection = ref('appearance')
 
 async function save() {
+  const prevAutoUpdate = settingsStore.settings.autoUpdate
   await settingsStore.update({ ...draft })
+  if (draft.autoUpdate !== prevAutoUpdate) {
+    window.electronAPI.setAutoUpdate(draft.autoUpdate).catch(() => {})
+  }
   emit('close')
 }
 

@@ -106,7 +106,8 @@
     "wordWrapOff": "关闭",
     "wordWrapOn": "开启",
     "wordWrapColumn": "固定列宽",
-    "wordWrapBounded": "视口边界"
+    "wordWrapBounded": "视口边界",
+    "autoUpdate": "自动更新"
   },
   "git": {
     "noProject": "没有选中的项目",

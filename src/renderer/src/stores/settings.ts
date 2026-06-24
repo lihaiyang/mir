@@ -14,6 +14,7 @@ export interface Settings {
   shortcuts: Record<string, string>
   editorWordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded'
   editorWordWrapColumn: number
+  autoUpdate: boolean
 }
 
 const defaults: Settings = {
@@ -36,7 +37,8 @@ const defaults: Settings = {
     save: 'Ctrl+S'
   },
   editorWordWrap: 'on',
-  editorWordWrapColumn: 80
+  editorWordWrapColumn: 80,
+  autoUpdate: true
 }
 
 function log(msg: string) {
