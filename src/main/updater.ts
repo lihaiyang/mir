@@ -38,11 +38,24 @@ interface RangeRequest {
   endOffset: number // exclusive
 }
 
-// Lazily computed — app.getPath('userData') must be called after app.whenReady().
+// Centralized logging — writes to a file in the cache dir so we can
+// debug update issues even when console output is invisible in packaged apps.
 let _cacheDir: string | null = null
 function getCacheDir(): string {
   if (!_cacheDir) _cacheDir = path.join(app.getPath('userData'), 'update-cache')
   return _cacheDir
+}
+
+let _logPath: string | null = null
+function logToFile(msg: string): void {
+  try {
+    if (!_logPath) _logPath = path.join(getCacheDir(), 'updater.log')
+    fs.mkdirSync(getCacheDir(), { recursive: true })
+    const ts = new Date().toISOString()
+    fs.appendFileSync(_logPath, `[${ts}] ${msg}\n`)
+  } catch {
+    /* ignore */
+  }
 }
 
 type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'extracting' | 'ready' | 'error'
@@ -598,9 +611,11 @@ async function checkForUpdate(manual: boolean): Promise<void> {
 
     // Try delta download if we have a cached old zip + blockmap.
     let usedDelta = false
+    logToFile(`checking cache for localVersion=${localVersion}: hasZip=${hasCachedZip(localVersion)}`)
     if (hasCachedZip(localVersion)) {
       try {
         const oldBm = await loadCachedBlockmap(localVersion)
+        logToFile(`cached blockmap loaded: ${oldBm ? 'OK' : 'null'}`)
         if (oldBm) {
           emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
           const newBm = await downloadBlockmap(blockmapUrl)
@@ -641,17 +656,21 @@ async function checkForUpdate(manual: boolean): Promise<void> {
 
     if (!usedDelta) {
       // Full download
+      logToFile(`starting full download from ${assetUrl}`)
       emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
       await downloadFile(assetUrl, zipPath, (p) => {
         emit({ status: 'downloading', version: remoteVersion, progress: p, manual: activeManual })
       })
+      logToFile(`full download complete, zipPath=${zipPath}, exists=${fs.existsSync(zipPath)}, size=${fs.existsSync(zipPath) ? fs.statSync(zipPath).size : 0}`)
       // Cache for future delta
       try {
+        logToFile(`downloading blockmap for cache...`)
         const bm = await downloadBlockmap(blockmapUrl)
+        logToFile(`blockmap downloaded OK, saving to cache...`)
         await saveToCache(zipPath, bm, remoteVersion)
-        console.log('[updater] cached zip + blockmap for', remoteVersion)
+        logToFile(`cached zip + blockmap for ${remoteVersion}`)
       } catch (cacheErr) {
-        console.warn('[updater] cache save failed:', cacheErr instanceof Error ? cacheErr.message : String(cacheErr))
+        logToFile(`cache save FAILED: ${cacheErr instanceof Error ? cacheErr.message : String(cacheErr)}`)
       }
     }
 
