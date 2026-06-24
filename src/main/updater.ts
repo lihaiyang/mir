@@ -94,7 +94,7 @@ function emit(event: UpdaterEvent): void {
 }
 
 function parseSemver(v: string): { major: number; minor: number; patch: number } | null {
-  const m = v.replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/)
+  const m = v.replace(/^dev-/, '').replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/)
   if (!m) return null
   return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) }
 }
@@ -108,10 +108,27 @@ function isNewer(remote: string, local: string): boolean {
   return rp.patch > lp.patch
 }
 
-// Avoid api.github.com (60 req/hr unauthenticated rate limit).
-// github.com/{repo}/releases/latest returns a 302 redirect to
-// .../tag/vX.Y.Z — we capture the Location header without following it.
+// Channel: 'dev' if version starts with 'dev-', otherwise 'stable'.
+// Dev and stable are isolated update channels — a dev build never updates
+// to a stable release and vice versa.
+function getChannel(version: string): 'dev' | 'stable' {
+  return version.startsWith('dev-') ? 'dev' : 'stable'
+}
+
+// For stable channel: github.com/{repo}/releases/latest returns a 302
+// redirect to /tag/vX.Y.Z — we capture the Location header.
+// For dev channel: /releases/latest skips prereleases, so we fetch the
+// Atom feed (github.com/{repo}/releases.atom) and parse the latest entry
+// whose tag starts with 'dev-'.
 function fetchLatestVersion(): Promise<string> {
+  const localChannel = getChannel(app.getVersion())
+  if (localChannel === 'stable') {
+    return fetchLatestStableVersion()
+  }
+  return fetchLatestDevVersion()
+}
+
+function fetchLatestStableVersion(): Promise<string> {
   const { promise, resolve, reject } = Promise.withResolvers<string>()
   const req = https.get(
     `https://github.com/${REPO}/releases/latest`,
@@ -130,6 +147,50 @@ function fetchLatestVersion(): Promise<string> {
         return
       }
       reject(new Error(`unexpected status ${status}`))
+    }
+  )
+  req.on('error', reject)
+  req.setTimeout(15000, () => {
+    req.destroy(new Error('request timeout'))
+  })
+  return promise
+}
+
+// Fetch the Atom feed and find the latest entry with a 'dev-' tag.
+// The Atom feed is served by github.com (not the API), so it has no
+// rate limit. We parse the XML with regex to extract the first <entry>
+// whose <link> or <id> contains '/dev-'.
+function fetchLatestDevVersion(): Promise<string> {
+  const { promise, resolve, reject } = Promise.withResolvers<string>()
+  const req = https.get(
+    `https://github.com/${REPO}/releases.atom`,
+    { headers: { 'User-Agent': UA } },
+    (res) => {
+      const status = res.statusCode ?? 0
+      if (status !== 200) {
+        res.resume()
+        reject(new Error(`atom feed HTTP ${status}`))
+        return
+      }
+      let xml = ''
+      res.setEncoding('utf-8')
+      res.on('data', (c: string) => { xml += c })
+      res.on('end', () => {
+        // Extract all <entry> blocks and find the first with a dev- tag
+        const entries = xml.split(/<entry>/).slice(1)
+        for (const entry of entries) {
+          // <id>tag:github.com,2008:Repository/.../dev-0.2.0</id>
+          // or <link href="https://github.com/.../releases/tag/dev-0.2.0" />
+          const idMatch = entry.match(/<id>[^<]*\/dev-([^<\s]+)<\/id>/)
+          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/dev-([^"<]+)"/)
+          const match = idMatch || linkMatch
+          if (match) {
+            resolve('dev-' + match[1])
+            return
+          }
+        }
+        reject(new Error('no dev release found in atom feed'))
+      })
     }
   )
   req.on('error', reject)
@@ -720,6 +781,13 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     const remoteVersion = await fetchLatestVersion()
     const localVersion = app.getVersion()
 
+    // Channel isolation: dev builds only update to newer dev builds,
+    // stable builds only update to newer stable builds.
+    if (getChannel(remoteVersion) !== getChannel(localVersion)) {
+      emit({ status: 'not-available', manual: activeManual })
+      return
+    }
+
     if (!isNewer(remoteVersion, localVersion)) {
       emit({ status: 'not-available', manual: activeManual })
       return
@@ -736,9 +804,11 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     }
 
     // electron-builder mac zip naming: MIR-{version}-arm64-mac.zip
+    // Tag naming: stable = v0.2.0, dev = dev-0.2.0
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
     const assetName = `MIR-${remoteVersion}-${arch}-mac.zip`
-    const assetUrl = `https://github.com/${REPO}/releases/download/v${remoteVersion}/${assetName}`
+    const tag = remoteVersion.startsWith('dev-') ? remoteVersion : `v${remoteVersion}`
+    const assetUrl = `https://github.com/${REPO}/releases/download/${tag}/${assetName}`
     const blockmapUrl = `${assetUrl}.blockmap`
 
     emit({ status: 'available', version: remoteVersion, manual: activeManual })

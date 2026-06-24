@@ -1,6 +1,6 @@
 {
   "name": "mir",
-  "version": "0.2.0",
+  "version": "dev-0.2.0",
   "description": "Multi-pane IDE for AI agent management",
   "main": "out/main/index.js",
   "scripts": {

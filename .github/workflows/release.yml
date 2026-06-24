@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to attach artifacts to (e.g. v0.1.13)'
+        description: 'Release tag to attach artifacts to (e.g. v0.2.0)'
         required: true
-        default: 'v0.1.13'
+        default: 'v0.2.0'
   push:
     tags:
       - 'v*'
+      - 'dev-*'
 
 permissions:
   contents: write
@@ -41,5 +42,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
+          # Dev tags (dev-*) are marked as prerelease to keep them out of
+          # /releases/latest (which only returns non-prerelease). Stable
+          # tags (v*) are regular releases.
+          if [[ "$TAG" == dev-* ]]; then
+            gh release create "$TAG" --generate-notes --prerelease --target "$GITHUB_SHA" 2>/dev/null || true
+          else
+            gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
+          fi
           gh release upload "$TAG" release/*.dmg release/*-mac.zip release/*-mac.zip.blockmap --clobber
