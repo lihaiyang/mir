@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow } from 'electron'
 import * as https from 'https'
+import * as http from 'http'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as path from 'path'
@@ -455,40 +456,61 @@ function computeDelta(
   return { ranges, totalDownload, blockPlan }
 }
 
-// Download a specific byte range from a URL (following redirects).
+// Keep-alive agent so multiple range requests reuse the same TCP+TLS
+// connection instead of re-handshaking for each request.
+const rangeAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 8,
+  maxFreeSockets: 8
+})
+
+// Resolve a github.com release URL to its final redirect target, so
+// subsequent range requests can hit the CDN directly without re-paying
+// redirect latency.
+let resolvedDownloadUrl: string | null = null
+function resolveDownloadUrl(url: string): Promise<string> {
+  if (resolvedDownloadUrl) return Promise.resolve(resolvedDownloadUrl)
+  const { promise, resolve, reject } = Promise.withResolvers<string>()
+  const req = https.get(url, { headers: { 'User-Agent': UA } }, (res) => {
+    const status = res.statusCode ?? 0
+    const loc = res.headers.location
+    res.resume()
+    if ((status === 301 || status === 302) && loc) {
+      resolvedDownloadUrl = loc
+      resolve(loc)
+    } else if (status === 200) {
+      resolvedDownloadUrl = url
+      resolve(url)
+    } else {
+      reject(new Error(`resolve URL HTTP ${status}`))
+    }
+  })
+  req.on('error', reject)
+  req.setTimeout(15000, () => req.destroy(new Error('resolve timeout')))
+  return promise
+}
+
+// Download a specific byte range from a URL. Uses the keep-alive agent
+// and hits the resolved CDN URL directly (no redirect per request).
 function downloadRange(url: string, start: number, end: number): Promise<Buffer> {
   const { promise, resolve, reject } = Promise.withResolvers<Buffer>()
-  function doRequest(u: string, redirects: number) {
-    if (redirects > 5) {
-      reject(new Error('too many redirects'))
+  const opts: https.RequestOptions = {
+    headers: { 'User-Agent': UA, Range: `bytes=${start}-${end - 1}` },
+    agent: rangeAgent
+  }
+  const req = https.get(url, opts, (res) => {
+    const status = res.statusCode ?? 0
+    if (status !== 206 && status !== 200) {
+      res.resume()
+      reject(new Error(`range request HTTP ${status}`))
       return
     }
-    const req = https.get(
-      u,
-      { headers: { 'User-Agent': UA, Range: `bytes=${start}-${end - 1}` } },
-      (res) => {
-        const status = res.statusCode ?? 0
-        if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
-          res.resume()
-          const loc = res.headers.location
-          if (loc) doRequest(loc, redirects + 1)
-          else reject(new Error('redirect without location'))
-          return
-        }
-        if (status !== 206 && status !== 200) {
-          res.resume()
-          reject(new Error(`range request HTTP ${status}`))
-          return
-        }
-        const chunks: Buffer[] = []
-        res.on('data', (c: Buffer) => chunks.push(c))
-        res.on('end', () => resolve(Buffer.concat(chunks)))
-      }
-    )
-    req.on('error', reject)
-    req.setTimeout(60000, () => req.destroy(new Error('range request timeout')))
-  }
-  doRequest(url, 0)
+    const chunks: Buffer[] = []
+    res.on('data', (c: Buffer) => chunks.push(c))
+    res.on('end', () => resolve(Buffer.concat(chunks)))
+  })
+  req.on('error', reject)
+  req.setTimeout(60000, () => req.destroy(new Error('range request timeout')))
   return promise
 }
 
@@ -513,19 +535,29 @@ async function assembleDeltaZip(
   const newF = newBm.files[0]
   const newOffsets = computeOffsets(newF.sizes)
 
-  // Download all changed ranges first
+  // Resolve the CDN URL once (avoids per-request redirect latency)
+  const cdnUrl = await resolveDownloadUrl(assetUrl)
+
+  // Download all changed ranges in parallel using keep-alive connection
   const rangeBuffers = new Map<number, Buffer>() // keyed by startBlock
-  let downloadedBytes = 0
   const totalDownload = ranges.reduce((sum, r) => sum + (r.endOffset - r.startOffset), 0)
 
-  for (const range of ranges) {
-    const buf = await downloadRange(assetUrl, range.startOffset, range.endOffset)
+  const downloadPromises = ranges.map(async (range) => {
+    const buf = await downloadRange(cdnUrl, range.startOffset, range.endOffset)
     rangeBuffers.set(range.startBlock, buf)
-    downloadedBytes += buf.length
+    return buf.length
+  })
+  // Track progress as downloads complete
+  let completedDownloads = 0
+  const progressTracker = ranges.map(async (range, idx) => {
+    const buf = await downloadPromises[idx]
+    completedDownloads++
     if (totalDownload > 0) {
-      onProgress(Math.min(99, Math.round((downloadedBytes / totalDownload) * 100)))
+      onProgress(Math.min(99, Math.round((completedDownloads / ranges.length) * 100)))
     }
-  }
+    return buf
+  })
+  await Promise.all(progressTracker)
 
   // Build a run-length plan: merge consecutive blocks of the same type
   // into a single operation. Consecutive 'copy' blocks become one big
@@ -567,26 +599,39 @@ async function assembleDeltaZip(
 
   logToFile(`assembly runs: ${runs.length} (from ${blockPlan.length} blocks), copy runs: ${runs.filter(r => r.type === 'copy').length}`)
 
-  // Execute runs
-  const oldFd = await fsp.open(oldZipPath, 'r')
+  // Execute runs. Copy runs use streaming (createReadStream→pipe→writeStream)
+  // for better throughput on large contiguous regions. Download runs write
+  // from the in-memory range buffers.
   const newFd = await fsp.open(destPath, 'w')
   try {
+    // First pass: write all download runs from buffers
     for (const run of runs) {
-      if (run.type === 'copy') {
-        const buf = Buffer.alloc(run.length)
-        await oldFd.read(buf, 0, run.length, run.oldOffset)
-        await newFd.write(buf, 0, run.length, run.newOffset)
-      } else {
+      if (run.type === 'download') {
         const rangeBuf = rangeBuffers.get(run.range.startBlock)!
         const offsetWithinRange = run.newOffset - run.range.startOffset
         const slice = rangeBuf.subarray(offsetWithinRange, offsetWithinRange + run.length)
         await newFd.write(slice, 0, run.length, run.newOffset)
       }
     }
+    await newFd.close()
+
+    // Second pass: stream-copy all copy runs from old zip to new zip
+    // using pipe for efficient sequential I/O.
+    for (const run of runs) {
+      if (run.type !== 'copy') continue
+      await new Promise<void>((resolve, reject) => {
+        const rs = fs.createReadStream(oldZipPath, { start: run.oldOffset, end: run.oldOffset + run.length - 1 })
+        const ws = fs.createWriteStream(destPath, { start: run.newOffset, flags: 'r+' })
+        rs.on('error', reject)
+        ws.on('error', reject)
+        ws.on('finish', () => resolve())
+        rs.pipe(ws)
+      })
+    }
     onProgress(100)
   } finally {
-    await oldFd.close()
-    await newFd.close()
+    // newFd already closed above; ensure cleanup on error
+    try { await newFd.close() } catch { /* already closed */ }
   }
 }
 
