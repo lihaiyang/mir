@@ -220,16 +220,18 @@ function extractZip(zipPath: string, destDir: string): Promise<void> {
 
 // --- Blockmap delta update ---
 
-// Download and parse a blockmap file (gzip-compressed JSON).
+// Download and parse a blockmap file. The file itself is gzip-compressed
+// (electron-builder writes it that way), but GitHub serves it as
+// application/octet-stream WITHOUT content-encoding: gzip — so we must
+// detect gzip by magic bytes, not by the HTTP header.
 function downloadBlockmap(url: string): Promise<Blockmap> {
   const { promise, resolve, reject } = Promise.withResolvers<Blockmap>()
-  const chunks: Buffer[] = []
   function doRequest(u: string, redirects: number) {
     if (redirects > 5) {
       reject(new Error('too many redirects'))
       return
     }
-    const req = https.get(u, { headers: { 'User-Agent': UA, 'Accept-Encoding': 'gzip' } }, (res) => {
+    const req = https.get(u, { headers: { 'User-Agent': UA } }, (res) => {
       const status = res.statusCode ?? 0
       if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
         res.resume()
@@ -243,13 +245,15 @@ function downloadBlockmap(url: string): Promise<Blockmap> {
         reject(new Error(`blockmap HTTP ${status}`))
         return
       }
-      const isGzipped = (res.headers['content-encoding'] ?? '').includes('gzip')
       const rawChunks: Buffer[] = []
       res.on('data', (c: Buffer) => rawChunks.push(c))
       res.on('end', () => {
         try {
           const raw = Buffer.concat(rawChunks)
-          const json = isGzipped ? zlib.gunzipSync(raw).toString('utf-8') : raw.toString('utf-8')
+          // Detect gzip by magic bytes (1f 8b) — the HTTP content-encoding
+          // header is NOT set by GitHub even though the file is gzip-compressed.
+          const isGz = raw.length >= 2 && raw[0] === 0x1f && raw[1] === 0x8b
+          const json = isGz ? zlib.gunzipSync(raw).toString('utf-8') : raw.toString('utf-8')
           resolve(JSON.parse(json) as Blockmap)
         } catch (e) {
           reject(e)
@@ -645,8 +649,9 @@ async function checkForUpdate(manual: boolean): Promise<void> {
       try {
         const bm = await downloadBlockmap(blockmapUrl)
         await saveToCache(zipPath, bm, remoteVersion)
-      } catch {
-        /* caching is best-effort */
+        console.log('[updater] cached zip + blockmap for', remoteVersion)
+      } catch (cacheErr) {
+        console.warn('[updater] cache save failed:', cacheErr instanceof Error ? cacheErr.message : String(cacheErr))
       }
     }
 
