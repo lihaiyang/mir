@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as path from 'path'
 import * as os from 'os'
+import * as zlib from 'zlib'
 import { execFile, spawn } from 'child_process'
 import Store from 'electron-store'
 
@@ -14,6 +15,30 @@ const INITIAL_DELAY = 10 * 1000
 const UA = 'mir-updater'
 
 const mainStore = new Store({ name: 'mir-state' })
+
+// --- Blockmap types ---
+
+interface BlockmapFile {
+  name: string
+  offset: number
+  checksums: string[]
+  sizes: number[]
+}
+
+interface Blockmap {
+  version: string
+  files: BlockmapFile[]
+}
+
+// A contiguous run of blocks that need to be downloaded (checksums differ).
+interface RangeRequest {
+  startBlock: number
+  endBlock: number // inclusive
+  startOffset: number
+  endOffset: number // exclusive
+}
+
+const CACHE_DIR = path.join(app.getPath('userData'), 'update-cache')
 
 type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'extracting' | 'ready' | 'error'
 
@@ -188,6 +213,274 @@ function extractZip(zipPath: string, destDir: string): Promise<void> {
   return promise
 }
 
+// --- Blockmap delta update ---
+
+// Download and parse a blockmap file (gzip-compressed JSON).
+function downloadBlockmap(url: string): Promise<Blockmap> {
+  const { promise, resolve, reject } = Promise.withResolvers<Blockmap>()
+  const chunks: Buffer[] = []
+  function doRequest(u: string, redirects: number) {
+    if (redirects > 5) {
+      reject(new Error('too many redirects'))
+      return
+    }
+    const req = https.get(u, { headers: { 'User-Agent': UA, 'Accept-Encoding': 'gzip' } }, (res) => {
+      const status = res.statusCode ?? 0
+      if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
+        res.resume()
+        const loc = res.headers.location
+        if (loc) doRequest(loc, redirects + 1)
+        else reject(new Error('redirect without location'))
+        return
+      }
+      if (status !== 200) {
+        res.resume()
+        reject(new Error(`blockmap HTTP ${status}`))
+        return
+      }
+      const isGzipped = (res.headers['content-encoding'] ?? '').includes('gzip')
+      const rawChunks: Buffer[] = []
+      res.on('data', (c: Buffer) => rawChunks.push(c))
+      res.on('end', () => {
+        try {
+          const raw = Buffer.concat(rawChunks)
+          const json = isGzipped ? zlib.gunzipSync(raw).toString('utf-8') : raw.toString('utf-8')
+          resolve(JSON.parse(json) as Blockmap)
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
+    req.on('error', reject)
+    req.setTimeout(15000, () => req.destroy(new Error('blockmap request timeout')))
+  }
+  doRequest(url, 0)
+  return promise
+}
+
+// Cache paths for old zip + blockmap (used for delta downloads).
+function cacheZipPath(version: string): string {
+  return path.join(CACHE_DIR, `MIR-${version}.zip`)
+}
+function cacheBlockmapPath(version: string): string {
+  return path.join(CACHE_DIR, `MIR-${version}.zip.blockmap`)
+}
+
+// Total size of all blocks in a blockmap (== zip file size).
+function newF_totalSize(bm: Blockmap): number {
+  const f = bm.files[0]
+  if (!f) return 0
+  return f.sizes.reduce((sum, s) => sum + s, 0)
+}
+
+// Remove cached zip/blockmap for versions other than the two specified.
+function cleanOldCache(keep1: string, keep2: string): void {
+  try {
+    const entries = fs.readdirSync(CACHE_DIR)
+    for (const entry of entries) {
+      const match = entry.match(/^MIR-(.+)\.(zip|zip\.blockmap)$/)
+      if (match && match[1] !== keep1 && match[1] !== keep2) {
+        fs.unlinkSync(path.join(CACHE_DIR, entry))
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+// Save zip + blockmap to cache for future delta updates.
+async function saveToCache(zipPath: string, blockmap: Blockmap, version: string): Promise<void> {
+  await fsp.mkdir(CACHE_DIR, { recursive: true })
+  await fsp.copyFile(zipPath, cacheZipPath(version))
+  const bmGz = zlib.gzipSync(Buffer.from(JSON.stringify(blockmap), 'utf-8'))
+  await fsp.writeFile(cacheBlockmapPath(version), bmGz)
+}
+
+// Load cached blockmap for a version (gunzip + parse).
+async function loadCachedBlockmap(version: string): Promise<Blockmap | null> {
+  const p = cacheBlockmapPath(version)
+  try {
+    const gz = await fsp.readFile(p)
+    const json = zlib.gunzipSync(gz).toString('utf-8')
+    return JSON.parse(json) as Blockmap
+  } catch {
+    return null
+  }
+}
+
+// Check if cached old zip exists.
+function hasCachedZip(version: string): boolean {
+  return fs.existsSync(cacheZipPath(version))
+}
+
+// Compute block offsets from sizes (cumulative sum).
+function computeOffsets(sizes: number[]): number[] {
+  const offsets: number[] = []
+  let acc = 0
+  for (const s of sizes) {
+    offsets.push(acc)
+    acc += s
+  }
+  return offsets
+}
+
+// Compare old and new blockmaps, return list of byte ranges that need downloading.
+function computeDelta(oldBm: Blockmap, newBm: Blockmap): { ranges: RangeRequest[]; totalDownload: number } {
+  const oldF = oldBm.files[0]
+  const newF = newBm.files[0]
+  if (!oldF || !newF) {
+    // Can't compute delta, signal full download needed
+    return { ranges: [], totalDownload: -1 }
+  }
+
+  const oldOffsets = computeOffsets(oldF.sizes)
+  const newOffsets = computeOffsets(newF.sizes)
+  const oldLen = oldF.checksums.length
+  const newLen = newF.checksums.length
+  const minLen = Math.min(oldLen, newLen)
+
+  const ranges: RangeRequest[] = []
+  let totalDownload = 0
+  let currentRange: RangeRequest | null = null
+
+  for (let i = 0; i < newLen; i++) {
+    let needsDownload: boolean
+    if (i < minLen) {
+      // Same block index — compare checksums
+      needsDownload = oldF.checksums[i] !== newF.checksums[i]
+    } else {
+      // New blocks beyond old file — must download
+      needsDownload = true
+    }
+
+    if (needsDownload) {
+      const start = newOffsets[i]
+      const end = start + newF.sizes[i]
+      if (currentRange && currentRange.endBlock === i - 1) {
+        // Extend current range
+        currentRange.endBlock = i
+        currentRange.endOffset = end
+      } else {
+        // Start new range
+        if (currentRange) ranges.push(currentRange)
+        currentRange = { startBlock: i, endBlock: i, startOffset: start, endOffset: end }
+      }
+      totalDownload += newF.sizes[i]
+    } else {
+      if (currentRange) {
+        ranges.push(currentRange)
+        currentRange = null
+      }
+    }
+  }
+  if (currentRange) ranges.push(currentRange)
+
+  return { ranges, totalDownload }
+}
+
+// Download a specific byte range from a URL (following redirects).
+function downloadRange(url: string, start: number, end: number): Promise<Buffer> {
+  const { promise, resolve, reject } = Promise.withResolvers<Buffer>()
+  function doRequest(u: string, redirects: number) {
+    if (redirects > 5) {
+      reject(new Error('too many redirects'))
+      return
+    }
+    const req = https.get(
+      u,
+      { headers: { 'User-Agent': UA, Range: `bytes=${start}-${end - 1}` } },
+      (res) => {
+        const status = res.statusCode ?? 0
+        if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
+          res.resume()
+          const loc = res.headers.location
+          if (loc) doRequest(loc, redirects + 1)
+          else reject(new Error('redirect without location'))
+          return
+        }
+        if (status !== 206 && status !== 200) {
+          res.resume()
+          reject(new Error(`range request HTTP ${status}`))
+          return
+        }
+        const chunks: Buffer[] = []
+        res.on('data', (c: Buffer) => chunks.push(c))
+        res.on('end', () => resolve(Buffer.concat(chunks)))
+      }
+    )
+    req.on('error', reject)
+    req.setTimeout(60000, () => req.destroy(new Error('range request timeout')))
+  }
+  doRequest(url, 0)
+  return promise
+}
+
+// Assemble the new zip using delta: copy unchanged blocks from old zip,
+// insert downloaded changed blocks. Returns path to the assembled zip.
+async function assembleDeltaZip(
+  oldZipPath: string,
+  oldBm: Blockmap,
+  newBm: Blockmap,
+  ranges: RangeRequest[],
+  destPath: string,
+  assetUrl: string,
+  onProgress: (p: number) => void
+): Promise<void> {
+  const oldF = oldBm.files[0]
+  const newF = newBm.files[0]
+  const oldOffsets = computeOffsets(oldF.sizes)
+  const newOffsets = computeOffsets(newF.sizes)
+
+  // Download all changed ranges
+  const rangeBuffers = new Map<number, Buffer>() // keyed by startBlock
+  let downloadedBytes = 0
+  const totalDownload = ranges.reduce((sum, r) => sum + (r.endOffset - r.startOffset), 0)
+
+  for (const range of ranges) {
+    const buf = await downloadRange(assetUrl, range.startOffset, range.endOffset)
+    rangeBuffers.set(range.startBlock, buf)
+    downloadedBytes += buf.length
+    if (totalDownload > 0) {
+      onProgress(Math.min(99, Math.round((downloadedBytes / totalDownload) * 100)))
+    }
+  }
+
+  // Assemble: for each block in new file, either copy from old zip or from downloaded range
+  const oldFd = await fsp.open(oldZipPath, 'r')
+  const newFd = await fsp.open(destPath, 'w')
+  try {
+    for (let i = 0; i < newF.checksums.length; i++) {
+      const newSize = newF.sizes[i]
+      const newOffset = newOffsets[i]
+
+      // Find which range this block belongs to (if any)
+      const range = ranges.find(r => i >= r.startBlock && i <= r.endBlock)
+      if (range) {
+        // Block is in a downloaded range — extract from the range buffer
+        const buf = rangeBuffers.get(range.startBlock)!
+        const offsetWithinRange = newOffset - range.startOffset
+        const slice = buf.subarray(offsetWithinRange, offsetWithinRange + newSize)
+        await newFd.write(slice, 0, newSize, newOffset)
+      } else {
+        // Block unchanged — copy from old zip
+        // Need to find the corresponding old block. Since checksums match,
+        // the block index in old file is the same (i < oldF.checksums.length)
+        if (i < oldF.checksums.length) {
+          const oldOffset = oldOffsets[i]
+          const oldSize = oldF.sizes[i]
+          const buf = Buffer.alloc(oldSize)
+          await oldFd.read(buf, 0, oldSize, oldOffset)
+          await newFd.write(buf, 0, oldSize, newOffset)
+        }
+      }
+    }
+    onProgress(100)
+  } finally {
+    await oldFd.close()
+    await newFd.close()
+  }
+}
+
 // Recursively remove a directory if it exists. Errors are swallowed for
 // non-fatal cleanup of stale extraction dirs.
 function safeRemoveDir(dir: string): void {
@@ -284,6 +577,7 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
     const assetName = `MIR-${remoteVersion}-${arch}-mac.zip`
     const assetUrl = `https://github.com/${REPO}/releases/download/v${remoteVersion}/${assetName}`
+    const blockmapUrl = `${assetUrl}.blockmap`
 
     emit({ status: 'available', version: remoteVersion, manual: activeManual })
 
@@ -292,10 +586,67 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     await fsp.mkdir(tmpDir, { recursive: true })
 
     const zipPath = path.join(tmpDir, assetName)
-    emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
-    await downloadFile(assetUrl, zipPath, (p) => {
-      emit({ status: 'downloading', version: remoteVersion, progress: p, manual: activeManual })
-    })
+
+    // Try delta download if we have a cached old zip + blockmap.
+    let usedDelta = false
+    if (hasCachedZip(localVersion)) {
+      try {
+        const oldBm = await loadCachedBlockmap(localVersion)
+        if (oldBm) {
+          emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
+          const newBm = await downloadBlockmap(blockmapUrl)
+          const { ranges, totalDownload } = computeDelta(oldBm, newBm)
+          const oldZipSize = fs.statSync(cacheZipPath(localVersion)).size
+          const newZipSize = newF_totalSize(newBm)
+
+          if (totalDownload >= 0 && totalDownload < newZipSize * 0.8) {
+            // Delta is worthwhile (< 80% of full download)
+            emit({
+              status: 'downloading',
+              version: remoteVersion,
+              progress: 0,
+              message: `增量更新 ${Math.round(totalDownload / 1024 / 1024)}MB / ${Math.round(newZipSize / 1024 / 1024)}MB`,
+              manual: activeManual
+            })
+            await assembleDeltaZip(
+              cacheZipPath(localVersion),
+              oldBm,
+              newBm,
+              ranges,
+              zipPath,
+              assetUrl,
+              (p) => {
+                emit({ status: 'downloading', version: remoteVersion, progress: p, manual: activeManual })
+              }
+            )
+            usedDelta = true
+            // Cache the new zip + blockmap for next delta
+            await saveToCache(zipPath, newBm, remoteVersion)
+          }
+        }
+      } catch (deltaErr) {
+        // Delta failed — fall back to full download silently
+        console.warn('[updater] delta failed, falling back to full:', deltaErr instanceof Error ? deltaErr.message : String(deltaErr))
+      }
+    }
+
+    if (!usedDelta) {
+      // Full download
+      emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
+      await downloadFile(assetUrl, zipPath, (p) => {
+        emit({ status: 'downloading', version: remoteVersion, progress: p, manual: activeManual })
+      })
+      // Cache for future delta
+      try {
+        const bm = await downloadBlockmap(blockmapUrl)
+        await saveToCache(zipPath, bm, remoteVersion)
+      } catch {
+        /* caching is best-effort */
+      }
+    }
+
+    // Clean up old version cache (keep only current + new)
+    cleanOldCache(localVersion, remoteVersion)
 
     emit({ status: 'extracting', version: remoteVersion, progress: 0, manual: activeManual })
     const extractDir = path.join(tmpDir, 'extracted')
