@@ -813,8 +813,9 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     // Tag naming: stable = v0.2.0, dev = dev-0.2.0 (tag uses dev- prefix
     // without the prerelease suffix, e.g. dev-0.2.0 for version 0.2.0-dev.0)
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
-    const assetName = `MIR-${remoteVersion}-${arch}-mac.zip`
     const isDev = getChannel(remoteVersion) === 'dev'
+    const productPrefix = isDev ? 'MIR-Dev' : 'MIR'
+    const assetName = `${productPrefix}-${remoteVersion}-${arch}-mac.zip`
     const tag = isDev
       ? `dev-${parseSemver(remoteVersion)!.major}.${parseSemver(remoteVersion)!.minor}.${parseSemver(remoteVersion)!.patch}`
       : `v${remoteVersion}`
