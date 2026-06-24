@@ -42,4 +42,4 @@ jobs:
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
-          gh release upload "$TAG" release/*.dmg --clobber
+          gh release upload "$TAG" release/*.dmg release/*-mac.zip --clobber
