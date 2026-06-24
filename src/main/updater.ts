@@ -618,13 +618,17 @@ async function checkForUpdate(manual: boolean): Promise<void> {
         logToFile(`cached blockmap loaded: ${oldBm ? 'OK' : 'null'}`)
         if (oldBm) {
           emit({ status: 'downloading', version: remoteVersion, progress: 0, manual: activeManual })
+          logToFile(`downloading new blockmap from ${blockmapUrl}`)
           const newBm = await downloadBlockmap(blockmapUrl)
+          logToFile(`new blockmap downloaded OK, checksums=${newBm.files[0]?.checksums.length}`)
           const { ranges, totalDownload } = computeDelta(oldBm, newBm)
           const oldZipSize = fs.statSync(cacheZipPath(localVersion)).size
           const newZipSize = newF_totalSize(newBm)
+          logToFile(`delta computed: ranges=${ranges.length}, totalDownload=${totalDownload} bytes (${Math.round(totalDownload / 1024 / 1024)}MB), newZipSize=${newZipSize} bytes, threshold=${Math.round(newZipSize * 0.8)}`)
 
           if (totalDownload >= 0 && totalDownload < newZipSize * 0.8) {
             // Delta is worthwhile (< 80% of full download)
+            logToFile(`delta worthwhile, starting assembly...`)
             emit({
               status: 'downloading',
               version: remoteVersion,
@@ -643,14 +647,19 @@ async function checkForUpdate(manual: boolean): Promise<void> {
                 emit({ status: 'downloading', version: remoteVersion, progress: p, manual: activeManual })
               }
             )
+            logToFile(`delta assembly complete, usedDelta=true`)
             usedDelta = true
             // Cache the new zip + blockmap for next delta
             await saveToCache(zipPath, newBm, remoteVersion)
+            logToFile(`cached new zip + blockmap for ${remoteVersion}`)
+          } else {
+            logToFile(`delta skipped: totalDownload=${totalDownload} >= threshold, falling back to full`)
           }
         }
       } catch (deltaErr) {
-        // Delta failed — fall back to full download silently
-        console.warn('[updater] delta failed, falling back to full:', deltaErr instanceof Error ? deltaErr.message : String(deltaErr))
+        // Delta failed — fall back to full download
+        const msg = deltaErr instanceof Error ? deltaErr.message : String(deltaErr)
+        logToFile(`delta FAILED: ${msg}`)
       }
     }
 
