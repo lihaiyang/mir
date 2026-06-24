@@ -38,7 +38,12 @@ interface RangeRequest {
   endOffset: number // exclusive
 }
 
-const CACHE_DIR = path.join(app.getPath('userData'), 'update-cache')
+// Lazily computed — app.getPath('userData') must be called after app.whenReady().
+let _cacheDir: string | null = null
+function getCacheDir(): string {
+  if (!_cacheDir) _cacheDir = path.join(app.getPath('userData'), 'update-cache')
+  return _cacheDir
+}
 
 type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'extracting' | 'ready' | 'error'
 
@@ -260,10 +265,10 @@ function downloadBlockmap(url: string): Promise<Blockmap> {
 
 // Cache paths for old zip + blockmap (used for delta downloads).
 function cacheZipPath(version: string): string {
-  return path.join(CACHE_DIR, `MIR-${version}.zip`)
+  return path.join(getCacheDir(), `MIR-${version}.zip`)
 }
 function cacheBlockmapPath(version: string): string {
-  return path.join(CACHE_DIR, `MIR-${version}.zip.blockmap`)
+  return path.join(getCacheDir(), `MIR-${version}.zip.blockmap`)
 }
 
 // Total size of all blocks in a blockmap (== zip file size).
@@ -276,11 +281,11 @@ function newF_totalSize(bm: Blockmap): number {
 // Remove cached zip/blockmap for versions other than the two specified.
 function cleanOldCache(keep1: string, keep2: string): void {
   try {
-    const entries = fs.readdirSync(CACHE_DIR)
+    const entries = fs.readdirSync(getCacheDir())
     for (const entry of entries) {
       const match = entry.match(/^MIR-(.+)\.(zip|zip\.blockmap)$/)
       if (match && match[1] !== keep1 && match[1] !== keep2) {
-        fs.unlinkSync(path.join(CACHE_DIR, entry))
+        fs.unlinkSync(path.join(getCacheDir(), entry))
       }
     }
   } catch {
@@ -290,7 +295,7 @@ function cleanOldCache(keep1: string, keep2: string): void {
 
 // Save zip + blockmap to cache for future delta updates.
 async function saveToCache(zipPath: string, blockmap: Blockmap, version: string): Promise<void> {
-  await fsp.mkdir(CACHE_DIR, { recursive: true })
+  await fsp.mkdir(getCacheDir(), { recursive: true })
   await fsp.copyFile(zipPath, cacheZipPath(version))
   const bmGz = zlib.gzipSync(Buffer.from(JSON.stringify(blockmap), 'utf-8'))
   await fsp.writeFile(cacheBlockmapPath(version), bmGz)
