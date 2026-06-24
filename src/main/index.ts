@@ -17,14 +17,26 @@ function setupBrowserSession(): void {
   session.fromPartition('persist:browser', { cache: true })
 }
 
-function buildAppMenu(label: string, enabled: boolean): void {
+// Build the app menu once. The updater item is given a stable id so we can
+// mutate its label/enabled in place — this updates the native NSMenuItem
+// even while the menu is open. Rebuilding the whole menu via
+// setApplicationMenu does NOT refresh an already-open menu on macOS, but
+// mutating the existing item's properties does.
+let updaterMenuItem: Electron.MenuItem | null = null
+
+function setupMenu(): void {
+  if (process.platform !== 'darwin') return
   const template: MenuItemConstructorOptions[] = [
     {
       label: app.name,
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        { label, enabled, click: () => { checkForUpdateNow(true).catch(() => {}) } },
+        {
+          id: 'updater',
+          label: '检查更新…',
+          click: () => { checkForUpdateNow(true).catch(() => {}) }
+        },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -39,17 +51,15 @@ function buildAppMenu(label: string, enabled: boolean): void {
     { role: 'viewMenu' },
     { role: 'windowMenu' }
   ]
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
-}
-
-function setupMenu(): void {
-  if (process.platform !== 'darwin') return
-  buildAppMenu('检查更新…', true)
+  const menu = Menu.buildFromTemplate(template)
+  updaterMenuItem = menu.getMenuItemById('updater')
+  Menu.setApplicationMenu(menu)
 }
 
 let lastMenuLabel = ''
 function updateMenuForState(e: UpdaterEvent): void {
   if (process.platform !== 'darwin') return
+  if (!updaterMenuItem) return
   let label = '检查更新…'
   let enabled = true
   if (e.status === 'checking') {
@@ -64,7 +74,8 @@ function updateMenuForState(e: UpdaterEvent): void {
   }
   if (label === lastMenuLabel) return
   lastMenuLabel = label
-  buildAppMenu(label, enabled)
+  updaterMenuItem.label = label
+  updaterMenuItem.enabled = enabled
 }
 
 let mainWindow: BrowserWindow | null = null
