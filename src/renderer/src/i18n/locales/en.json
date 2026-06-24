@@ -209,8 +209,9 @@
     "toggleWordWrap": "Toggle Editor Word Wrap"
   },
   "updater": {
-    "ready": "Version {version} is ready. The installer has been opened — drag MIR into your Applications folder.",
-    "reopen": "Reopen installer",
+    "ready": "Version {version} is ready. Restart to apply, or it will update automatically when you quit.",
+    "restartNow": "Restart now",
+    "onQuit": "On quit",
     "upToDate": "You're up to date.",
     "checkError": "Update check failed: {message}"
   }

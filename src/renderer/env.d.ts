@@ -94,7 +94,7 @@ interface SearchMatch {
   text: string
 }
 
-type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'ready' | 'error'
+type UpdaterStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'extracting' | 'ready' | 'error'
 
 interface UpdaterEvent {
   status: UpdaterStatus

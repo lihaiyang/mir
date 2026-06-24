@@ -209,8 +209,9 @@
     "toggleWordWrap": "切换编辑器自动换行"
   },
   "updater": {
-    "ready": "新版本 {version} 已就绪，安装包已打开，请将 MIR 拖入应用程序文件夹。",
-    "reopen": "重新打开安装包",
+    "ready": "新版本 {version} 已就绪。点击立即重启生效，或退出时自动更新。",
+    "restartNow": "立即重启",
+    "onQuit": "退出时更新",
     "upToDate": "已是最新版本。",
     "checkError": "检查更新失败：{message}"
   }

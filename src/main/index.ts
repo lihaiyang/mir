@@ -2,7 +2,7 @@ import { app, BrowserWindow, session, nativeImage, Menu, MenuItemConstructorOpti
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { setupIpcHandlers } from './ipc'
-import { initUpdater, checkForUpdateNow, setUpdaterStateListener, UpdaterEvent } from './updater'
+import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, UpdaterEvent } from './updater'
 
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
@@ -57,6 +57,9 @@ function updateMenuForState(e: UpdaterEvent): void {
     enabled = false
   } else if (e.status === 'available' || e.status === 'downloading') {
     label = `正在下载 v${e.version ?? ''}… ${e.progress ?? 0}%`
+    enabled = false
+  } else if (e.status === 'extracting') {
+    label = `正在解压 v${e.version ?? ''}…`
     enabled = false
   }
   if (label === lastMenuLabel) return
@@ -143,4 +146,23 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// On macOS, silently apply a pending update when the user quits the app.
+// before-quit fires for Cmd+Q, window close (on macOS the app stays alive),
+// and explicit app.quit(). We ONLY intercept when there is a pending update
+// ready to apply — otherwise every quit would be delayed by a preventDefault
+// round-trip, and system logout/shutdown could think the app refused to quit.
+// The isApplying flag lets the second app.quit() (after scheduling the swap)
+// proceed. The actual replacement runs in a detached script after exit, so a
+// force-kill during shutdown cannot leave /Applications/MIR.app missing.
+let isApplyingUpdate = false
+app.on('before-quit', (event) => {
+  if (isApplyingUpdate) return
+  if (process.platform !== 'darwin') return
+  if (!hasPendingUpdate()) return
+  event.preventDefault()
+  isApplyingUpdate = true
+  performPendingUpdate(false)
+  app.quit()
 })

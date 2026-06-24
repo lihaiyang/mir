@@ -6,8 +6,8 @@
           <span class="text">{{ t('updater.ready', { version: state.version }) }}</span>
         </div>
         <div class="row actions">
-          <button class="btn primary" @click="reopen">{{ t('updater.reopen') }}</button>
-          <button class="btn" @click="dismiss">{{ t('common.close') }}</button>
+          <button class="btn primary" @click="restartNow">{{ t('updater.restartNow') }}</button>
+          <button class="btn" @click="dismiss">{{ t('updater.onQuit') }}</button>
         </div>
       </template>
       <template v-else-if="state.status === 'not-available'">
@@ -60,7 +60,7 @@ function scheduleHide(ms: number): void {
   }, ms)
 }
 
-function reopen(): void {
+function restartNow(): void {
   window.electronAPI.applyUpdate()
 }
 
