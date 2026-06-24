@@ -93,8 +93,11 @@ function emit(event: UpdaterEvent): void {
   }
 }
 
+// Parse semver from either app version (0.2.0-dev.0) or tag (dev-0.2.0).
+// Strips 'dev-' prefix, 'v' prefix, and prerelease suffix for comparison.
 function parseSemver(v: string): { major: number; minor: number; patch: number } | null {
-  const m = v.replace(/^dev-/, '').replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/)
+  const cleaned = v.replace(/^dev-/, '').replace(/^v/, '')
+  const m = cleaned.match(/^(\d+)\.(\d+)\.(\d+)/)
   if (!m) return null
   return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) }
 }
@@ -108,11 +111,14 @@ function isNewer(remote: string, local: string): boolean {
   return rp.patch > lp.patch
 }
 
-// Channel: 'dev' if version starts with 'dev-', otherwise 'stable'.
-// Dev and stable are isolated update channels — a dev build never updates
-// to a stable release and vice versa.
+// Channel: 'dev' if version has a prerelease tag (e.g. 0.2.0-dev.0),
+// otherwise 'stable'. Dev and stable are isolated update channels —
+// a dev build never updates to a stable release and vice versa.
 function getChannel(version: string): 'dev' | 'stable' {
-  return version.startsWith('dev-') ? 'dev' : 'stable'
+  const parsed = parseSemver(version)
+  if (!parsed) return 'stable'
+  // semver prerelease: 0.2.0-dev.0 has a '-dev.0' suffix
+  return version.replace(/^v/, '').includes('-') ? 'dev' : 'stable'
 }
 
 // For stable channel: github.com/{repo}/releases/latest returns a 302
@@ -159,7 +165,7 @@ function fetchLatestStableVersion(): Promise<string> {
 // Fetch the Atom feed and find the latest entry with a 'dev-' tag.
 // The Atom feed is served by github.com (not the API), so it has no
 // rate limit. We parse the XML with regex to extract the first <entry>
-// whose <link> or <id> contains '/dev-'.
+// whose <id> contains '/dev-'. Returns version in app format (0.2.0-dev.0).
 function fetchLatestDevVersion(): Promise<string> {
   const { promise, resolve, reject } = Promise.withResolvers<string>()
   const req = https.get(
@@ -180,12 +186,12 @@ function fetchLatestDevVersion(): Promise<string> {
         const entries = xml.split(/<entry>/).slice(1)
         for (const entry of entries) {
           // <id>tag:github.com,2008:Repository/.../dev-0.2.0</id>
-          // or <link href="https://github.com/.../releases/tag/dev-0.2.0" />
-          const idMatch = entry.match(/<id>[^<]*\/dev-([^<\s]+)<\/id>/)
-          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/dev-([^"<]+)"/)
+          const idMatch = entry.match(/<id>[^<]*\/dev-(\d+\.\d+\.\d+)<\/id>/)
+          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/dev-(\d+\.\d+\.\d+)"/)
           const match = idMatch || linkMatch
           if (match) {
-            resolve('dev-' + match[1])
+            // Convert tag dev-0.2.0 → app version 0.2.0-dev.0
+            resolve(match[1] + '-dev.0')
             return
           }
         }
@@ -804,10 +810,14 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     }
 
     // electron-builder mac zip naming: MIR-{version}-arm64-mac.zip
-    // Tag naming: stable = v0.2.0, dev = dev-0.2.0
+    // Tag naming: stable = v0.2.0, dev = dev-0.2.0 (tag uses dev- prefix
+    // without the prerelease suffix, e.g. dev-0.2.0 for version 0.2.0-dev.0)
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
     const assetName = `MIR-${remoteVersion}-${arch}-mac.zip`
-    const tag = remoteVersion.startsWith('dev-') ? remoteVersion : `v${remoteVersion}`
+    const isDev = getChannel(remoteVersion) === 'dev'
+    const tag = isDev
+      ? `dev-${parseSemver(remoteVersion)!.major}.${parseSemver(remoteVersion)!.minor}.${parseSemver(remoteVersion)!.patch}`
+      : `v${remoteVersion}`
     const assetUrl = `https://github.com/${REPO}/releases/download/${tag}/${assetName}`
     const blockmapUrl = `${assetUrl}.blockmap`
 
