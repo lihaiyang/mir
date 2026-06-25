@@ -42,12 +42,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          # Dev tags (dev-*) are marked as prerelease to keep them out of
-          # /releases/latest (which only returns non-prerelease). Stable
-          # tags (v*) are regular releases.
-          if [[ "$TAG" == dev-* ]]; then
-            gh release create "$TAG" --generate-notes --prerelease --target "$GITHUB_SHA" 2>/dev/null || true
-          else
-            gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
-          fi
+          # Both stable (v*) and dev (dev-*) releases are non-prerelease.
+          # Channel isolation is handled by the updater, which filters the
+          # atom feed by tag prefix (v* for stable, dev-* for dev).
+          # Prerelease flag is NOT used because releases.atom excludes
+          # prereleases, and we need both channels visible in the feed.
+          gh release create "$TAG" --generate-notes --target "$GITHUB_SHA" 2>/dev/null || true
           gh release upload "$TAG" release/*.dmg release/*-mac.zip release/*-mac.zip.blockmap --clobber

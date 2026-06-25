@@ -121,52 +121,19 @@ function getChannel(version: string): 'dev' | 'stable' {
   return version.replace(/^v/, '').includes('-') ? 'dev' : 'stable'
 }
 
-// For stable channel: github.com/{repo}/releases/latest returns a 302
-// redirect to /tag/vX.Y.Z — we capture the Location header.
-// For dev channel: /releases/latest skips prereleases, so we fetch the
-// Atom feed (github.com/{repo}/releases.atom) and parse the latest entry
-// whose tag starts with 'dev-'.
+// For stable channel: fetch the Atom feed and find the latest entry with
+// a 'v' tag prefix (v0.2.0). For dev channel: find the latest 'dev-' tag.
+// Both channels use the same releases.atom feed — GitHub serves it from
+// github.com (not the API), so it has no rate limit. We filter by tag
+// prefix to isolate channels.
 function fetchLatestVersion(): Promise<string> {
   const localChannel = getChannel(app.getVersion())
-  if (localChannel === 'stable') {
-    return fetchLatestStableVersion()
-  }
-  return fetchLatestDevVersion()
+  return fetchLatestFromAtom(localChannel)
 }
 
-function fetchLatestStableVersion(): Promise<string> {
-  const { promise, resolve, reject } = Promise.withResolvers<string>()
-  const req = https.get(
-    `https://github.com/${REPO}/releases/latest`,
-    { headers: { 'User-Agent': UA } },
-    (res) => {
-      const status = res.statusCode ?? 0
-      const loc = res.headers.location
-      res.resume()
-      if ((status === 301 || status === 302) && loc) {
-        const match = loc.match(/\/(?:tag|releases)\/v?([^/]+?)(?:$|[?#])/)
-        if (match) {
-          resolve(match[1])
-          return
-        }
-        reject(new Error(`cannot parse version from redirect: ${loc}`))
-        return
-      }
-      reject(new Error(`unexpected status ${status}`))
-    }
-  )
-  req.on('error', reject)
-  req.setTimeout(15000, () => {
-    req.destroy(new Error('request timeout'))
-  })
-  return promise
-}
-
-// Fetch the Atom feed and find the latest entry with a 'dev-' tag.
-// The Atom feed is served by github.com (not the API), so it has no
-// rate limit. We parse the XML with regex to extract the first <entry>
-// whose <id> contains '/dev-'. Returns version in app format (0.2.0-dev.0).
-function fetchLatestDevVersion(): Promise<string> {
+// Fetch the Atom feed and find the latest release for the given channel.
+// Stable: first entry with tag 'vX.Y.Z'. Dev: first entry with 'dev-X.Y.Z'.
+function fetchLatestFromAtom(channel: 'dev' | 'stable'): Promise<string> {
   const { promise, resolve, reject } = Promise.withResolvers<string>()
   const req = https.get(
     `https://github.com/${REPO}/releases.atom`,
@@ -182,20 +149,28 @@ function fetchLatestDevVersion(): Promise<string> {
       res.setEncoding('utf-8')
       res.on('data', (c: string) => { xml += c })
       res.on('end', () => {
-        // Extract all <entry> blocks and find the first with a dev- tag
         const entries = xml.split(/<entry>/).slice(1)
         for (const entry of entries) {
-          // <id>tag:github.com,2008:Repository/.../dev-0.2.0</id>
-          const idMatch = entry.match(/<id>[^<]*\/dev-(\d+\.\d+\.\d+)<\/id>/)
-          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/dev-(\d+\.\d+\.\d+)"/)
-          const match = idMatch || linkMatch
-          if (match) {
-            // Convert tag dev-0.2.0 → app version 0.2.0-dev.0
-            resolve(match[1] + '-dev.0')
+          // <id>tag:github.com,2008:Repository/.../v0.2.0</id>
+          // or <id>tag:github.com,2008:Repository/.../dev-0.2.0</id>
+          const idMatch = entry.match(/<id>[^<]*\/(v?\d+\.\d+\.\d+|dev-\d+\.\d+\.\d+)<\/id>/)
+          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/(v?\d+\.\d+\.\d+|dev-\d+\.\d+\.\d+)"/)
+          const tag = idMatch?.[1] || linkMatch?.[1]
+          if (!tag) continue
+
+          if (channel === 'dev' && tag.startsWith('dev-')) {
+            // Convert tag dev-0.2.1 → app version 0.2.1-dev.0
+            const ver = tag.replace(/^dev-/, '')
+            resolve(ver + '-dev.0')
+            return
+          }
+          if (channel === 'stable' && (tag.startsWith('v') || /^\d+\.\d+\.\d+$/.test(tag))) {
+            // Convert tag v0.2.0 → app version 0.2.0
+            resolve(tag.replace(/^v/, ''))
             return
           }
         }
-        reject(new Error('no dev release found in atom feed'))
+        reject(new Error(`no ${channel} release found in atom feed`))
       })
     }
   )
