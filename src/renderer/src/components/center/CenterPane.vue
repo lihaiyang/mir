@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../../stores/projects'
 import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
 import { useTabStore, type TabType, type TreeNode } from '../../stores/tabs'
@@ -75,6 +76,7 @@ import EditorTab from './EditorTab.vue'
 import FileTab from './FileTab.vue'
 import DiffTab from './DiffTab.vue'
 
+const { t } = useI18n()
 const projectStore = useProjectStore()
 const webPageStore = useWebPageStore()
 const tabStore = useTabStore()
@@ -347,8 +349,11 @@ function handleKey(e: KeyboardEvent) {
     e.preventDefault()
     const fgId = tabStore.getFocusedGroupId(pid)
     if (!fgId) return
-    const activeTabId = tabStore.getGroupActiveTabId(pid, fgId)
-    if (activeTabId) tabStore.closeTab(pid, activeTabId)
+    const activeTab = tabStore.getGroupActiveTab(pid, fgId)
+    if (activeTab) {
+      if (activeTab.modified && !confirm(t('editor.unsavedCloseConfirm', { name: activeTab.title }))) return
+      tabStore.closeTab(pid, activeTab.id)
+    }
   }
   if (mod && e.key === '\\') {
     e.preventDefault()
