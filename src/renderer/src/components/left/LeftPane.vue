@@ -53,8 +53,10 @@
         @click="onItemClick(item)"
         @contextmenu="showItemMenu($event, item, idx)"
         @dragstart="dragStart($event, idx)"
-        @dragover.prevent="dragOver(idx)"
+        @dragover.prevent="dragOver($event, idx)"
+        @dragleave="dragLeave($event, idx)"
         @drop.stop="dragDrop(idx)"
+        @dragend="dragEnd"
       >
         <span class="item-icon">
           <template v-if="item.type === 'project'">📁</template>
@@ -223,25 +225,101 @@ function onItemClick(item: OrderedItem) {
   }
 }
 
-// Drag reorder
+// Drag reorder.
+// State is kept in plain locals (NOT reactive refs): mutating refs inside
+// dragStart/dragOver triggers Vue re-renders mid-DnD, which in Electron can
+// suppress the `drop` event so the reorder never happens.
+//
+// Robustness: the reorder is performed in `dragDrop` (the normal path) AND,
+// as a safety net, in `dragEnd`. `dragEnd` always fires on the drag *source*
+// even when `drop` never fires on the target (e.g. an embedded <webview>
+// swallowing the drag). We track the last hovered target during dragOver and
+// commit the move in dragEnd if no drop was handled. `dropHandled` is also set
+// by the parent onDrop so that dropping on empty space does not trigger the
+// fallback.
 let dragFromIdx = -1
+let lastDropIdx = -1
+let lastDropTarget: HTMLElement | null = null
+let dropHandled = false
+
+function clearDropIndicator() {
+  if (lastDropTarget) {
+    lastDropTarget.classList.remove('drop-above', 'drop-below')
+    lastDropTarget = null
+  }
+}
+
 function dragStart(e: DragEvent, idx: number) {
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', '')
+    // Non-empty payload: some Chromium builds won't initiate a usable drag
+    // session when the DataTransfer carries no data, which prevents drop.
+    e.dataTransfer.setData('text/plain', 'mir-reorder')
   }
   dragFromIdx = idx
+  lastDropIdx = -1
+  lastDropTarget = null
+  dropHandled = false
+  // Mark body as dragging so embedded <webview> elements become click-through,
+  // preventing them from stealing the host drag session.
+  document.body.classList.add('mir-dragging')
+  ;(e.currentTarget as HTMLElement).classList.add('drag-source')
 }
-function dragOver(_idx: number) {}
+
+function dragOver(e: DragEvent, idx: number) {
+  // Explicit preventDefault (in addition to the .prevent modifier) to
+  // guarantee the target accepts the drop.
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  const el = e.currentTarget as HTMLElement
+  lastDropIdx = idx
+  if (lastDropTarget !== el) {
+    clearDropIndicator()
+    lastDropTarget = el
+  }
+  // Indicator mirrors reorderItems() semantics: dragging down (fromIdx < idx)
+  // inserts below the target; dragging up inserts above it.
+  const above = dragFromIdx > idx
+  el.classList.toggle('drop-above', above)
+  el.classList.toggle('drop-below', !above)
+}
+
+function dragLeave(e: DragEvent, _idx: number) {
+  // Don't clear when merely moving onto a child element of the same item.
+  const related = e.relatedTarget as Node | null
+  if (related && (e.currentTarget as HTMLElement).contains(related)) return
+  if (lastDropTarget === e.currentTarget) clearDropIndicator()
+}
+
 function dragDrop(toIdx: number) {
   if (dragFromIdx !== -1 && dragFromIdx !== toIdx) {
     projectStore.reorderItems(dragFromIdx, toIdx)
   }
+  dropHandled = true
   dragFromIdx = -1
+  clearDropIndicator()
+}
+
+function dragEnd() {
+  // Safety net: if `drop` never fired on a target (e.g. webview interference),
+  // complete the reorder here using the last hovered item.
+  if (!dropHandled && dragFromIdx !== -1 && lastDropIdx !== -1 && dragFromIdx !== lastDropIdx) {
+    projectStore.reorderItems(dragFromIdx, lastDropIdx)
+  }
+  dragFromIdx = -1
+  lastDropIdx = -1
+  dropHandled = false
+  clearDropIndicator()
+  document.body.classList.remove('mir-dragging')
+  document.querySelectorAll('.left-item.drag-source').forEach(el => el.classList.remove('drag-source'))
 }
 
 // Drop: folder from OS, or browser tab from pane
 async function onDrop(e: DragEvent) {
+  // A drop happened on the pane background (not on an item, whose @drop.stop
+  // prevents this from firing). Mark it handled so dragEnd's fallback reorder
+  // does not move the item to the last-hovered position.
+  dropHandled = true
   if (!e.dataTransfer) return
 
   // Try parsing as tab drag data first
@@ -516,6 +594,7 @@ function cancelEdit() { editing.value = false }
 }
 
 .left-item {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 4px 8px;
@@ -528,6 +607,22 @@ function cancelEdit() { editing.value = false }
 }
 .left-item:hover { background: var(--bg-hover); }
 .left-item.active { background: var(--bg-active); }
+.left-item.drag-source { opacity: 0.4; }
+/* Drop indicator: an absolutely-positioned line that does NOT change the
+   item's box, so it cannot shift layout mid-drag and disrupt the drop. */
+.left-item.drop-above::before,
+.left-item.drop-below::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--text-accent);
+  pointer-events: none;
+  z-index: 2;
+}
+.left-item.drop-above::before { top: 0; }
+.left-item.drop-below::before { bottom: 0; }
 
 .item-icon { font-size: 14px; flex-shrink: 0; }
 

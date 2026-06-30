@@ -1,6 +1,18 @@
 import { app, BrowserWindow, session, nativeImage, Menu, MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
+
+// Dev builds must use a separate userData directory so they do NOT share the
+// same mir-state.json as an installed (release) instance running at the same
+// time. electron-store (ipc.ts / updater.ts) persists to app.getPath('userData'),
+// so redirecting it here — before any Store is instantiated — fully isolates
+// the two instances. Without this, the release instance overwrites itemOrder
+// (and all other state) with its stale in-memory copy, making drag-reorder
+// appear to have no effect after a restart.
+if (process.env.ELECTRON_RENDERER_URL) {
+  app.setPath('userData', join(app.getPath('appData'), 'mir-dev'))
+}
+
 import { setupIpcHandlers } from './ipc'
 import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, openReleasesPage, UpdaterEvent } from './updater'
 

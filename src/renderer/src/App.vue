@@ -196,3 +196,14 @@ onUnmounted(() => {
 }
 .splitter:hover { background: var(--text-accent); width: 3px; }
 </style>
+
+<style>
+/* During host-level drag-and-drop (left-pane item reorder), make every
+   <webview> click-through. A webview runs in its own renderer process and,
+   when the cursor enters it mid-drag, it steals the drag so the host never
+   receives `dragend`. That leaves the Chromium drag session stuck, after
+   which NO new drag can start — breaking folder and webpage reordering alike. */
+body.mir-dragging webview {
+  pointer-events: none !important;
+}
+</style>

@@ -15,7 +15,13 @@ const CHECK_INTERVAL = 60 * 60 * 1000
 const INITIAL_DELAY = 10 * 1000
 const UA = 'mir-updater'
 
-const mainStore = new Store({ name: 'mir-state' })
+// Lazy-instantiated so the userData path (set by main/index.ts for dev) is
+// already correct when the Store is first created.
+let _mainStore: Store | null = null
+function getMainStore(): Store {
+  if (!_mainStore) _mainStore = new Store({ name: 'mir-state' })
+  return _mainStore
+}
 
 // --- Blockmap types ---
 
@@ -916,7 +922,7 @@ let initialTimer: ReturnType<typeof setTimeout> | null = null
 let intervalTimer: ReturnType<typeof setInterval> | null = null
 
 function readAutoUpdateSetting(): boolean {
-  const stored = mainStore.get('settings') as { autoUpdate?: boolean } | undefined
+  const stored = getMainStore().get('settings') as { autoUpdate?: boolean } | undefined
   return stored?.autoUpdate !== false
 }
 
