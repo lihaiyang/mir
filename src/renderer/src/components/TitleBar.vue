@@ -71,6 +71,8 @@
         </div>
         <button class="tl-btn" :title="$t('common.collapse')" @click="layout.rightCollapsed = true; layout.persist()">»</button>
       </template>
+      <!-- Settings -->
+      <button class="tl-btn" :title="$t('common.settings')" @click="openSettings">⚙</button>
       <!-- Language quick-toggle: always visible regardless of right-pane collapse state -->
       <div class="tl-lang-toggle">
         <span
@@ -105,6 +107,11 @@ const projectStore = useProjectStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
 const settingsStore = useSettingsStore()
+
+function openSettings() {
+  if (!projectStore.activeProject) return
+  tabStore.addTab(projectStore.activeProject.id, 'settings')
+}
 
 const currentLanguage = computed(() => settingsStore.settings.language)
 

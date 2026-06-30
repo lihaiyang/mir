@@ -22,7 +22,10 @@
     "title": "Title",
     "name": "Name",
     "description": "Description",
-    "optional": "optional"
+    "optional": "optional",
+    "settings": "Settings",
+    "saved": "Saved",
+    "reset": "Reset"
   },
   "titlebar": {
     "leftTitle": "Items",

@@ -92,5 +92,5 @@ export const useSettingsStore = defineStore('settings', () => {
     document.documentElement.style.setProperty('--base-font-size', `${settings.value.fontSize}px`)
   }
 
-  return { settings, load, save, update, applyTheme }
+  return { settings, defaults, load, save, update, applyTheme }
 })

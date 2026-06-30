@@ -75,6 +75,7 @@ import TerminalTab from './TerminalTab.vue'
 import EditorTab from './EditorTab.vue'
 import FileTab from './FileTab.vue'
 import DiffTab from './DiffTab.vue'
+import SettingsTab from '../SettingsTab.vue'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
@@ -85,7 +86,8 @@ const tabComponents: Record<string, any> = {
   terminal: TerminalTab,
   editor: EditorTab,
   file: FileTab,
-  diff: DiffTab
+  diff: DiffTab,
+  settings: SettingsTab
 }
 
 // Collect all non-browser tabs across ALL projects, so KeepAlive never evicts them

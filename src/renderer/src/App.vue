@@ -29,7 +29,6 @@
     </div>
 
     <!-- Global modals -->
-    <SettingsModal v-if="showSettings" @close="showSettings = false" />
     <CommandPalette v-if="showPalette" @close="showPalette = false" />
     <ContextMenuHost />
     <UpdateToast />
@@ -48,7 +47,6 @@ import TitleBar from './components/TitleBar.vue'
 import LeftPane from './components/left/LeftPane.vue'
 import CenterPane from './components/center/CenterPane.vue'
 import RightPane from './components/right/RightPane.vue'
-import SettingsModal from './components/SettingsModal.vue'
 import ContextMenuHost from './components/ContextMenuHost.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import UpdateToast from './components/UpdateToast.vue'
@@ -60,10 +58,8 @@ const projectStore = useProjectStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
-const showSettings = ref(false)
 const showPalette = ref(false)
 
-provide('showSettings', showSettings)
 provide('showPalette', showPalette)
 
 onMounted(async () => {
@@ -122,12 +118,17 @@ function onMouseUp() {
   layout.persist()
 }
 
+function openSettings() {
+  if (!projectStore.activeProject) return
+  tabStore.addTab(projectStore.activeProject.id, 'settings')
+}
+
 function registerBuiltinCommands() {
   registerCommand({
     id: 'mir.settings',
     label: t('commandPalette.openSettings'),
     keybinding: 'Ctrl+,',
-    run: () => { showSettings.value = true }
+    run: () => { openSettings() }
   })
   registerCommand({
     id: 'editor.toggleWordWrap',
@@ -150,7 +151,7 @@ function setupShortcuts() {
 
 function handleGlobalKey(e: KeyboardEvent) {
   const mod = e.ctrlKey || e.metaKey
-  if (mod && e.key === ',') { e.preventDefault(); showSettings.value = true }
+  if (mod && e.key === ',') { e.preventDefault(); openSettings() }
   if (mod && e.shiftKey && e.key === 'P') { e.preventDefault(); showPalette.value = true }
 }
 

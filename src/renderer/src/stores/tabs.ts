@@ -3,7 +3,7 @@ import { ref, nextTick } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { toPlainObject } from '../utils'
 
-export type TabType = 'terminal' | 'editor' | 'browser' | 'file' | 'diff'
+export type TabType = 'terminal' | 'editor' | 'browser' | 'file' | 'diff' | 'settings'
 
 export interface Tab {
   id: string
@@ -605,5 +605,7 @@ function defaultTitle(type: TabType): string {
       return 'File'
     case 'diff':
       return 'Diff'
+    case 'settings':
+      return 'Settings'
   }
 }
