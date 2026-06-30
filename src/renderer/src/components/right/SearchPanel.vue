@@ -7,7 +7,10 @@
           ref="queryInput"
           class="search-input"
           :placeholder="$t('search.placeholder')"
+          @focus="onFocus"
+          @blur="onBlur"
           @keydown.enter="runSearch"
+          @keydown.escape="showHistory = false"
         />
         <button class="icon-btn" title="Search" @click="runSearch" :disabled="searching">🔍</button>
       </div>
@@ -18,7 +21,7 @@
           v-for="h in history"
           :key="h"
           class="history-item"
-          @click="query = h; showHistory = false"
+          @mousedown.prevent="query = h; showHistory = false"
         >{{ h }}</div>
       </div>
 
@@ -54,9 +57,10 @@
       </div>
     </div>
 
-    <div v-if="searching" class="search-progress">{{ $t('search.searching') }}</div>
+    <div v-if="searching" class="search-progress">{{ $t('search.searching') }} — {{ matchCount }} matches in {{ filesProcessed }} files</div>
     <div v-else-if="searchError" class="search-error">{{ searchError }}</div>
     <div v-else-if="results.length === 0 && hasSearched" class="search-empty">{{ $t('search.noResults') }}</div>
+    <div v-else-if="results.length > 0" class="search-summary">{{ matchCount }} matches ({{ filesProcessed }} files scanned)</div>
 
     <!-- Results -->
     <div class="results-scroll">
@@ -97,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useProjectStore } from '../../stores/projects'
 import { useTabStore } from '../../stores/tabs'
 import { useFileTree } from '../../composables/useFileTree'
@@ -117,10 +121,14 @@ const searching = ref(false)
 const searchError = ref('')
 const hasSearched = ref(false)
 const results = ref<SearchMatch[]>([])
+const matchCount = ref(0)
+const filesProcessed = ref(0)
 const history = ref<string[]>([])
 const showHistory = ref(false)
+let blurTimer: ReturnType<typeof setTimeout> | null = null
 const fileCollapsed = ref(new Set<string>())
 const replacePreview = ref<null | true>(null)
+let currentSearchId: string | null = null
 
 const groupedResults = computed(() => {
   const map: Record<string, SearchMatch[]> = {}
@@ -136,36 +144,88 @@ onMounted(async () => {
   if (Array.isArray(stored)) history.value = stored
 })
 
-async function runSearch() {
+onUnmounted(() => {
+  if (currentSearchId) {
+    window.electronAPI.searchCancel(currentSearchId)
+    currentSearchId = null
+  }
+  offResults?.()
+  offComplete?.()
+  offError?.()
+  offResults = null
+  offComplete = null
+  offError = null
+})
+
+let offResults: (() => void) | null = null
+let offComplete: (() => void) | null = null
+let offError: (() => void) | null = null
+
+function setupListeners() {
+  offResults = window.electronAPI.onSearchResults((id, matches) => {
+    if (id !== currentSearchId) return
+    results.value = [...results.value, ...matches]
+    matchCount.value = results.value.length
+  })
+  offComplete = window.electronAPI.onSearchComplete((id, files, total) => {
+    if (id !== currentSearchId) return
+    filesProcessed.value = files
+    matchCount.value = total
+    searching.value = false
+    currentSearchId = null
+    saveHistory()
+  })
+  offError = window.electronAPI.onSearchError((id, message) => {
+    if (id !== currentSearchId) return
+    searchError.value = message
+    searching.value = false
+    currentSearchId = null
+  })
+}
+
+function saveHistory() {
+  history.value = [query.value, ...history.value.filter(h => h !== query.value)].slice(0, 10)
+  window.electronAPI.storeSet('searchHistory', history.value)
+}
+
+function onFocus() {
+  if (blurTimer) { clearTimeout(blurTimer); blurTimer = null }
+  showHistory.value = true
+}
+
+function onBlur() {
+  blurTimer = setTimeout(() => { showHistory.value = false }, 200)
+}
+
+function runSearch() {
   if (!query.value.trim() || !activeProject.value) return
+  if (currentSearchId) {
+    window.electronAPI.searchCancel(currentSearchId)
+  }
+  if (!offResults) setupListeners()
+
+  currentSearchId = crypto.randomUUID()
   searching.value = true
   searchError.value = ''
   hasSearched.value = true
+  results.value = []
+  matchCount.value = 0
+  filesProcessed.value = 0
   fileCollapsed.value.clear()
 
-  try {
-    const extensions = extensionsInput.value
-      .split(',')
-      .map(e => e.trim())
-      .filter(e => e.startsWith('.'))
+  const extensions = extensionsInput.value
+    .split(',')
+    .map(e => e.trim().startsWith('.') ? e.trim() : '.' + e.trim())
+    .filter(e => e.length > 1)
 
-    results.value = await window.electronAPI.searchRun({
-      rootPath: activeProject.value.path,
-      query: query.value,
-      isRegex: isRegex.value,
-      caseSensitive: caseSensitive.value,
-      wholeWord: wholeWord.value,
-      extensions: extensions.length > 0 ? extensions : undefined
-    }) as SearchMatch[]
-
-    // save history
-    history.value = [query.value, ...history.value.filter(h => h !== query.value)].slice(0, 10)
-    await window.electronAPI.storeSet('searchHistory', history.value)
-  } catch (e: any) {
-    searchError.value = e.message || String(e)
-  } finally {
-    searching.value = false
-  }
+  window.electronAPI.searchStart(currentSearchId, {
+    rootPath: activeProject.value.path,
+    query: query.value,
+    isRegex: isRegex.value,
+    caseSensitive: caseSensitive.value,
+    wholeWord: wholeWord.value,
+    extensions: extensions.length > 0 ? extensions : undefined
+  })
 }
 
 function toggleFile(file: string) {
@@ -228,7 +288,7 @@ async function doReplace() {
       await window.electronAPI.writeFile(fp, content)
     } catch {}
   }
-  await runSearch()
+  runSearch()
 }
 </script>
 
@@ -277,6 +337,7 @@ async function doReplace() {
 .history-item:hover { background: var(--bg-hover); }
 .search-progress, .search-empty { padding: 8px; color: var(--text-secondary); font-size: 11px; }
 .search-error { padding: 8px; color: var(--text-danger); font-size: 11px; }
+.search-summary { padding: 4px 8px; font-size: 11px; color: var(--text-accent); background: var(--bg-tertiary); border-bottom: 1px solid var(--border-color); }
 .results-scroll { flex: 1; overflow-y: auto; }
 .result-file-header {
   display: flex;

@@ -56,8 +56,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gitCreateBranch: (cwd: string, name: string) => ipcRenderer.invoke('git:createBranch', cwd, name),
   gitShowFile: (cwd: string, ref: string, file: string) => ipcRenderer.invoke('git:showFile', cwd, ref, file),
 
-  // Search
-  searchRun: (opts: unknown) => ipcRenderer.invoke('search:run', opts),
+  // Search (streaming)
+  searchStart: (id: string, opts: unknown) => ipcRenderer.send('search:start', id, opts),
+  searchCancel: (id: string) => ipcRenderer.send('search:cancel', id),
+  onSearchResults: (cb: (id: string, matches: SearchMatch[]) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, data: { id: string; matches: SearchMatch[] }) => cb(data.id, data.matches)
+    ipcRenderer.on('search:results', listener)
+    return () => ipcRenderer.removeListener('search:results', listener)
+  },
+  onSearchComplete: (cb: (id: string, filesProcessed: number, totalMatches: number) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, data: { id: string; filesProcessed: number; totalMatches: number }) => cb(data.id, data.filesProcessed, data.totalMatches)
+    ipcRenderer.on('search:complete', listener)
+    return () => ipcRenderer.removeListener('search:complete', listener)
+  },
+  onSearchError: (cb: (id: string, message: string) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, data: { id: string; message: string }) => cb(data.id, data.message)
+    ipcRenderer.on('search:error', listener)
+    return () => ipcRenderer.removeListener('search:error', listener)
+  },
 
   // App
   getVersion: () => ipcRenderer.invoke('app:getVersion'),

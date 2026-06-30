@@ -6,7 +6,7 @@ import { promisify } from 'util'
 import Store from 'electron-store'
 import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess } from './pty'
 import { runGitCommand } from './git'
-import { searchInProject } from './search'
+import { startSearch, cancelSearch } from './search'
 import { checkForUpdateNow, applyUpdate, setAutoUpdate } from './updater'
 
 const execAsync = promisify(exec)
@@ -144,9 +144,13 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('git:stageAll', (_e, cwd: string) => runGitCommand(cwd, 'stageAll'))
   ipcMain.handle('git:showFile', (_e, cwd: string, ref: string, file: string) => runGitCommand(cwd, 'showFile', `${ref}:${file}`))
 
-  // --- Search ---
-  ipcMain.handle('search:run', async (_e, opts) => {
-    return searchInProject(opts)
+  // --- Search (streaming: results sent via search:results / search:complete events) ---
+  ipcMain.on('search:start', (e, id: string, opts) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (win) startSearch(id, opts, win)
+  })
+  ipcMain.on('search:cancel', (_e, id: string) => {
+    cancelSearch(id)
   })
 
   // --- App ---

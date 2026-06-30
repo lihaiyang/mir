@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import Ignore from 'ignore'
+import { BrowserWindow } from 'electron'
 
 export interface SearchOptions {
   rootPath: string
@@ -20,7 +21,24 @@ export interface SearchMatch {
   text: string
 }
 
-export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[]> {
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+interface ActiveSearch {
+  abort: boolean
+}
+
+const activeSearches = new Map<string, ActiveSearch>()
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export function cancelSearch(id: string): void {
+  const s = activeSearches.get(id)
+  if (s) s.abort = true
+}
+
+export function startSearch(id: string, opts: SearchOptions, win: BrowserWindow): void {
   const {
     rootPath,
     query,
@@ -32,7 +50,10 @@ export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[
     maxResults = 500
   } = opts
 
-  if (!query) return []
+  if (!query || win.isDestroyed()) return
+
+  const search: ActiveSearch = { abort: false }
+  activeSearches.set(id, search)
 
   let pattern: RegExp
   try {
@@ -40,10 +61,11 @@ export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[
     if (wholeWord) q = `\\b${q}\\b`
     pattern = new RegExp(q, caseSensitive ? 'g' : 'gi')
   } catch {
-    return []
+    win.webContents.send('search:error', { id, message: 'Invalid regex pattern' })
+    activeSearches.delete(id)
+    return
   }
 
-  // Load gitignore if present
   const ig = Ignore()
   const gitignorePath = path.join(rootPath, '.gitignore')
   if (fs.existsSync(gitignorePath)) {
@@ -51,11 +73,11 @@ export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[
   }
   excludeDirs.forEach(d => ig.add(d))
 
-  const results: SearchMatch[] = []
-
+  let totalMatches = 0
   let filesProcessed = 0
+
   async function walk(dir: string): Promise<void> {
-    if (results.length >= maxResults) return
+    if (search.abort || totalMatches >= maxResults) return
     let entries: fs.Dirent[]
     try {
       entries = await fs.promises.readdir(dir, { withFileTypes: true })
@@ -63,7 +85,7 @@ export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[
       return
     }
     for (const entry of entries) {
-      if (results.length >= maxResults) break
+      if (search.abort || totalMatches >= maxResults) return
       const fullPath = path.join(dir, entry.name)
       const rel = path.relative(rootPath, fullPath)
       if (ig.ignores(rel)) continue
@@ -76,23 +98,31 @@ export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[
           if (!extensions.includes(ext)) continue
         }
         try {
+          const stat = await fs.promises.stat(fullPath)
+          if (stat.size > MAX_FILE_SIZE) continue
+
           const content = await fs.promises.readFile(fullPath, 'utf-8')
           const lines = content.split('\n')
-          for (let i = 0; i < lines.length && results.length < maxResults; i++) {
+          const fileMatches: SearchMatch[] = []
+          for (let i = 0; i < lines.length && totalMatches < maxResults; i++) {
             pattern.lastIndex = 0
             let m: RegExpExecArray | null
             while ((m = pattern.exec(lines[i])) !== null) {
-              results.push({
+              fileMatches.push({
                 file: rel,
                 line: i + 1,
                 col: m.index + 1,
                 text: lines[i]
               })
+              totalMatches++
               if (!pattern.global) break
             }
           }
+          if (fileMatches.length > 0 && !win.isDestroyed()) {
+            win.webContents.send('search:results', { id, matches: fileMatches })
+          }
           filesProcessed++
-          if (filesProcessed % 50 === 0) {
+          if (filesProcessed % 20 === 0) {
             await new Promise(r => setImmediate(r))
           }
         } catch {
@@ -102,10 +132,15 @@ export async function searchInProject(opts: SearchOptions): Promise<SearchMatch[
     }
   }
 
-  await walk(rootPath)
-  return results
-}
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  walk(rootPath).then(() => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('search:complete', { id, filesProcessed, totalMatches })
+    }
+    activeSearches.delete(id)
+  }).catch((err) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('search:error', { id, message: String(err) })
+    }
+    activeSearches.delete(id)
+  })
 }

@@ -55,7 +55,11 @@ interface ElectronAPI {
   gitBranches: (cwd: string) => Promise<{ current: string; all: string[] }>
   gitCheckout: (cwd: string, branch: string) => Promise<void>
   gitCreateBranch: (cwd: string, name: string) => Promise<void>
-  searchRun: (opts: unknown) => Promise<SearchMatch[]>
+  searchStart: (id: string, opts: unknown) => void
+  searchCancel: (id: string) => void
+  onSearchResults: (cb: (id: string, matches: SearchMatch[]) => void) => () => void
+  onSearchComplete: (cb: (id: string, filesProcessed: number, totalMatches: number) => void) => () => void
+  onSearchError: (cb: (id: string, message: string) => void) => () => void
   getVersion: () => Promise<string>
   getPath: (name: string) => Promise<string>
   checkForUpdates: () => Promise<void>
