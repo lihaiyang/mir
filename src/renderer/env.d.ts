@@ -26,8 +26,8 @@ interface ElectronAPI {
   openFolder: () => Promise<string | null>
   showSaveDialog: () => Promise<string | null>
   readdir: (p: string) => Promise<{ name: string; isDirectory: boolean; isFile: boolean }[]>
-  readFile: (p: string) => Promise<string>
-  writeFile: (p: string, content: string) => Promise<void>
+  readFile: (p: string, encoding?: string) => Promise<{ content: string; encoding: string }>
+  writeFile: (p: string, content: string, encoding?: string) => Promise<void>
   exists: (p: string) => Promise<boolean>
   mkdir: (p: string) => Promise<void>
   rename: (oldPath: string, newPath: string) => Promise<void>
@@ -55,6 +55,9 @@ interface ElectronAPI {
   gitBranches: (cwd: string) => Promise<{ current: string; all: string[] }>
   gitCheckout: (cwd: string, branch: string) => Promise<void>
   gitCreateBranch: (cwd: string, name: string) => Promise<void>
+  gitStashPush: (cwd: string, message: string) => Promise<void>
+  gitStashPop: (cwd: string) => Promise<void>
+  gitCheckoutDiscard: (cwd: string) => Promise<void>
   searchStart: (id: string, opts: unknown) => void
   searchCancel: (id: string) => void
   onSearchResults: (cb: (id: string, matches: SearchMatch[]) => void) => () => void

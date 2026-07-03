@@ -19,6 +19,7 @@ import '@xterm/xterm/css/xterm.css'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
+
 import { useContextMenu } from '../../composables/useContextMenu'
 import type { Tab } from '../../stores/tabs'
 
@@ -29,6 +30,7 @@ const props = defineProps<{ tab: Tab }>()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const projectStore = useProjectStore()
+
 const { show: showMenu } = useContextMenu()
 
 const terminalEl = ref<HTMLDivElement | null>(null)
@@ -44,6 +46,7 @@ const cleanupRef: { current: (() => void) | null } = { current: null }
 
 onMounted(async () => {
   await initTerminal()
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: false } }))
 })
 
 onActivated(() => {
@@ -51,10 +54,11 @@ onActivated(() => {
     fitAddon?.fit()
     term?.focus()
   })
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: false } }))
 })
 
 onDeactivated(() => {
-  // no-op: KeepAlive deactivation does not require cleanup
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: false } }))
 })
 
 async function initTerminal() {
@@ -87,7 +91,12 @@ async function initTerminal() {
     term?.write(data)
   })
   unsubExit = window.electronAPI.onPtyExit(props.tab.id, () => {
-    if (!isUnmounting) exited.value = true
+    if (!isUnmounting) {
+      exited.value = true
+      window.dispatchEvent(new CustomEvent('mir-notification', {
+        detail: { type: 'warning', text: 'Terminal process exited' }
+      }))
+    }
   })
 
   term.onData((data) => {

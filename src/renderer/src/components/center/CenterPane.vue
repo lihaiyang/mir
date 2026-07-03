@@ -68,7 +68,9 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../../stores/projects'
 import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
+import { useSettingsStore } from '../../stores/settings'
 import { useTabStore, type TabType, type TreeNode } from '../../stores/tabs'
+import { matchesShortcut } from '../../utils'
 import PaneGroup from './PaneGroup.vue'
 import BrowserTab from './BrowserTab.vue'
 import TerminalTab from './TerminalTab.vue'
@@ -80,6 +82,7 @@ import SettingsTab from '../SettingsTab.vue'
 const { t } = useI18n()
 const projectStore = useProjectStore()
 const webPageStore = useWebPageStore()
+const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 
 const tabComponents: Record<string, any> = {
@@ -339,15 +342,17 @@ function resetSplit(nodeId: string) {
 // --- Keyboard ---
 
 function handleKey(e: KeyboardEvent) {
+  const s = settingsStore.settings.shortcuts
   const mod = e.ctrlKey || e.metaKey
   if (!activeProject.value) return
   const pid = activeProject.value.id
 
-  if (mod && e.key === 't') {
+  if (matchesShortcut(e, s.newTab)) {
     e.preventDefault()
     tabStore.addTab(pid, 'terminal')
+    return
   }
-  if (mod && e.key === 'w') {
+  if (matchesShortcut(e, s.closeTab)) {
     e.preventDefault()
     const fgId = tabStore.getFocusedGroupId(pid)
     if (!fgId) return
@@ -356,24 +361,34 @@ function handleKey(e: KeyboardEvent) {
       if (activeTab.modified && !confirm(t('editor.unsavedCloseConfirm', { name: activeTab.title }))) return
       tabStore.closeTab(pid, activeTab.id)
     }
+    return
   }
   if (mod && e.key === '\\') {
     e.preventDefault()
     doSplit(e.shiftKey ? 'vertical' : 'horizontal')
+    return
   }
-  if (mod && e.key === 'Tab') {
+  if (matchesShortcut(e, s.nextTab)) {
     e.preventDefault()
-    const fgId = tabStore.getFocusedGroupId(pid)
-    if (!fgId) return
-    const tabs = tabStore.getGroupTabs(pid, fgId)
-    const activeTabId = tabStore.getGroupActiveTabId(pid, fgId)
-    const idx = tabs.findIndex(t => t.id === activeTabId)
-    if (idx === -1) return
-    const next = e.shiftKey
-      ? (idx - 1 + tabs.length) % tabs.length
-      : (idx + 1) % tabs.length
-    if (tabs[next]) tabStore.setActiveTab(pid, tabs[next].id)
+    cycleTab(pid, 1)
+    return
   }
+  if (matchesShortcut(e, s.prevTab)) {
+    e.preventDefault()
+    cycleTab(pid, -1)
+    return
+  }
+}
+
+function cycleTab(pid: string, direction: 1 | -1) {
+  const fgId = tabStore.getFocusedGroupId(pid)
+  if (!fgId) return
+  const tabs = tabStore.getGroupTabs(pid, fgId)
+  const activeTabId = tabStore.getGroupActiveTabId(pid, fgId)
+  const idx = tabs.findIndex(t => t.id === activeTabId)
+  if (idx === -1) return
+  const next = (idx + direction + tabs.length) % tabs.length
+  if (tabs[next]) tabStore.setActiveTab(pid, tabs[next].id)
 }
 
 async function doSplit(direction: 'horizontal' | 'vertical') {

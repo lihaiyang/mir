@@ -126,6 +126,12 @@
         </div>
       </div>
     </div>
+
+    <BranchSwitchConfirm
+      v-if="showBranchConfirm"
+      :branch="pendingBranch"
+      @choice="onBranchConfirmChoice"
+    />
   </div>
 </template>
 
@@ -134,12 +140,15 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../../stores/projects'
 import { useTabStore } from '../../stores/tabs'
+
 import { useContextMenu } from '../../composables/useContextMenu'
+import BranchSwitchConfirm from '../BranchSwitchConfirm.vue'
 import type { GitStatus, GitCommit } from '../../../main/git'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
 const tabStore = useTabStore()
+
 const { show: showMenu } = useContextMenu()
 const activeProject = computed(() => projectStore.activeProject)
 
@@ -157,6 +166,8 @@ const showBranches = ref(false)
 const branchList = ref<string[]>([])
 const newBranchName = ref('')
 const selectedCommit = ref<GitCommit | null>(null)
+const showBranchConfirm = ref(false)
+const pendingBranch = ref('')
 
 const stagedFiles = computed<GitFile[]>(() => {
   if (!status.value) return []
@@ -183,9 +194,13 @@ async function loadStatus() {
     status.value = await window.electronAPI.gitStatus(activeProject.value.path) as GitStatus
     commits.value = (await window.electronAPI.gitLog(activeProject.value.path)) as GitCommit[]
     errorMsg.value = ''
+    if (status.value) {
+      window.dispatchEvent(new CustomEvent('statusbar-git', { detail: { branch: status.value.branch, ahead: status.value.ahead ?? 0, behind: status.value.behind ?? 0 } }))
+    }
   } catch (e: any) {
     status.value = null
     commits.value = []
+    window.dispatchEvent(new CustomEvent('statusbar-git', { detail: { branch: null } }))
     const msg = e.message || String(e)
     if (/not a git repository/i.test(msg)) {
       errorMsg.value = t('git.notARepo')
@@ -200,9 +215,11 @@ watch(() => activeProject.value?.id, () => loadStatus(), { immediate: true })
 let pollTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   pollTimer = setInterval(loadStatus, 3000)
+  window.addEventListener('git-refreshed', loadStatus)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  window.removeEventListener('git-refreshed', loadStatus)
 })
 
 async function run(fn: () => Promise<void>, msg: string) {
@@ -220,13 +237,25 @@ async function run(fn: () => Promise<void>, msg: string) {
   }
 }
 
-const runFetch = () => run(() => window.electronAPI.gitFetch(activeProject.value!.path), t('git.fetching'))
-const runPull = () => run(() => window.electronAPI.gitPull(activeProject.value!.path) as Promise<void>, t('git.pulling'))
-const runPush = () => run(() => window.electronAPI.gitPush(activeProject.value!.path) as Promise<void>, t('git.pushing'))
+const runFetch = () => run(async () => {
+  await window.electronAPI.gitFetch(activeProject.value!.path)
+  window.dispatchEvent(new CustomEvent('mir-notification', { detail: { type: 'info', text: 'Git fetch complete' } }))
+}, t('git.fetching'))
+const runPull = () => run(async () => {
+  await window.electronAPI.gitPull(activeProject.value!.path)
+  window.dispatchEvent(new CustomEvent('mir-notification', { detail: { type: 'success', text: 'Git pull complete' } }))
+}, t('git.pulling'))
+const runPush = () => run(async () => {
+  await window.electronAPI.gitPush(activeProject.value!.path)
+  window.dispatchEvent(new CustomEvent('mir-notification', { detail: { type: 'success', text: 'Git push complete' } }))
+}, t('git.pushing'))
 
 async function runCommit() {
   if (!commitMsg.value.trim()) return
-  await run(() => window.electronAPI.gitCommit(activeProject.value!.path, commitMsg.value.trim()), t('git.committing'))
+  await run(async () => {
+    await window.electronAPI.gitCommit(activeProject.value!.path, commitMsg.value.trim())
+    window.dispatchEvent(new CustomEvent('mir-notification', { detail: { type: 'success', text: 'Commit successful' } }))
+  }, t('git.committing'))
   commitMsg.value = ''
 }
 
@@ -274,7 +303,52 @@ async function showBranchMenu() {
 
 async function checkoutBranch(branch: string) {
   showBranches.value = false
-  await run(() => window.electronAPI.gitCheckout(activeProject.value!.path, branch), t('git.switchingTo', { branch }))
+  if (branch === status.value?.branch) return
+  const project = activeProject.value
+  if (!project) return
+
+  try {
+    const s = await window.electronAPI.gitStatus(project.path) as GitStatus
+    const dirty = s.staged.length + s.modified.length + s.notAdded.length + s.deleted.length + s.renamed.length + s.conflicted.length > 0
+    if (dirty) {
+      pendingBranch.value = branch
+      showBranchConfirm.value = true
+      return
+    }
+    await doCheckout(branch)
+  } catch (e: any) {
+    window.dispatchEvent(new CustomEvent('mir-notification', {
+      detail: { type: 'error', text: e.message || 'Failed to switch branch' }
+    }))
+  }
+}
+
+async function doCheckout(branch: string, mode?: 'stash' | 'discard') {
+  const project = activeProject.value
+  if (!project) return
+
+  await run(async () => {
+    if (mode === 'stash') {
+      await window.electronAPI.gitStashPush(project.path, `WIP before switching to ${branch}`)
+      await window.electronAPI.gitCheckout(project.path, branch)
+      await window.electronAPI.gitStashPop(project.path).catch((err: any) => {
+        window.dispatchEvent(new CustomEvent('mir-notification', {
+          detail: { type: 'warning', text: err?.message || 'Stash pop failed. Resolve conflicts manually.' }
+        }))
+      })
+    } else if (mode === 'discard') {
+      await window.electronAPI.gitCheckoutDiscard(project.path)
+      await window.electronAPI.gitCheckout(project.path, branch)
+    } else {
+      await window.electronAPI.gitCheckout(project.path, branch)
+    }
+  }, t('git.switchingTo', { branch }))
+}
+
+function onBranchConfirmChoice(choice: 'stash' | 'discard' | 'cancel') {
+  showBranchConfirm.value = false
+  if (choice === 'cancel') return
+  doCheckout(pendingBranch.value, choice)
 }
 
 async function createBranch() {

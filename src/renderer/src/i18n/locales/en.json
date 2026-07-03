@@ -210,11 +210,40 @@
     "unsavedCloseRight": "{count} tab(s) to the right have unsaved changes. Close anyway?"
   },
   "commandPalette": {
-    "placeholder": "Type a command...",
-    "noResults": "No matching commands",
-    "openSettings": "Open Settings",
-    "toggleWordWrap": "Toggle Editor Word Wrap"
-  },
+     "placeholder": "Type a command...",
+     "noResults": "No matching commands",
+     "openSettings": "Open Settings",
+     "toggleWordWrap": "Toggle Editor Word Wrap",
+     "quickOpen": "Go to File...",
+     "search": "Search in Project",
+     "toggleRightPanel": "Toggle Right Panel",
+     "reopenClosedTab": "Reopen Closed Tab",
+     "newTerminal": "New Terminal",
+     "toggleFiles": "Show File Tree",
+     "toggleGit": "Show Git Panel"
+   },
+   "quickOpen": {
+     "placeholder": "Search files by name...",
+     "noResults": "No matching files",
+     "recent": "Recent"
+   },
+    "status": {
+      "branch": "Git branch",
+      "lineColumn": "Line:Column",
+      "language": "Language",
+      "encoding": "Encoding",
+      "lineEnding": "Line Ending",
+      "selectLanguage": "Select Language",
+      "selectEncoding": "Select Encoding",
+      "selectLineEnding": "Select Line Ending",
+      "switchBranch": "Switch Branch",
+      "newBranchName": "New branch name",
+      "createAndSwitch": "Create & Switch",
+      "uncommittedChanges": "Uncommitted Changes",
+      "uncommittedChangesMessage": "You have uncommitted changes. What would you like to do before switching to {branch}?",
+      "stashAndSwitch": "Stash and switch",
+      "discardAndSwitch": "Discard changes and switch"
+    },
   "updater": {
     "ready": "Version {version} is ready. Restart to apply, or it will update automatically when you quit.",
     "restartNow": "Restart now",

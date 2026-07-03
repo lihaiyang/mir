@@ -29,20 +29,27 @@
     </div>
 
     <!-- Global modals -->
-    <CommandPalette v-if="showPalette" @close="showPalette = false" />
-    <ContextMenuHost />
-    <UpdateToast />
-  </div>
+     <CommandPalette v-if="showPalette" @close="showPalette = false" />
+     <ContextMenuHost />
+     <UpdateToast />
+     <NotificationToast ref="notificationToast" />
+     <QuickOpenModal v-if="showQuickOpen" @close="showQuickOpen = false" @open="openQuickOpenFile" />
+     <StatusBar />
+   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, provide } from 'vue'
+import { matchesShortcut } from './utils'
 import { useI18n } from 'vue-i18n'
 import { useLayoutStore } from './stores/layout'
 import { useProjectStore } from './stores/projects'
 import { useSettingsStore } from './stores/settings'
 import { useTabStore } from './stores/tabs'
 import { useWebPageStore } from './stores/webPages'
+import { useRecentStore } from './stores/recent'
+import { useFileMetaStore } from './stores/fileMeta'
+
 import TitleBar from './components/TitleBar.vue'
 import LeftPane from './components/left/LeftPane.vue'
 import CenterPane from './components/center/CenterPane.vue'
@@ -50,6 +57,9 @@ import RightPane from './components/right/RightPane.vue'
 import ContextMenuHost from './components/ContextMenuHost.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import UpdateToast from './components/UpdateToast.vue'
+import StatusBar from './components/StatusBar.vue'
+import NotificationToast from './components/NotificationToast.vue'
+import QuickOpenModal from './components/QuickOpenModal.vue'
 import { registerCommand } from './composables/useCommandPalette'
 
 const { locale, t } = useI18n()
@@ -58,7 +68,11 @@ const projectStore = useProjectStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
+const recentStore = useRecentStore()
+const fileMetaStore = useFileMetaStore()
+
 const showPalette = ref(false)
+const showQuickOpen = ref(false)
 
 provide('showPalette', showPalette)
 
@@ -67,6 +81,8 @@ onMounted(async () => {
   locale.value = settingsStore.settings.language
   await layout.load()
   await projectStore.load()
+  await recentStore.load()
+  await fileMetaStore.load()
   await tabStore.load()
   await webPageStore.load()
   settingsStore.applyTheme()
@@ -74,9 +90,30 @@ onMounted(async () => {
   setupShortcuts()
   registerBuiltinCommands()
 
+  // All stores loaded: notify status bar to initialize from current active tab
+  window.dispatchEvent(new CustomEvent('statusbar-init'))
+
   watch(() => settingsStore.settings.language, (lang) => {
     locale.value = lang
   })
+
+  watch(() => settingsStore.settings.shortcuts, () => {
+    registerBuiltinCommands()
+  }, { deep: true })
+
+  watch(() => projectStore.activeProject, (p) => {
+    if (p) {
+      recentStore.touchProject(p.id, p.name, p.path)
+      loadGitStatusForStatusBar(p.path)
+    }
+  })
+
+  window.addEventListener('mir-notification', onMirNotification)
+
+  // Load git status immediately if a project is already active on startup
+  if (projectStore.activeProject) {
+    loadGitStatusForStatusBar(projectStore.activeProject.path)
+  }
 
   // Flush any pending debounced persists when window is closing
   window.addEventListener('beforeunload', () => {
@@ -124,20 +161,62 @@ function openSettings() {
 }
 
 function registerBuiltinCommands() {
+  const s = settingsStore.settings.shortcuts
   registerCommand({
     id: 'mir.settings',
     label: t('commandPalette.openSettings'),
-    keybinding: 'Ctrl+,',
+    keybinding: s.settings,
     run: () => { openSettings() }
   })
   registerCommand({
     id: 'editor.toggleWordWrap',
     label: t('commandPalette.toggleWordWrap'),
     run: () => {
-      // Toggle the global setting so every open editor updates via its watcher.
       const cur = settingsStore.settings.editorWordWrap
       settingsStore.update({ editorWordWrap: cur === 'off' ? 'on' : 'off' })
     }
+  })
+  registerCommand({
+    id: 'mir.quickOpen',
+    label: t('commandPalette.quickOpen'),
+    keybinding: 'Ctrl+P',
+    run: () => { showQuickOpen.value = true }
+  })
+  registerCommand({
+    id: 'mir.search',
+    label: t('commandPalette.search'),
+    keybinding: 'Ctrl+Shift+F',
+    run: () => { layout.rightActivePanel = 'search'; layout.rightCollapsed = false; layout.persist() }
+  })
+  registerCommand({
+    id: 'mir.toggleRightPanel',
+    label: t('commandPalette.toggleRightPanel'),
+    keybinding: 'Ctrl+B',
+    run: () => { layout.rightCollapsed = !layout.rightCollapsed; layout.persist() }
+  })
+  registerCommand({
+    id: 'mir.reopenClosedTab',
+    label: t('commandPalette.reopenClosedTab'),
+    keybinding: 'Ctrl+Shift+T',
+    run: () => { reopenLastClosedTab() }
+  })
+  registerCommand({
+    id: 'mir.newTerminal',
+    label: t('commandPalette.newTerminal'),
+    keybinding: s.newTab,
+    run: () => {
+      if (projectStore.activeProject) tabStore.addTab(projectStore.activeProject.id, 'terminal')
+    }
+  })
+  registerCommand({
+    id: 'mir.toggleFiles',
+    label: t('commandPalette.toggleFiles'),
+    run: () => { layout.rightActivePanel = 'files'; layout.rightCollapsed = false; layout.persist() }
+  })
+  registerCommand({
+    id: 'mir.toggleGit',
+    label: t('commandPalette.toggleGit'),
+    run: () => { layout.rightActivePanel = 'git'; layout.rightCollapsed = false; layout.persist() }
   })
 }
 
@@ -145,21 +224,97 @@ function onOpenCommandPalette() {
   showPalette.value = true
 }
 
+function openQuickOpenFile(filePath: string) {
+  if (!projectStore.activeProject) return
+  const pid = projectStore.activeProject.id
+  const fileName = filePath.split('/').pop() || filePath
+  const existing = tabStore.getProjectTabs(pid).find(tt => tt.type === 'file' && tt.filePath === filePath)
+  if (existing) {
+    tabStore.setActiveTab(pid, existing.id)
+  } else {
+    tabStore.addTab(pid, 'file', { title: fileName, filePath })
+  }
+  recentStore.touchFile(filePath, pid)
+}
+
 function setupShortcuts() {
   window.addEventListener('keydown', handleGlobalKey)
 }
 
 function handleGlobalKey(e: KeyboardEvent) {
+  const s = settingsStore.settings.shortcuts
+
+  if (matchesShortcut(e, s.settings)) { e.preventDefault(); openSettings(); return }
+  if (matchesShortcut(e, s.commandPalette)) { e.preventDefault(); showPalette.value = true; return }
+  if (matchesShortcut(e, s.find)) { e.preventDefault(); dispatchEditorAction('editor-find'); return }
+  if (matchesShortcut(e, s.save)) { e.preventDefault(); dispatchEditorAction('editor-save'); return }
+
+  // Hardcoded global shortcuts not yet exposed in settings
   const mod = e.ctrlKey || e.metaKey
-  if (mod && e.key === ',') { e.preventDefault(); openSettings() }
-  if (mod && e.shiftKey && e.key === 'P') { e.preventDefault(); showPalette.value = true }
+  if (mod && e.shiftKey && e.key === 'F') { e.preventDefault(); layout.rightActivePanel = 'search'; layout.rightCollapsed = false; layout.persist(); return }
+  if (mod && e.key === 'p') { e.preventDefault(); showQuickOpen.value = true; return }
+  if (mod && e.shiftKey && e.key === 'T') { e.preventDefault(); reopenLastClosedTab(); return }
+  if (mod && e.key === 'b') { e.preventDefault(); layout.rightCollapsed = !layout.rightCollapsed; layout.persist(); return }
 }
+
+function dispatchEditorAction(eventName: string) {
+  const pid = projectStore.activeProjectId
+  if (!pid) return
+  const gid = tabStore.getFocusedGroupId(pid)
+  if (!gid) return
+  const tid = tabStore.getGroupActiveTabId(pid, gid)
+  if (!tid) return
+  window.dispatchEvent(new CustomEvent(eventName, { detail: { projectId: pid, groupId: gid, tabId: tid } }))
+}
+
+function reopenLastClosedTab() {
+  const item = recentStore.popClosedTab()
+  if (!item) return
+  const pid = item.projectId
+  const tab = item.tab
+  if (tab.filePath) {
+    tabStore.addTab(pid, 'file', { title: tab.title, filePath: tab.filePath })
+  } else if (tab.terminalCwd !== undefined) {
+    tabStore.addTab(pid, 'terminal', { title: tab.title, terminalCwd: tab.terminalCwd })
+  } else if (tab.browserUrl) {
+    tabStore.addTab(pid, 'browser', { title: tab.title, browserUrl: tab.browserUrl })
+  }
+}
+
+const notificationToast = ref<InstanceType<typeof NotificationToast> | null>(null)
+
+function onMirNotification(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.type && detail?.text) {
+    notificationToast.value?.show(detail.type, detail.text, detail.duration)
+  }
+}
+
+async function loadGitStatusForStatusBar(projectPath: string) {
+  try {
+    const s = await window.electronAPI.gitStatus(projectPath) as { branch: string; ahead: number; behind: number } | null
+    if (s) {
+      window.dispatchEvent(new CustomEvent('statusbar-git', { detail: { branch: s.branch, ahead: s.ahead ?? 0, behind: s.behind ?? 0 } }))
+    }
+  } catch { /* ignore */ }
+}
+
+let gitStatusInterval: ReturnType<typeof setInterval> | null = null
+function startGitStatusPolling() {
+  if (gitStatusInterval) clearInterval(gitStatusInterval)
+  gitStatusInterval = setInterval(() => {
+    const p = projectStore.activeProject
+    if (p) loadGitStatusForStatusBar(p.path)
+  }, 10000)
+}
+startGitStatusPolling()
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKey)
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('mouseup', onMouseUp)
   window.removeEventListener('open-command-palette', onOpenCommandPalette)
+  window.removeEventListener('mir-notification', onMirNotification)
 })
 </script>
 

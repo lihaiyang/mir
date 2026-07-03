@@ -9,11 +9,13 @@ let untitledCounter = 0
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, onActivated, watch, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, onActivated, onDeactivated, watch, nextTick } from 'vue'
 import * as monaco from 'monaco-editor'
 import { useProjectStore } from '../../stores/projects'
 import { useTabStore } from '../../stores/tabs'
 import { useSettingsStore } from '../../stores/settings'
+import { useRecentStore } from '../../stores/recent'
+import { useFileMetaStore } from '../../stores/fileMeta'
 import type { Tab } from '../../stores/tabs'
 
 const props = defineProps<{ tab: Tab }>()
@@ -21,6 +23,8 @@ const props = defineProps<{ tab: Tab }>()
 const projectStore = useProjectStore()
 const tabStore = useTabStore()
 const settingsStore = useSettingsStore()
+const _recentStore = useRecentStore()
+const fileMetaStore = useFileMetaStore()
 
 const monacoEl = ref<HTMLDivElement | null>(null)
 const currentFilePath = ref<string | null>(null)
@@ -31,6 +35,7 @@ let model: monaco.editor.ITextModel | null = null
 let modelIsOwned = false
 let resizeObs: ResizeObserver | null = null
 let autoSaveTimer: number | null = null
+let cleanContent = ''
 let initialized = false
 
 function log(msg: string) {
@@ -54,16 +59,91 @@ onMounted(async () => {
   if (saved.length > 0) {
     const fp = active || saved[0]
     try {
-      const content = await window.electronAPI.readFile(fp)
+      const encoding = props.tab.encoding || fileMetaStore.get(fp)?.encoding
+      const { content, encoding: detectedEncoding } = await window.electronAPI.readFile(fp, encoding)
+      if (!props.tab.encoding && detectedEncoding) {
+        tabStore.updateTab(props.tab.projectId, props.tab.id, { encoding: detectedEncoding })
+      }
       initMonaco(fp, content)
       currentFilePath.value = fp
+      window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: detectLanguage(fp), encoding: detectedEncoding } }))
       initialized = true
     } catch { createScratch() }
   } else {
     createScratch()
+    window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: '', encoding: 'utf-8' } }))
   }
   window.addEventListener('editor-toggle-wordwrap', onToggleWordWrapEvent)
+  window.addEventListener('statusbar-goto-line', onStatusBarGotoLine)
+  window.addEventListener('editor-set-language', onSetLanguage)
+  window.addEventListener('editor-set-encoding', onSetEncoding)
+  window.addEventListener('editor-set-line-ending', onSetLineEnding)
+  window.addEventListener('editor-save', onEditorSave)
+  window.addEventListener('editor-find', onEditorFind)
 })
+
+function onStatusBarGotoLine() {
+  editor?.getAction('editor.action.gotoLine')?.run()
+}
+
+function onSetLanguage(e: Event) {
+  const lang = (e as CustomEvent).detail?.language
+  if (!lang || !model) return
+  monaco.editor.setModelLanguage(model, lang)
+  tabStore.updateTab(props.tab.projectId, props.tab.id, { languageOverride: lang })
+  const fp = currentFilePath.value
+  if (fp && !isScratchPath(fp)) fileMetaStore.set(fp, { languageOverride: lang })
+  window.dispatchEvent(new CustomEvent('statusbar-editor', {
+    detail: { active: true, language: lang, encoding: props.tab.encoding || 'utf-8' }
+  }))
+}
+
+async function onSetEncoding(e: Event) {
+  const encoding = (e as CustomEvent).detail?.encoding
+  if (!encoding) return
+  const fp = currentFilePath.value
+  if (!fp || isScratchPath(fp)) return
+  try {
+    const { content } = await window.electronAPI.readFile(fp, encoding)
+    model?.setValue(content)
+    tabStore.updateTab(props.tab.projectId, props.tab.id, { encoding })
+    fileMetaStore.set(fp, { encoding })
+    window.dispatchEvent(new CustomEvent('statusbar-editor', {
+      detail: { active: true, language: props.tab.languageOverride || detectLanguage(fp), encoding }
+    }))
+  } catch (err) {
+    window.dispatchEvent(new CustomEvent('mir-notification', {
+      detail: { type: 'error', text: `Failed to reload file with ${encoding}` }
+    }))
+  }
+}
+
+function onSetLineEnding(e: Event) {
+  const le = (e as CustomEvent).detail?.lineEnding
+  if (!le || !model) return
+  const eol = le === 'crlf'
+    ? monaco.editor.EndOfLineSequence.CRLF
+    : monaco.editor.EndOfLineSequence.LF
+  model.setEOL(eol)
+  tabStore.updateTab(props.tab.projectId, props.tab.id, { lineEnding: le })
+  const fp = currentFilePath.value
+  if (fp && !isScratchPath(fp)) fileMetaStore.set(fp, { lineEnding: le })
+  window.dispatchEvent(new CustomEvent('statusbar-editor', {
+    detail: { active: true, language: props.tab.languageOverride || detectLanguage(fp || ''), lineEnding: le, encoding: props.tab.encoding || 'utf-8' }
+  }))
+}
+
+function onEditorSave(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.tabId !== props.tab.id) return
+  saveCurrentFile()
+}
+
+function onEditorFind(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.tabId !== props.tab.id) return
+  editor?.getAction('actions.find')?.run()
+}
 
 function createScratch() {
   if (!monacoEl.value || initialized) return
@@ -73,6 +153,7 @@ function createScratch() {
   initMonaco(scratchPath, '')
   currentFilePath.value = scratchPath
   editor?.focus()
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: '' } }))
 }
 
 function initMonaco(fp: string, content: string) {
@@ -84,9 +165,17 @@ function initMonaco(fp: string, content: string) {
     model = existing
     if (existing.getValue() !== content) existing.setValue(content)
   } else {
-    model = monaco.editor.createModel(content, detectLanguage(fp), uri)
+    const lang = props.tab.languageOverride || fileMetaStore.get(fp)?.languageOverride || detectLanguage(fp)
+    model = monaco.editor.createModel(content, lang, uri)
     modelIsOwned = true
   }
+
+  const le = props.tab.lineEnding || fileMetaStore.get(fp)?.lineEnding
+  if (le && model) {
+    model.setEOL(le === 'crlf' ? monaco.editor.EndOfLineSequence.CRLF : monaco.editor.EndOfLineSequence.LF)
+  }
+
+  cleanContent = model.getValue()
 
   // Read wordWrap directly from settings
   const rawWW = (settingsStore.settings as any).editorWordWrap
@@ -117,15 +206,17 @@ function initMonaco(fp: string, content: string) {
   log('initMonaco: Monaco actual wordWrap option=' + actualWW + ' (0=off,1=on,2=wordWrapColumn,3=bounded)')
 
   editor.onDidChangeModelContent(() => {
-    if (!modified.value) {
-      modified.value = true
-      tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: true })
+    const dirty = model.getValue() !== cleanContent
+    if (dirty !== modified.value) {
+      modified.value = dirty
+      tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: dirty })
     }
-    scheduleAutoSave()
+    if (dirty) scheduleAutoSave()
   })
 
-  // Cmd/Ctrl+S save
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveCurrentFile())
+  editor.onDidChangeCursorPosition((e) => {
+    window.dispatchEvent(new CustomEvent('statusbar-cursor', { detail: { line: e.position.lineNumber, column: e.position.column } }))
+  })
 
   // Ctrl+Shift+P → open global command palette
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
@@ -154,6 +245,45 @@ function initMonaco(fp: string, content: string) {
     log('addAction FAILED: ' + String(e))
   }
 
+  // Editor keyboard shortcuts
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyD, () => {
+    const sel = editor.getSelection()
+    if (sel && !sel.isEmpty()) {
+      editor.trigger('keyboard', 'editor.action.addSelectionToNextFindMatch', null)
+    }
+  })
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL, () => {
+    const sel = editor.getSelection()
+    if (sel && !sel.isEmpty()) {
+      editor.trigger('keyboard', 'editor.action.selectHighlights', null)
+    }
+  })
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyK, () => {
+    editor.trigger('keyboard', 'editor.action.deleteLines', null)
+  })
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
+    editor.trigger('keyboard', 'editor.action.commentLine', null)
+  })
+
+  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, () => {
+    editor.trigger('keyboard', 'editor.action.moveLinesUpAction', null)
+  })
+
+  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, () => {
+    editor.trigger('keyboard', 'editor.action.moveLinesDownAction', null)
+  })
+
+  editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, () => {
+    editor.trigger('keyboard', 'editor.action.copyLinesUpAction', null)
+  })
+
+  editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, () => {
+    editor.trigger('keyboard', 'editor.action.copyLinesDownAction', null)
+  })
+
   resizeObs = new ResizeObserver(() => editor?.layout())
   if (monacoEl.value) resizeObs.observe(monacoEl.value)
 }
@@ -176,7 +306,11 @@ function detectLanguage(fp: string): string {
 async function openFile(fp: string) {
   if (!monacoEl.value || !initialized) return
   try {
-    const content = await window.electronAPI.readFile(fp)
+    const encoding = props.tab.encoding || fileMetaStore.get(fp)?.encoding
+    const { content, encoding: detectedEncoding } = await window.electronAPI.readFile(fp, encoding)
+    if (!props.tab.encoding && detectedEncoding) {
+      tabStore.updateTab(props.tab.projectId, props.tab.id, { encoding: detectedEncoding })
+    }
     const uri = monaco.Uri.file(fp)
     const existing = monaco.editor.getModel(uri)
     if (existing) {
@@ -193,9 +327,12 @@ async function openFile(fp: string) {
     }
     editor?.setModel(model)
     currentFilePath.value = fp
+    cleanContent = model.getValue()
     modified.value = false
     tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: false })
     persistTabState()
+    try { useRecentStore().touchFile(fp, props.tab.projectId) } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: detectLanguage(fp), encoding: detectedEncoding } }))
   } catch (e) {
     console.error('Failed to open file', fp, e)
   }
@@ -225,15 +362,21 @@ async function saveCurrentFile() {
     if (model !== newModel) model.dispose()
     model = newModel
     currentFilePath.value = savePath
+    cleanContent = model.getValue()
     modified.value = false
     tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: false })
     persistTabState()
     return
   }
 
-  await window.electronAPI.writeFile(fp, content)
+  const encoding = props.tab.encoding || fileMetaStore.get(fp)?.encoding
+  await window.electronAPI.writeFile(fp, content, encoding)
+  cleanContent = content
   modified.value = false
   tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: false })
+  window.dispatchEvent(new CustomEvent('mir-notification', {
+    detail: { type: 'success', text: `Saved ${fp.split('/').pop()}` }
+  }))
 }
 
 function scheduleAutoSave() {
@@ -275,12 +418,17 @@ function onToggleWordWrapEvent() {
 
 onActivated(() => {
   editor?.focus()
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: detectLanguage(currentFilePath.value || '') } }))
 })
 
-// Watch settings — same pattern that already works for theme/fontSize
-watch(() => settingsStore.settings.theme, (t) => {
-  monaco.editor.setTheme(t === 'dark' ? 'vs-dark' : 'vs')
+onDeactivated(() => {
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: false } }))
 })
+
+  // Watch settings — same pattern that already works for theme/fontSize
+  watch(() => settingsStore.settings.theme, (t) => {
+    monaco.editor.setTheme(t === 'dark' ? 'vs-dark' : 'vs')
+  })
 watch(() => settingsStore.settings.fontSize, (s) => {
   editor?.updateOptions({ fontSize: s })
 })
@@ -306,9 +454,15 @@ onBeforeUnmount(() => {
   if (modelIsOwned) model?.dispose()
   if (autoSaveTimer !== null) clearTimeout(autoSaveTimer)
   window.removeEventListener('editor-toggle-wordwrap', onToggleWordWrapEvent)
+  window.removeEventListener('statusbar-goto-line', onStatusBarGotoLine)
+  window.removeEventListener('editor-set-language', onSetLanguage)
+  window.removeEventListener('editor-set-encoding', onSetEncoding)
+  window.removeEventListener('editor-set-line-ending', onSetLineEnding)
+  window.removeEventListener('editor-save', onEditorSave)
+  window.removeEventListener('editor-find', onEditorFind)
 })
 
-// Expose openFile so FileTreePanel / FileTreeRight can call it via template ref
+// Expose openFile so FileTreeRight can call it via template ref
 defineExpose({ openFile })
 </script>
 

@@ -3,6 +3,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { exec, execFile } from 'child_process'
 import { promisify } from 'util'
+import * as iconv from 'iconv-lite'
+import * as jschardet from 'jschardet'
 import Store from 'electron-store'
 import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess } from './pty'
 import { runGitCommand } from './git'
@@ -70,13 +72,39 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('fs:readFile', async (_e, filePath: string) => {
-    const content = await fs.promises.readFile(filePath, 'utf-8')
-    return content
+  ipcMain.handle('fs:readFile', async (_e, filePath: string, encoding?: string) => {
+    const buf = await fs.promises.readFile(filePath)
+
+    // UTF-8 BOM detection
+    const hasBom = buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF
+    if (hasBom) {
+      return { content: buf.subarray(3).toString('utf-8'), encoding: 'utf-8-bom' }
+    }
+
+    let detected = encoding
+    if (!detected) {
+      const res = jschardet.detect(buf)
+      detected = res.encoding || 'utf-8'
+      // Fallback ASCII-like detections to UTF-8 for reliability
+      if (detected.toLowerCase() === 'ascii' || detected.toLowerCase() === 'iso-8859-1') {
+        detected = 'utf-8'
+      }
+    }
+
+    const content = iconv.decode(buf, detected)
+    return { content, encoding: detected }
   })
 
-  ipcMain.handle('fs:writeFile', async (_e, filePath: string, content: string) => {
-    await fs.promises.writeFile(filePath, content, 'utf-8')
+  ipcMain.handle('fs:writeFile', async (_e, filePath: string, content: string, encoding?: string) => {
+    const enc = encoding || 'utf-8'
+    if (enc.toLowerCase() === 'utf-8-bom') {
+      const bom = Buffer.from([0xEF, 0xBB, 0xBF])
+      const body = Buffer.from(content, 'utf-8')
+      await fs.promises.writeFile(filePath, Buffer.concat([bom, body]))
+    } else {
+      const buf = iconv.encode(content, enc)
+      await fs.promises.writeFile(filePath, buf)
+    }
   })
 
   ipcMain.handle('fs:exists', async (_e, p: string) => {
@@ -148,6 +176,9 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('git:branches', (_e, cwd: string) => runGitCommand(cwd, 'branches'))
   ipcMain.handle('git:checkout', (_e, cwd: string, branch: string) => runGitCommand(cwd, 'checkout', branch))
   ipcMain.handle('git:createBranch', (_e, cwd: string, name: string) => runGitCommand(cwd, 'createBranch', name))
+  ipcMain.handle('git:stashPush', (_e, cwd: string, message: string) => runGitCommand(cwd, 'stashPush', message))
+  ipcMain.handle('git:stashPop', (_e, cwd: string) => runGitCommand(cwd, 'stashPop'))
+  ipcMain.handle('git:checkoutDiscard', (_e, cwd: string) => runGitCommand(cwd, 'checkoutDiscard'))
   ipcMain.handle('git:stageAll', (_e, cwd: string) => runGitCommand(cwd, 'stageAll'))
   ipcMain.handle('git:showFile', (_e, cwd: string, ref: string, file: string) => runGitCommand(cwd, 'showFile', `${ref}:${file}`))
 

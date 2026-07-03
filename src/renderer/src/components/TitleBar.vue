@@ -166,7 +166,7 @@ const panels = computed(() => [
   { id: 'search' as const, label: t('titlebar.search') }
 ])
 
-const leftWidthPx = computed(() => (layout.leftCollapsed ? '70px' : layout.leftWidth + 'px'))
+const leftWidthPx = computed(() => (layout.leftCollapsed ? '40px' : layout.leftWidth + 'px'))
 const rightWidthPx = computed(() => (layout.rightCollapsed ? '40px' : layout.rightWidth + 'px'))
 
 // Splitter drag
@@ -218,7 +218,7 @@ function onMouseUp() {
   border-bottom: 1px solid var(--border-color);
   -webkit-app-region: drag; flex-shrink: 0;
 }
-.tl-left { height: 100%; flex-shrink: 0; min-width: 70px; }
+.tl-left { height: 100%; flex-shrink: 0; min-width: 40px; }
 .tl-splitter {
   width: 1px; height: 100%;
   background: var(--border-color); flex-shrink: 0;

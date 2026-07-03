@@ -86,7 +86,8 @@ onMounted(async () => {
       if (staged) {
         modifiedContent = await window.electronAPI.gitShowFile(project.path, '', fp)
       } else {
-        modifiedContent = await window.electronAPI.readFile(project.path + '/' + fp)
+        const { content } = await window.electronAPI.readFile(project.path + '/' + fp)
+        modifiedContent = content
       }
     } catch { /* deleted file */ }
 
@@ -150,7 +151,35 @@ watch(() => settingsStore.settings.fontSize, (s) => {
   diffEditor?.updateOptions({ fontSize: s })
 })
 
+async function refreshDiff() {
+  const fp = props.tab.diffFilePath
+  if (!fp || !originalModel || !modifiedModel) return
+  const project = projectStore.activeProject
+  if (!project) return
+  const staged = props.tab.diffStaged ?? false
+  try {
+    let originalContent = ''
+    try { originalContent = await window.electronAPI.gitShowFile(project.path, 'HEAD', fp) } catch { /* new file */ }
+    let modifiedContent = ''
+    try {
+      if (staged) {
+        modifiedContent = await window.electronAPI.gitShowFile(project.path, '', fp)
+      } else {
+        const { content } = await window.electronAPI.readFile(project.path + '/' + fp)
+        modifiedContent = content
+      }
+    } catch { /* deleted file */ }
+    originalModel.setValue(originalContent)
+    modifiedModel.setValue(modifiedContent)
+  } catch { /* ignore */ }
+}
+
+onMounted(() => {
+  window.addEventListener('git-refreshed', refreshDiff)
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('git-refreshed', refreshDiff)
   resizeObs?.disconnect()
   diffEditor?.dispose()
   originalModel?.dispose()

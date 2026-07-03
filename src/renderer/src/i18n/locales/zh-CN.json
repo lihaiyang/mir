@@ -210,11 +210,40 @@
     "unsavedCloseRight": "右侧有 {count} 个标签存在未保存的修改，确定关闭吗？"
   },
   "commandPalette": {
-    "placeholder": "输入命令...",
-    "noResults": "没有匹配的命令",
-    "openSettings": "打开设置",
-    "toggleWordWrap": "切换编辑器自动换行"
-  },
+     "placeholder": "输入命令...",
+     "noResults": "没有匹配的命令",
+     "openSettings": "打开设置",
+     "toggleWordWrap": "切换编辑器自动换行",
+     "quickOpen": "打开文件...",
+     "search": "在项目中搜索",
+     "toggleRightPanel": "切换右侧面板",
+     "reopenClosedTab": "重新打开关闭的标签",
+     "newTerminal": "新建终端",
+     "toggleFiles": "显示文件树",
+     "toggleGit": "显示 Git 面板"
+   },
+   "quickOpen": {
+     "placeholder": "按文件名搜索...",
+     "noResults": "没有匹配的文件",
+     "recent": "最近"
+   },
+    "status": {
+      "branch": "Git 分支",
+      "lineColumn": "行:列",
+      "language": "语言",
+      "encoding": "编码",
+      "lineEnding": "换行符",
+      "selectLanguage": "选择语言",
+      "selectEncoding": "选择编码",
+      "selectLineEnding": "选择换行符",
+      "switchBranch": "切换分支",
+      "newBranchName": "新分支名称",
+      "createAndSwitch": "创建并切换",
+      "uncommittedChanges": "存在未提交更改",
+      "uncommittedChangesMessage": "当前有未提交的修改，切换到 {branch} 前如何处理？",
+      "stashAndSwitch": "Stash 后切换",
+      "discardAndSwitch": "放弃修改并切换"
+    },
   "updater": {
     "ready": "新版本 {version} 已就绪。点击立即重启生效，或退出时自动更新。",
     "restartNow": "立即重启",

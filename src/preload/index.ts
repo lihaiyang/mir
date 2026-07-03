@@ -13,8 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // File system
   readdir: (p: string) => ipcRenderer.invoke('fs:readdir', p),
-  readFile: (p: string) => ipcRenderer.invoke('fs:readFile', p),
-  writeFile: (p: string, content: string) => ipcRenderer.invoke('fs:writeFile', p, content),
+  readFile: (p: string, encoding?: string) => ipcRenderer.invoke('fs:readFile', p, encoding),
+  writeFile: (p: string, content: string, encoding?: string) => ipcRenderer.invoke('fs:writeFile', p, content, encoding),
   exists: (p: string) => ipcRenderer.invoke('fs:exists', p),
   mkdir: (p: string) => ipcRenderer.invoke('fs:mkdir', p),
   rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
@@ -54,6 +54,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gitBranches: (cwd: string) => ipcRenderer.invoke('git:branches', cwd),
   gitCheckout: (cwd: string, branch: string) => ipcRenderer.invoke('git:checkout', cwd, branch),
   gitCreateBranch: (cwd: string, name: string) => ipcRenderer.invoke('git:createBranch', cwd, name),
+  gitStashPush: (cwd: string, message: string) => ipcRenderer.invoke('git:stashPush', cwd, message),
+  gitStashPop: (cwd: string) => ipcRenderer.invoke('git:stashPop', cwd),
+  gitCheckoutDiscard: (cwd: string) => ipcRenderer.invoke('git:checkoutDiscard', cwd),
   gitShowFile: (cwd: string, ref: string, file: string) => ipcRenderer.invoke('git:showFile', cwd, ref, file),
 
   // Search (streaming)

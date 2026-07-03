@@ -93,11 +93,31 @@ export async function runGitCommand(
       return { current: b.current, all: b.all }
     }
     case 'checkout': {
-      await g.checkout(arg!)
+      const branch = arg!
+      const branches = await g.branch()
+      if (branches.all.includes(branch)) {
+        await g.checkout(branch)
+      } else if (branches.all.includes(`remotes/origin/${branch}`)) {
+        await g.checkout(['-b', branch, `origin/${branch}`])
+      } else {
+        throw new Error(`Branch not found: ${branch}`)
+      }
       return true
     }
     case 'createBranch': {
       await g.checkoutLocalBranch(arg!)
+      return true
+    }
+    case 'stashPush': {
+      await g.stash(['push', '-m', arg!])
+      return true
+    }
+    case 'stashPop': {
+      await g.stash(['pop'])
+      return true
+    }
+    case 'checkoutDiscard': {
+      await g.checkout(['--', '.'])
       return true
     }
     case 'showFile': {

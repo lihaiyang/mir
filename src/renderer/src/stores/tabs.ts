@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, nextTick } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { toPlainObject } from '../utils'
+import { useRecentStore } from './recent'
 
 export type TabType = 'terminal' | 'editor' | 'browser' | 'file' | 'diff' | 'settings'
 
@@ -19,6 +20,9 @@ export interface Tab {
   fileLine?: number
   diffFilePath?: string
   diffStaged?: boolean
+  languageOverride?: string
+  encoding?: string
+  lineEnding?: 'lf' | 'crlf'
 }
 
 // --- Split pane tree types ---
@@ -437,6 +441,15 @@ export const useTabStore = defineStore('tabs', () => {
     const idx = group.tabs.findIndex(t => t.id === tabId)
     if (idx === -1) return
 
+    const tab = group.tabs[idx]
+    try {
+      const recentStore = useRecentStore()
+      recentStore.tabClosed(
+        { type: tab.type, title: tab.title, terminalCwd: tab.terminalCwd, browserUrl: tab.browserUrl, filePath: tab.filePath },
+        projectId
+      )
+    } catch { /* ignore if store not loaded */ }
+
     group.tabs.splice(idx, 1)
     if (group.activeTabId === tabId) {
       group.activeTabId =
@@ -573,6 +586,7 @@ export const useTabStore = defineStore('tabs', () => {
     getProjectTabs,
     getActiveTabId,
     getActiveTab,
+    findTabGroup,
     load,
     doPersist,
     splitPane,

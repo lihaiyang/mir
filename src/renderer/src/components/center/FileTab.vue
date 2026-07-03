@@ -5,11 +5,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, onActivated, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, onActivated, onDeactivated, watch } from 'vue'
 import * as monaco from 'monaco-editor'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
+import { useRecentStore } from '../../stores/recent'
+import { useFileMetaStore } from '../../stores/fileMeta'
 import type { Tab } from '../../stores/tabs'
 
 const props = defineProps<{ tab: Tab }>()
@@ -17,6 +19,7 @@ const props = defineProps<{ tab: Tab }>()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const projectStore = useProjectStore()
+const fileMetaStore = useFileMetaStore()
 
 const monacoEl = ref<HTMLDivElement | null>(null)
 const modified = ref(false)
@@ -28,6 +31,7 @@ let editor: monaco.editor.IStandaloneCodeEditor | null = null
 let model: monaco.editor.ITextModel | null = null
 let resizeObs: ResizeObserver | null = null
 let autoSaveTimer: number | null = null
+let cleanContent = ''
 // Track the live word-wrap state per editor instance so toggle is reliable.
 // (Monaco's getOption returns the string value, but comparing against the
 // internal enum is fragile — we track it ourselves instead.)
@@ -36,25 +40,106 @@ let currentWordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded' = 'on'
 onMounted(async () => {
   if (!filePath) return
   try {
-    const content = await window.electronAPI.readFile(filePath)
+    const encoding = props.tab.encoding || fileMetaStore.get(filePath)?.encoding
+    const { content, encoding: detectedEncoding } = await window.electronAPI.readFile(filePath, encoding)
+    if (!props.tab.encoding && detectedEncoding) {
+      tabStore.updateTab(props.tab.projectId, props.tab.id, { encoding: detectedEncoding })
+    }
     initEditor(content)
+    try { useRecentStore().touchFile(filePath, props.tab.projectId) } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: detectLanguage(filePath), encoding: detectedEncoding } }))
   } catch (e) {
     console.error('Failed to open file', filePath, e)
   }
+  window.addEventListener('statusbar-goto-line', onStatusBarGotoLine)
+  window.addEventListener('editor-set-language', onSetLanguage)
+  window.addEventListener('editor-set-encoding', onSetEncoding)
+  window.addEventListener('editor-set-line-ending', onSetLineEnding)
+  window.addEventListener('editor-save', onEditorSave)
+  window.addEventListener('editor-find', onEditorFind)
 })
+
+function onStatusBarGotoLine() {
+  editor?.getAction('editor.action.gotoLine')?.run()
+}
+
+function onSetLanguage(e: Event) {
+  const lang = (e as CustomEvent).detail?.language
+  if (!lang || !model) return
+  monaco.editor.setModelLanguage(model, lang)
+  tabStore.updateTab(props.tab.projectId, props.tab.id, { languageOverride: lang })
+  fileMetaStore.set(filePath, { languageOverride: lang })
+  window.dispatchEvent(new CustomEvent('statusbar-editor', {
+    detail: { active: true, language: lang, encoding: props.tab.encoding || 'utf-8' }
+  }))
+}
+
+async function onSetEncoding(e: Event) {
+  const encoding = (e as CustomEvent).detail?.encoding
+  if (!encoding) return
+  try {
+    const { content } = await window.electronAPI.readFile(filePath, encoding)
+    model?.setValue(content)
+    tabStore.updateTab(props.tab.projectId, props.tab.id, { encoding })
+    fileMetaStore.set(filePath, { encoding })
+    window.dispatchEvent(new CustomEvent('statusbar-editor', {
+      detail: { active: true, language: props.tab.languageOverride || detectLanguage(filePath), encoding }
+    }))
+  } catch (err) {
+    window.dispatchEvent(new CustomEvent('mir-notification', {
+      detail: { type: 'error', text: `Failed to reload file with ${encoding}` }
+    }))
+  }
+}
+
+function onSetLineEnding(e: Event) {
+  const le = (e as CustomEvent).detail?.lineEnding
+  if (!le || !model) return
+  const eol = le === 'crlf'
+    ? monaco.editor.EndOfLineSequence.CRLF
+    : monaco.editor.EndOfLineSequence.LF
+  model.setEOL(eol)
+  tabStore.updateTab(props.tab.projectId, props.tab.id, { lineEnding: le })
+  fileMetaStore.set(filePath, { lineEnding: le })
+  window.dispatchEvent(new CustomEvent('statusbar-editor', {
+    detail: { active: true, language: props.tab.languageOverride || detectLanguage(filePath), lineEnding: le, encoding: props.tab.encoding || 'utf-8' }
+  }))
+}
+
+function onEditorSave(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.tabId !== props.tab.id) return
+  save()
+}
+
+function onEditorFind(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.tabId !== props.tab.id) return
+  editor?.getAction('actions.find')?.run()
+}
 
 function initEditor(content: string) {
   if (!monacoEl.value) return
 
-  const lang = detectLanguage(filePath)
+  const lang = props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride || detectLanguage(filePath)
   const uri = monaco.Uri.file(filePath)
   const existing = monaco.editor.getModel(uri)
   if (existing) {
     model = existing
     if (existing.getValue() !== content) existing.setValue(content)
+    if (props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride) {
+      monaco.editor.setModelLanguage(model, props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride!)
+    }
   } else {
     model = monaco.editor.createModel(content, lang, uri)
   }
+
+  const le = props.tab.lineEnding || fileMetaStore.get(filePath)?.lineEnding
+  if (le && model) {
+    model.setEOL(le === 'crlf' ? monaco.editor.EndOfLineSequence.CRLF : monaco.editor.EndOfLineSequence.LF)
+  }
+
+  cleanContent = model.getValue()
 
   editor = monaco.editor.create(monacoEl.value, {
     model,
@@ -73,14 +158,17 @@ function initEditor(content: string) {
   })
 
   editor.onDidChangeModelContent(() => {
-    if (!modified.value) {
-      modified.value = true
-      tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: true })
+    const dirty = model.getValue() !== cleanContent
+    if (dirty !== modified.value) {
+      modified.value = dirty
+      tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: dirty })
     }
-    scheduleAutoSave()
+    if (dirty) scheduleAutoSave()
   })
 
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save())
+  editor.onDidChangeCursorPosition((e) => {
+    window.dispatchEvent(new CustomEvent('statusbar-cursor', { detail: { line: e.position.lineNumber, column: e.position.column } }))
+  })
 
   // Ctrl+Shift+P → open the global command palette instead of Monaco's built-in one
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
@@ -145,9 +233,14 @@ function detectLanguage(fp: string): string {
 async function save() {
   if (!model) return
   const content = model.getValue()
-  await window.electronAPI.writeFile(filePath, content)
+  const encoding = props.tab.encoding || fileMetaStore.get(filePath)?.encoding
+  await window.electronAPI.writeFile(filePath, content, encoding)
+  cleanContent = content
   modified.value = false
   tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: false })
+  window.dispatchEvent(new CustomEvent('mir-notification', {
+    detail: { type: 'success', text: `Saved ${filePath.split('/').pop()}` }
+  }))
 }
 
 function scheduleAutoSave() {
@@ -181,6 +274,11 @@ watch(() => props.tab.fileLine, (line) => {
 
 onActivated(() => {
   editor?.focus()
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: true, language: detectLanguage(filePath) } }))
+})
+
+onDeactivated(() => {
+  window.dispatchEvent(new CustomEvent('statusbar-editor', { detail: { active: false } }))
 })
 
 onBeforeUnmount(() => {
@@ -189,6 +287,12 @@ onBeforeUnmount(() => {
   // Don't dispose model — it may be shared by other FileTab instances
   // (e.g. split pane opens the same file). Monaco manages model cache internally.
   if (autoSaveTimer !== null) clearTimeout(autoSaveTimer)
+  window.removeEventListener('statusbar-goto-line', onStatusBarGotoLine)
+  window.removeEventListener('editor-set-language', onSetLanguage)
+  window.removeEventListener('editor-set-encoding', onSetEncoding)
+  window.removeEventListener('editor-set-line-ending', onSetLineEnding)
+  window.removeEventListener('editor-save', onEditorSave)
+  window.removeEventListener('editor-find', onEditorFind)
 })
 </script>
 

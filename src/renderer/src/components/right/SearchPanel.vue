@@ -279,7 +279,7 @@ async function doReplace() {
   const fileGroups = groupedResults.value
   for (const [relPath, matches] of Object.entries(fileGroups)) {
     const fp = joinPath(activeProject.value.path, relPath)
-    let content = await window.electronAPI.readFile(fp)
+    let { content } = await window.electronAPI.readFile(fp)
     try {
       let q = isRegex.value ? query.value : escapeRegex(query.value)
       if (wholeWord.value) q = `\\b${q}\\b`
