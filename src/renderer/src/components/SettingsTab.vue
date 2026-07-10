@@ -22,7 +22,7 @@
       </div>
 
       <!-- Content -->
-      <div class="settings-content">
+      <div class="settings-content" :class="{ 'settings-content-flush': activeSection === 'plugins' }">
         <!-- Appearance -->
         <template v-if="activeSection === 'appearance'">
           <div class="settings-group">
@@ -46,6 +46,10 @@
           <div class="settings-group settings-group-row">
             <label class="settings-label" style="flex:1">{{ $t('settings.autoUpdate') }}</label>
             <input type="checkbox" v-model="draft.autoUpdate" />
+          </div>
+          <div class="settings-group settings-group-row">
+            <label class="settings-label" style="flex:1">{{ $t('settings.showPanelIcons') }}</label>
+            <input type="checkbox" v-model="draft.showPanelIcons" />
           </div>
         </template>
 
@@ -113,6 +117,11 @@
             />
           </div>
         </template>
+
+        <!-- Plugins -->
+        <template v-if="activeSection === 'plugins'">
+          <PluginManager class="settings-plugin-manager" />
+        </template>
       </div>
     </div>
   </div>
@@ -122,6 +131,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore, type Settings } from '../stores/settings'
+import PluginManager from './PluginManager.vue'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
@@ -136,7 +146,8 @@ const sections = computed(() => [
   { id: 'editor', label: t('settings.editor') },
   { id: 'git', label: t('settings.git') },
   { id: 'browser', label: t('settings.browser') },
-  { id: 'shortcuts', label: t('settings.shortcuts') }
+  { id: 'shortcuts', label: t('settings.shortcuts') },
+  { id: 'plugins', label: t('plugins.title') }
 ])
 const activeSection = ref('appearance')
 
@@ -288,5 +299,12 @@ function shortcutLabel(key: string): string {
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   border-radius: 3px;
+}
+.settings-content-flush {
+  padding: 0;
+  overflow: hidden;
+}
+.settings-plugin-manager {
+  height: 100%;
 }
 </style>

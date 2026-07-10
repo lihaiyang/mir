@@ -10,6 +10,7 @@ import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess } 
 import { runGitCommand } from './git'
 import { startSearch, cancelSearch } from './search'
 import { checkForUpdateNow, applyUpdate, setAutoUpdate } from './updater'
+import { listPluginsForRenderer, setPluginEnabled, setSharedModuleKeys, installPluginFromDir, uninstallPlugin, getPluginsDirForRenderer, installPluginFromGit } from './plugins'
 
 const execAsync = promisify(exec)
 
@@ -204,5 +205,29 @@ export function setupIpcHandlers(): void {
   })
   ipcMain.handle('updater:setAutoUpdate', (_e, enabled: boolean) => {
     setAutoUpdate(enabled)
+  })
+
+  // --- Plugins ---
+  ipcMain.handle('plugin:set-shared-keys', (_e, moduleName: string, keys: string[]) => {
+    setSharedModuleKeys(moduleName, keys)
+  })
+  ipcMain.handle('plugin:list', () => listPluginsForRenderer())
+  ipcMain.handle('plugin:enable', (_e, pluginId: string) => {
+    setPluginEnabled(pluginId, true)
+  })
+  ipcMain.handle('plugin:disable', (_e, pluginId: string) => {
+    setPluginEnabled(pluginId, false)
+  })
+  ipcMain.handle('plugin:install', (_e, srcDir: string) => {
+    return installPluginFromDir(srcDir)
+  })
+  ipcMain.handle('plugin:uninstall', (_e, pluginId: string) => {
+    return uninstallPlugin(pluginId)
+  })
+  ipcMain.handle('plugin:plugins-dir', () => {
+    return getPluginsDirForRenderer()
+  })
+  ipcMain.handle('plugin:install-git', async (_e, gitUrl: string, subPath: string) => {
+    return installPluginFromGit(gitUrl, subPath)
   })
 }

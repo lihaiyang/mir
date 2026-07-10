@@ -110,7 +110,8 @@
     "wordWrapOn": "On",
     "wordWrapColumn": "Column",
     "wordWrapBounded": "Bounded",
-    "autoUpdate": "Auto Update"
+    "autoUpdate": "Auto Update",
+    "showPanelIcons": "Show Panel Icons"
   },
   "git": {
     "noProject": "No project selected",
@@ -220,7 +221,8 @@
      "reopenClosedTab": "Reopen Closed Tab",
      "newTerminal": "New Terminal",
      "toggleFiles": "Show File Tree",
-     "toggleGit": "Show Git Panel"
+      "toggleGit": "Show Git Panel",
+      "togglePanelIcons": "Toggle Panel Icons"
    },
    "quickOpen": {
      "placeholder": "Search files by name...",
@@ -250,5 +252,25 @@
     "onQuit": "On quit",
     "upToDate": "You're up to date.",
     "checkError": "Update check failed: {message}"
+  },
+  "plugins": {
+    "title": "Plugins",
+    "installFromFolder": "Install from Folder",
+    "installFromGit": "Install from Git",
+    "openFolder": "Open Folder",
+    "gitUrl": "Git repository URL",
+    "gitUrlPlaceholder": "https://github.com/user/repo.git",
+    "subPath": "Plugin path in repo (blank = root)",
+    "subPathPlaceholder": "plugins/my-plugin",
+    "scanning": "Cloning and installing...",
+    "noPlugins": "No plugins installed. Install one from a folder, or drop a plugin directory into the path above.",
+    "dropHint": "Drop plugin folders into:",
+    "enable": "Enable",
+    "disable": "Disable",
+    "uninstall": "Uninstall",
+    "uninstallConfirm": "Uninstall \"{name}\"? This deletes the plugin folder.",
+    "restartHint": "Changes take effect after restarting the app.",
+    "installed": "Installed: {id}. Restart to activate.",
+    "manage": "Plugins: Manage"
   }
 }

@@ -26,7 +26,7 @@
       <template v-for="tab in allTeleportTabs" :key="tab.id">
         <Teleport :to="`#pane-content-${tabToGroup[tab.id]}`" :disabled="!tabToGroup[tab.id]">
           <component
-            :is="tabComponents[tab.type]"
+            :is="getTabType(tab.type)?.component"
             :tab="tab"
             v-show="isTabVisibleInGroup(tab)"
           />
@@ -71,27 +71,15 @@ import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore, type TabType, type TreeNode } from '../../stores/tabs'
 import { matchesShortcut } from '../../utils'
+import { getTabType } from '../../plugins/registries'
 import PaneGroup from './PaneGroup.vue'
 import BrowserTab from './BrowserTab.vue'
-import TerminalTab from './TerminalTab.vue'
-import EditorTab from './EditorTab.vue'
-import FileTab from './FileTab.vue'
-import DiffTab from './DiffTab.vue'
-import SettingsTab from '../SettingsTab.vue'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
 const webPageStore = useWebPageStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
-
-const tabComponents: Record<string, any> = {
-  terminal: TerminalTab,
-  editor: EditorTab,
-  file: FileTab,
-  diff: DiffTab,
-  settings: SettingsTab
-}
 
 // Collect all non-browser tabs across ALL projects, so KeepAlive never evicts them
 // when switching between projects

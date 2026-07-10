@@ -30,6 +30,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTabStore, type TabType } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
+import { resolveTabTitle } from '../../plugins/registries'
 import TabBar from './TabBar.vue'
 import BrowserTab from './BrowserTab.vue'
 
@@ -58,13 +59,7 @@ async function createTab(type: TabType) {
   const extra: Record<string, unknown> = {}
   if (type === 'terminal') extra.terminalCwd = projectStore.activeProject?.path
   if (type === 'browser') extra.browserUrl = 'https://www.google.com'
-  const labelMap: Record<TabType, string> = {
-    terminal: t('tab.terminal'),
-    editor: t('tab.fileEditor'),
-    browser: t('tab.browser'),
-    file: t('tab.file')
-  }
-  extra.title = labelMap[type]
+  extra.title = resolveTabTitle(type)
   await tabStore.addTab(props.projectId, type, extra as any)
 }
 </script>

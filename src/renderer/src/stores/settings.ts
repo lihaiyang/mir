@@ -15,6 +15,7 @@ export interface Settings {
   editorWordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded'
   editorWordWrapColumn: number
   autoUpdate: boolean
+  showPanelIcons: boolean
 }
 
 const defaults: Settings = {
@@ -38,7 +39,8 @@ const defaults: Settings = {
   },
   editorWordWrap: 'on',
   editorWordWrapColumn: 80,
-  autoUpdate: true
+  autoUpdate: true,
+  showPanelIcons: true
 }
 
 function log(msg: string) {

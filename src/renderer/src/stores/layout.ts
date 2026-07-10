@@ -7,7 +7,7 @@ export const useLayoutStore = defineStore('layout', () => {
   const rightWidth = ref(300)
   const leftCollapsed = ref(false)
   const rightCollapsed = ref(false)
-  const rightActivePanel = ref<'files' | 'git' | 'search'>('files')
+  const rightActivePanel = ref<string>('files')
   const rightFileTreeExpanded = ref<Record<string, Record<string, boolean>>>({})
 
   async function load() {
@@ -18,7 +18,7 @@ export const useLayoutStore = defineStore('layout', () => {
       if (typeof l.rightWidth === 'number') rightWidth.value = l.rightWidth
       if (typeof l.leftCollapsed === 'boolean') leftCollapsed.value = l.leftCollapsed
       if (typeof l.rightCollapsed === 'boolean') rightCollapsed.value = l.rightCollapsed
-      if (l.rightActivePanel === 'files' || l.rightActivePanel === 'git' || l.rightActivePanel === 'search') rightActivePanel.value = l.rightActivePanel
+      if (typeof l.rightActivePanel === 'string') rightActivePanel.value = l.rightActivePanel
       if (l.rightFileTreeExpanded) rightFileTreeExpanded.value = l.rightFileTreeExpanded as Record<string, Record<string, boolean>>
     }
   }

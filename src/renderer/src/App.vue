@@ -22,7 +22,7 @@
       <!-- Right pane -->
       <div
         class="right-pane"
-        :style="layout.rightCollapsed ? { width: '40px' } : { width: layout.rightWidth + 'px' }"
+        :style="layout.rightCollapsed ? { width: '32px' } : { width: layout.rightWidth + 'px' }"
       >
         <RightPane />
       </div>
@@ -61,6 +61,7 @@ import StatusBar from './components/StatusBar.vue'
 import NotificationToast from './components/NotificationToast.vue'
 import QuickOpenModal from './components/QuickOpenModal.vue'
 import { registerCommand } from './composables/useCommandPalette'
+import { initRendererPlugins } from './plugins/loader'
 
 const { locale, t } = useI18n()
 const layout = useLayoutStore()
@@ -89,6 +90,7 @@ onMounted(async () => {
   window.electronAPI.setAutoUpdate(settingsStore.settings.autoUpdate).catch(() => {})
   setupShortcuts()
   registerBuiltinCommands()
+  await initRendererPlugins()
 
   // All stores loaded: notify status bar to initialize from current active tab
   window.dispatchEvent(new CustomEvent('statusbar-init'))
@@ -160,6 +162,11 @@ function openSettings() {
   tabStore.addTab(projectStore.activeProject.id, 'settings')
 }
 
+function openPluginManager() {
+  if (!projectStore.activeProject) return
+  tabStore.addTab(projectStore.activeProject.id, 'plugin-manager')
+}
+
 function registerBuiltinCommands() {
   const s = settingsStore.settings.shortcuts
   registerCommand({
@@ -167,6 +174,11 @@ function registerBuiltinCommands() {
     label: t('commandPalette.openSettings'),
     keybinding: s.settings,
     run: () => { openSettings() }
+  })
+  registerCommand({
+    id: 'mir.plugins',
+    label: t('plugins.manage'),
+    run: () => { openPluginManager() }
   })
   registerCommand({
     id: 'editor.toggleWordWrap',
@@ -217,6 +229,13 @@ function registerBuiltinCommands() {
     id: 'mir.toggleGit',
     label: t('commandPalette.toggleGit'),
     run: () => { layout.rightActivePanel = 'git'; layout.rightCollapsed = false; layout.persist() }
+  })
+  registerCommand({
+    id: 'mir.togglePanelIcons',
+    label: t('commandPalette.togglePanelIcons'),
+    run: () => {
+      settingsStore.update({ showPanelIcons: !settingsStore.settings.showPanelIcons })
+    }
   })
 }
 

@@ -90,6 +90,7 @@ import { useI18n } from 'vue-i18n'
 import { useTabStore, type Tab, type TabType } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
 import { useContextMenu } from '../../composables/useContextMenu'
+import { resolveTabIcon, resolveTabTitle } from '../../plugins/registries'
 
 const props = defineProps<{
   projectId: string
@@ -208,26 +209,14 @@ function onDrop(e: DragEvent) {
 }
 
 function tabIcon(type: TabType): string {
-  switch (type) {
-    case 'terminal': return '⬛'
-    case 'editor': return '📝'
-    case 'browser': return '🌐'
-    case 'file': return '📄'
-    case 'diff': return '🔀'
-  }
+  return resolveTabIcon(type)
 }
 
 async function createTab(type: TabType) {
   const extra: Partial<Tab> = {}
   if (type === 'terminal') extra.terminalCwd = projectStore.activeProject?.path
   if (type === 'browser') extra.browserUrl = 'https://www.google.com'
-  const labelMap: Record<TabType, string> = {
-    terminal: t('tab.terminal'),
-    editor: t('tab.fileEditor'),
-    browser: t('tab.browser'),
-    file: t('tab.file')
-  }
-  extra.title = labelMap[type]
+  extra.title = resolveTabTitle(type)
   await tabStore.addTab(props.projectId, type, extra)
 }
 

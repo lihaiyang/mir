@@ -110,7 +110,8 @@
     "wordWrapOn": "开启",
     "wordWrapColumn": "固定列宽",
     "wordWrapBounded": "视口边界",
-    "autoUpdate": "自动更新"
+    "autoUpdate": "自动更新",
+    "showPanelIcons": "显示面板图标"
   },
   "git": {
     "noProject": "没有选中的项目",
@@ -220,7 +221,8 @@
      "reopenClosedTab": "重新打开关闭的标签",
      "newTerminal": "新建终端",
      "toggleFiles": "显示文件树",
-     "toggleGit": "显示 Git 面板"
+      "toggleGit": "显示 Git 面板",
+      "togglePanelIcons": "切换面板图标"
    },
    "quickOpen": {
      "placeholder": "按文件名搜索...",
@@ -250,5 +252,25 @@
     "onQuit": "退出时更新",
     "upToDate": "已是最新版本。",
     "checkError": "检查更新失败：{message}"
+  },
+  "plugins": {
+    "title": "插件",
+    "installFromFolder": "从文件夹安装",
+    "installFromGit": "从 Git 安装",
+    "openFolder": "打开文件夹",
+    "gitUrl": "Git 仓库地址",
+    "gitUrlPlaceholder": "https://github.com/user/repo.git",
+    "subPath": "插件在仓库中的路径（留空=根目录）",
+    "subPathPlaceholder": "plugins/my-plugin",
+    "scanning": "正在克隆并安装...",
+    "noPlugins": "未安装任何插件。从文件夹安装一个，或将插件目录放到上方路径中。",
+    "dropHint": "将插件文件夹放入：",
+    "enable": "启用",
+    "disable": "禁用",
+    "uninstall": "卸载",
+    "uninstallConfirm": "卸载「{name}」？将删除插件文件夹。",
+    "restartHint": "更改需重启应用后生效。",
+    "installed": "已安装：{id}。重启后生效。",
+    "manage": "插件：管理"
   }
 }

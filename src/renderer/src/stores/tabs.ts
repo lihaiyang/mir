@@ -2,9 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, nextTick } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { toPlainObject } from '../utils'
+import { resolveTabTitle } from '../plugins/registries'
 import { useRecentStore } from './recent'
 
-export type TabType = 'terminal' | 'editor' | 'browser' | 'file' | 'diff' | 'settings'
+export type BuiltinTabType = 'terminal' | 'editor' | 'browser' | 'file' | 'diff' | 'settings'
+export type TabType = BuiltinTabType | (string & {})
 
 export interface Tab {
   id: string
@@ -621,5 +623,7 @@ function defaultTitle(type: TabType): string {
       return 'Diff'
     case 'settings':
       return 'Settings'
+    default:
+      return resolveTabTitle(type)
   }
 }

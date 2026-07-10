@@ -1,0 +1,10 @@
+{
+  "id": "com.mir.agent-manager",
+  "name": "Agent Manager",
+  "version": "0.1.0",
+  "description": "Manage opencode and pi coding agent configs, skills, and sessions",
+  "author": "MIR",
+  "main": "main.js",
+  "mainMain": "main-main.js",
+  "engines": { "mir": "^0.2.2" }
+}

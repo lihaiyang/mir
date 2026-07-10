@@ -90,5 +90,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_e: Electron.IpcRendererEvent, event: UpdaterEvent) => cb(event)
     ipcRenderer.on('updater:event', listener)
     return () => ipcRenderer.removeListener('updater:event', listener)
+  },
+
+  // Plugins
+  pluginSetSharedKeys: (moduleName: string, keys: string[]) => ipcRenderer.invoke('plugin:set-shared-keys', moduleName, keys),
+  pluginList: () => ipcRenderer.invoke('plugin:list'),
+  pluginEnable: (id: string) => ipcRenderer.invoke('plugin:enable', id),
+  pluginDisable: (id: string) => ipcRenderer.invoke('plugin:disable', id),
+  pluginInstall: (srcDir: string) => ipcRenderer.invoke('plugin:install', srcDir),
+  pluginInstallGit: (gitUrl: string, subPath: string) => ipcRenderer.invoke('plugin:install-git', gitUrl, subPath),
+  pluginUninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id),
+  pluginPluginsDir: () => ipcRenderer.invoke('plugin:plugins-dir'),
+  pluginInvoke: (pluginId: string, channel: string, ...args: unknown[]) => ipcRenderer.invoke(`plugin:${pluginId}:${channel}`, ...args),
+  pluginSend: (pluginId: string, channel: string, ...args: unknown[]) => ipcRenderer.send(`plugin:${pluginId}:${channel}`, ...args),
+  pluginOn: (pluginId: string, channel: string, cb: (...args: unknown[]) => void) => {
+    const fullChannel = `plugin:${pluginId}:${channel}`
+    const listener = (_e: Electron.IpcRendererEvent, ...args: unknown[]) => cb(...args)
+    ipcRenderer.on(fullChannel, listener)
+    return () => ipcRenderer.removeListener(fullChannel, listener)
   }
 })

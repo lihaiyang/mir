@@ -59,34 +59,8 @@
     <div class="tl-splitter" />
 
     <div class="tl-right" :style="{ width: rightWidthPx }">
-      <template v-if="layout.rightCollapsed">
-        <button class="tl-btn" :title="$t('common.expand')" @click="layout.rightCollapsed = false; layout.persist()">«</button>
-      </template>
-      <template v-else>
-        <div class="tl-right-tabs">
-          <div v-for="panel in panels" :key="panel.id"
-            class="tl-right-tab" :class="{ active: layout.rightActivePanel === panel.id }"
-            @click="layout.rightActivePanel = panel.id; layout.persist()"
-          >{{ panel.label }}</div>
-        </div>
-        <button class="tl-btn" :title="$t('common.collapse')" @click="layout.rightCollapsed = true; layout.persist()">»</button>
-      </template>
-      <!-- Settings -->
+      <div class="tl-right-spacer" />
       <button class="tl-btn" :title="$t('common.settings')" @click="openSettings">⚙</button>
-      <!-- Language quick-toggle: always visible regardless of right-pane collapse state -->
-      <div class="tl-lang-toggle">
-        <span
-          class="tl-lang-btn"
-          :class="{ active: currentLanguage === 'en' }"
-          @click="setLanguage('en')"
-        >EN</span>
-        <span class="tl-lang-sep">|</span>
-        <span
-          class="tl-lang-btn"
-          :class="{ active: currentLanguage === 'zh-CN' }"
-          @click="setLanguage('zh-CN')"
-        >中</span>
-      </div>
     </div>
   </div>
 </template>
@@ -98,27 +72,17 @@ import { useLayoutStore } from '../stores/layout'
 import { useProjectStore } from '../stores/projects'
 import { useTabStore } from '../stores/tabs'
 import { useWebPageStore, standaloneNavBus } from '../stores/webPages'
-import { useSettingsStore } from '../stores/settings'
 import TabBar from './center/TabBar.vue'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const layout = useLayoutStore()
 const projectStore = useProjectStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
-const settingsStore = useSettingsStore()
 
 function openSettings() {
   if (!projectStore.activeProject) return
   tabStore.addTab(projectStore.activeProject.id, 'settings')
-}
-
-const currentLanguage = computed(() => settingsStore.settings.language)
-
-function setLanguage(lang: 'en' | 'zh-CN') {
-  if (lang === currentLanguage.value) return
-  settingsStore.update({ language: lang })
-  locale.value = lang
 }
 
 const activeProject = computed(() => projectStore.activeProject)
@@ -160,14 +124,8 @@ const firstRowSplitters = computed(() => {
   return tabStore.getFirstRowSplitters(activeProject.value.id)
 })
 
-const panels = computed(() => [
-  { id: 'files' as const, label: t('titlebar.files') },
-  { id: 'git' as const, label: t('titlebar.git') },
-  { id: 'search' as const, label: t('titlebar.search') }
-])
-
 const leftWidthPx = computed(() => (layout.leftCollapsed ? '40px' : layout.leftWidth + 'px'))
-const rightWidthPx = computed(() => (layout.rightCollapsed ? '40px' : layout.rightWidth + 'px'))
+const rightWidthPx = computed(() => (layout.rightCollapsed ? '32px' : layout.rightWidth + 'px'))
 
 // Splitter drag
 let resizeNodeId: string | null = null
@@ -301,17 +259,7 @@ function onMouseUp() {
 
 /* ── Right panel ── */
 .tl-right { display: flex; align-items: center; flex-shrink: 0; height: 100%; }
-.tl-right-tabs { display: flex; align-items: center; height: 100%; flex: 1; overflow: hidden; }
-.tl-right-tab {
-  padding: 0 10px; height: 100%;
-  display: flex; align-items: center;
-  font-size: 11px; font-weight: 600; cursor: pointer;
-  color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
-  -webkit-app-region: no-drag;
-}
-.tl-right-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
-.tl-right-tab.active { color: var(--text-primary); border-bottom: 2px solid var(--text-accent); }
+.tl-right-spacer { flex: 1; -webkit-app-region: drag; }
 .tl-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
@@ -319,33 +267,4 @@ function onMouseUp() {
   -webkit-app-region: no-drag;
 }
 .tl-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-
-/* Language quick-toggle */
-.tl-lang-toggle {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 6px;
-  flex-shrink: 0;
-  -webkit-app-region: no-drag;
-  border-left: 1px solid var(--border-color);
-  height: 100%;
-}
-.tl-lang-btn {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 4px;
-  border-radius: 3px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  letter-spacing: 0.04em;
-  user-select: none;
-}
-.tl-lang-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
-.tl-lang-btn.active { color: var(--text-accent); }
-.tl-lang-sep {
-  font-size: 10px;
-  color: var(--border-color);
-  user-select: none;
-}
 </style>

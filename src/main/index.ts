@@ -15,6 +15,7 @@ if (process.env.ELECTRON_RENDERER_URL) {
 
 import { setupIpcHandlers } from './ipc'
 import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, openReleasesPage, UpdaterEvent } from './updater'
+import { registerPluginScheme, registerPluginProtocol, initMainPlugins } from './plugins'
 
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
@@ -23,6 +24,9 @@ const ICON_PATH = join(__dirname, '../../build/icon.png')
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('no-sandbox')
 }
+
+// Register the mir-plugin:// scheme before app ready so the protocol is available
+registerPluginScheme()
 
 function setupBrowserSession(): void {
   // Pre-create the partition session to ensure service worker storage works
@@ -140,6 +144,12 @@ function createWindow(): void {
   })
   mainWindow = win
 
+  // Forward renderer console to terminal for debugging plugin loading
+  win.webContents.on('console-message', (_e, level, message) => {
+    const tag = ['LOG', 'WARN', 'ERROR'][level] ?? 'LOG'
+    console.log(`[renderer:${tag}] ${message}`)
+  })
+
   // Inject the webview-specific preload so navigator.serviceWorker.register
   // is patched before any page script in the embedded browser runs.
   win.webContents.on('will-attach-webview', (_event, webPreferences) => {
@@ -160,7 +170,7 @@ app.on('web-contents-created', (_event, webContents) => {
   }
 })
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (process.platform === 'darwin' && existsSync(ICON_PATH)) {
     app.dock.setIcon(nativeImage.createFromPath(ICON_PATH))
   }
@@ -168,6 +178,8 @@ app.whenReady().then(() => {
   setupBrowserSession()
   setupMenu()
   setupIpcHandlers()
+  registerPluginProtocol()
+  await initMainPlugins()
   createWindow()
   initUpdater(() => mainWindow)
   setUpdaterStateListener(updateMenuForState)
