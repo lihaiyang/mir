@@ -111,7 +111,8 @@
     "wordWrapColumn": "固定列宽",
     "wordWrapBounded": "视口边界",
     "autoUpdate": "自动更新",
-    "showPanelIcons": "显示面板图标"
+    "showPanelIcons": "显示面板图标",
+    "markdownPreview": "Markdown 预览"
   },
   "git": {
     "noProject": "没有选中的项目",
@@ -208,7 +209,9 @@
   "editor": {
     "unsavedCloseConfirm": "「{name}」有未保存的修改，确定关闭吗？",
     "unsavedCloseOthers": "有 {count} 个标签存在未保存的修改，确定关闭吗？",
-    "unsavedCloseRight": "右侧有 {count} 个标签存在未保存的修改，确定关闭吗？"
+    "unsavedCloseRight": "右侧有 {count} 个标签存在未保存的修改，确定关闭吗？",
+    "showPreview": "显示预览",
+    "hidePreview": "隐藏预览"
   },
   "commandPalette": {
      "placeholder": "输入命令...",

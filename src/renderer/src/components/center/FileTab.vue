@@ -1,19 +1,33 @@
 <template>
   <div class="file-tab">
-    <div ref="monacoEl" class="monaco-container" />
+    <div class="editor-split" :class="{ 'show-preview': isMarkdown && showPreview }">
+      <div ref="monacoEl" class="monaco-container" />
+      <div v-if="isMarkdown && showPreview" class="md-preview-pane">
+        <MarkdownPreview :content="previewContent" />
+      </div>
+    </div>
+    <button
+      v-if="isMarkdown"
+      class="preview-toggle-btn"
+      :title="showPreview ? t('editor.hidePreview') : t('editor.showPreview')"
+      @click="togglePreview"
+    >{{ showPreview ? '📊' : '📖' }}</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, onActivated, onDeactivated, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, onActivated, onDeactivated, watch, computed, nextTick } from 'vue'
 import * as monaco from 'monaco-editor'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
 import { useRecentStore } from '../../stores/recent'
 import { useFileMetaStore } from '../../stores/fileMeta'
 import type { Tab } from '../../stores/tabs'
+import MarkdownPreview from './MarkdownPreview.vue'
 
+const { t } = useI18n()
 const props = defineProps<{ tab: Tab }>()
 
 const settingsStore = useSettingsStore()
@@ -23,9 +37,12 @@ const fileMetaStore = useFileMetaStore()
 
 const monacoEl = ref<HTMLDivElement | null>(null)
 const modified = ref(false)
+const showPreview = ref(true)
+const previewContent = ref('')
 
 const filePath = props.tab.filePath || ''
 const fileName = filePath.split('/').pop() || filePath
+const isMarkdown = computed(() => filePath.endsWith('.md') || filePath.endsWith('.markdown') || filePath.endsWith('.mdx'))
 
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 let model: monaco.editor.ITextModel | null = null
@@ -141,6 +158,11 @@ function initEditor(content: string) {
 
   cleanContent = model.getValue()
 
+  showPreview.value = settingsStore.settings.markdownPreview !== false
+  if (isMarkdown.value && showPreview.value) {
+    previewContent.value = cleanContent
+  }
+
   editor = monaco.editor.create(monacoEl.value, {
     model,
     theme: settingsStore.settings.theme === 'dark' ? 'vs-dark' : 'vs',
@@ -164,6 +186,9 @@ function initEditor(content: string) {
       tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: dirty })
     }
     if (dirty) scheduleAutoSave()
+    if (isMarkdown.value && showPreview.value) {
+      previewContent.value = model?.getValue() || ''
+    }
   })
 
   editor.onDidChangeCursorPosition((e) => {
@@ -207,6 +232,14 @@ function resolveWordWrap(): 'off' | 'on' | 'wordWrapColumn' | 'bounded' {
 
 function resolveWordWrapColumn(): number {
   return settingsStore.settings.editorWordWrapColumn || 80
+}
+
+function togglePreview() {
+  showPreview.value = !showPreview.value
+  if (showPreview.value && model) {
+    previewContent.value = model.getValue()
+  }
+  nextTick(() => editor?.layout())
 }
 
 function toggleWordWrap() {
@@ -302,10 +335,44 @@ onBeforeUnmount(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
+}
+.editor-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .monaco-container {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+.md-preview-pane {
+  flex: 1;
+  min-width: 0;
+  border-left: 1px solid var(--border-color);
+  overflow: hidden;
+}
+.preview-toggle-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 </style>

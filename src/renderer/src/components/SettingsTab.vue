@@ -51,6 +51,10 @@
             <label class="settings-label" style="flex:1">{{ $t('settings.showPanelIcons') }}</label>
             <input type="checkbox" v-model="draft.showPanelIcons" />
           </div>
+          <div class="settings-group settings-group-row">
+            <label class="settings-label" style="flex:1">{{ $t('settings.markdownPreview') }}</label>
+            <input type="checkbox" v-model="draft.markdownPreview" />
+          </div>
         </template>
 
         <!-- Terminal -->

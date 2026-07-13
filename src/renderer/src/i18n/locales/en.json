@@ -111,7 +111,8 @@
     "wordWrapColumn": "Column",
     "wordWrapBounded": "Bounded",
     "autoUpdate": "Auto Update",
-    "showPanelIcons": "Show Panel Icons"
+    "showPanelIcons": "Show Panel Icons",
+    "markdownPreview": "Markdown Preview"
   },
   "git": {
     "noProject": "No project selected",
@@ -208,7 +209,9 @@
   "editor": {
     "unsavedCloseConfirm": "\"{name}\" has unsaved changes. Close anyway?",
     "unsavedCloseOthers": "{count} tab(s) have unsaved changes. Close anyway?",
-    "unsavedCloseRight": "{count} tab(s) to the right have unsaved changes. Close anyway?"
+    "unsavedCloseRight": "{count} tab(s) to the right have unsaved changes. Close anyway?",
+    "showPreview": "Show Preview",
+    "hidePreview": "Hide Preview"
   },
   "commandPalette": {
      "placeholder": "Type a command...",

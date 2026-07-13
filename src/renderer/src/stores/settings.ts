@@ -16,6 +16,7 @@ export interface Settings {
   editorWordWrapColumn: number
   autoUpdate: boolean
   showPanelIcons: boolean
+  markdownPreview: boolean
 }
 
 const defaults: Settings = {
@@ -40,7 +41,8 @@ const defaults: Settings = {
   editorWordWrap: 'on',
   editorWordWrapColumn: 80,
   autoUpdate: true,
-  showPanelIcons: true
+  showPanelIcons: true,
+  markdownPreview: true
 }
 
 function log(msg: string) {

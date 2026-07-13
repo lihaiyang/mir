@@ -42,6 +42,7 @@
     "vue-tsc": "^2.2.10"
   },
   "dependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@vueuse/core": "^12.8.2",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
@@ -51,6 +52,7 @@
     "iconv-lite": "^0.7.2",
     "ignore": "^7.0.5",
     "jschardet": "^3.1.4",
+    "markdown-it": "^14.3.0",
     "monaco-editor": "^0.55.0",
     "node-pty": "^1.1.0",
     "path-browserify": "^1.0.1",
