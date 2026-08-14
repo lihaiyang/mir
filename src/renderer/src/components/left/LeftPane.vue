@@ -242,8 +242,9 @@ function onItemClick(item: OrderedItem) {
     webPageStore.selectWebPage(null)
     layout.persist()
   } else {
-    // Save current state, then collapse right pane for distraction-free browsing
-    rightCollapsedSnapshot = layout.rightCollapsed
+    // Save the project's right-pane state only when actually leaving project
+    // mode; keep the snapshot intact when hopping between web page / browser.
+    if (projectStore.activeProject) rightCollapsedSnapshot = layout.rightCollapsed
     layout.rightCollapsed = true
     layout.persist()
     browserStore.deactivate()
@@ -254,7 +255,7 @@ function onItemClick(item: OrderedItem) {
 
 // Fixed browser panel: a non-removable multi-tab browser entry.
 function openBrowserPanel() {
-  rightCollapsedSnapshot = layout.rightCollapsed
+  if (projectStore.activeProject) rightCollapsedSnapshot = layout.rightCollapsed
   layout.rightCollapsed = true
   layout.persist()
   browserStore.activate()
