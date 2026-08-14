@@ -46,8 +46,15 @@
       </template>
     </div>
 
-    <!-- Fixed multi-tab browser panel -->
-    <BrowserPanel v-if="browserStore.active" />
+    <!-- Fixed multi-tab browser panel: mounted once then kept alive (hidden via
+         visibility) so its webviews survive switching to a project and back -->
+    <div
+      v-if="browserPanelMounted"
+      class="browser-panel-host"
+      :class="{ 'browser-panel-hidden': !browserStore.active }"
+    >
+      <BrowserPanel />
+    </div>
 
     <!-- Project view: shown when no web page / browser panel is selected -->
     <template v-if="!browserStore.active && !selectedWebPage">
@@ -113,6 +120,14 @@ const webPageStore = useWebPageStore()
 const browserStore = useBrowserStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
+
+// Mount the browser panel lazily, then keep it alive across project switches.
+// If it were unmounted (v-if) its <webview> guests would be destroyed, forcing a
+// fresh reload on return — which lets SSO/redirects jump to a different page.
+const browserPanelMounted = ref(browserStore.active)
+watch(() => browserStore.active, (v) => {
+  if (v) browserPanelMounted.value = true
+})
 
 // Collect all non-browser tabs across ALL projects, so KeepAlive never evicts them
 // when switching between projects
@@ -535,6 +550,17 @@ async function openFolder() {
   inset: 0;
   display: flex;
   flex-direction: column;
+  pointer-events: none;
+}
+
+/* Browser panel host: visibility-hidden (not display:none) so webviews keep
+   their compositor state when the user switches to a project and back. */
+.browser-panel-host {
+  position: absolute;
+  inset: 0;
+}
+.browser-panel-host.browser-panel-hidden {
+  visibility: hidden;
   pointer-events: none;
 }
 /* Each web page gets its own absolutely-positioned slot */

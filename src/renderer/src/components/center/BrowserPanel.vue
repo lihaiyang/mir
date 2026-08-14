@@ -46,8 +46,10 @@
           allowpopups
           webpreferences="contextIsolation=yes"
           partition="persist:browser"
+          @will-navigate="(e) => onWillNavigate(tab.id, e)"
+          @did-redirect-navigation="(e) => onRedirectNavigation(tab.id, e)"
           @did-navigate="(e) => onNavigated(tab.id, e)"
-          @did-navigate-in-page="(e) => onNavigated(tab.id, e)"
+          @did-navigate-in-page="(e) => onNavigatedInPage(tab.id, e)"
           @did-start-loading="() => onStartLoading(tab.id)"
           @did-stop-loading="() => onStopLoading(tab.id)"
           @page-title-updated="(e) => onTitleUpdated(tab.id, e)"
@@ -105,10 +107,12 @@ function state(id: string) {
 const activeState = computed(() => activeTab.value ? state(activeTab.value.id) : { canGoBack: false, canGoForward: false, isLoading: false })
 
 const addrBar = ref('')
-watch(activeTabId, (id) => {
-  const tab = tabs.value.find(t => t.id === id)
-  addrBar.value = tab?.url ?? ''
-}, { immediate: true })
+watch(() => activeTab.value?.url, (u) => { addrBar.value = u ?? '' })
+
+// Tabs currently mid server-redirect: their `did-navigate` must NOT overwrite the
+// intended (pre-redirect) URL — otherwise SSO/host wrappers like
+// oa.neixin.cn/task-new?hostdomain=… would hijack the address bar.
+const redirecting = new Set<string>()
 
 function normalizeUrl(raw: string): string {
   let u = raw.trim()
@@ -120,8 +124,11 @@ function normalizeUrl(raw: string): string {
 }
 
 function navigate(tabId: string, url: string) {
-  const wv = webviews[tabId]
-  if (wv) wv.loadURL(normalizeUrl(url))
+  const u = normalizeUrl(url)
+  // Record the URL the user asked for as the display/persisted URL before loading;
+  // redirects will not overwrite it.
+  browserStore.updateTab(tabId, { url: u })
+  webviews[tabId]?.loadURL(u)
 }
 
 function navigateTo() {
@@ -131,21 +138,51 @@ function navigateTo() {
 
 function goBack() { webviews[activeTabId.value ?? '']?.goBack() }
 function goForward() { webviews[activeTabId.value ?? '']?.goForward() }
-function reload() { webviews[activeTabId.value ?? '']?.reload() }
+function reload() {
+  const id = activeTabId.value
+  if (!id) return
+  const t = tabs.value.find(t => t.id === id)
+  // Reload the intended URL (not the current redirect target) so SSO wrappers
+  // re-run their redirect chain instead of breaking.
+  if (t?.url) webviews[id]?.loadURL(t.url)
+  else webviews[id]?.reload()
+}
 function openDevTools() { webviews[activeTabId.value ?? '']?.openDevTools() }
 
 function onStartLoading(id: string) { state(id).isLoading = true }
 function onStopLoading(id: string) { state(id).isLoading = false }
 
+// Link click / location.href change — this is the user-visible intended URL.
+function onWillNavigate(id: string, e: any) {
+  const url = e?.url
+  if (url) browserStore.updateTab(id, { url })
+}
+
+// A server-side redirect happened; mark the tab so did-navigate keeps the URL.
+function onRedirectNavigation(id: string, e: any) {
+  if (e?.isMainFrame) redirecting.add(id)
+}
+
 function onNavigated(id: string, e: any) {
   const url = e?.url
   if (url) {
-    browserStore.updateTab(id, { url })
-    if (id === activeTabId.value) addrBar.value = url
+    if (redirecting.has(id)) {
+      redirecting.delete(id)
+      // Intended URL already recorded (via navigate/will-navigate); do not
+      // overwrite it with the redirect target.
+    } else {
+      browserStore.updateTab(id, { url })
+    }
   }
   const st = state(id)
   st.canGoBack = webviews[id]?.canGoBack() ?? false
   st.canGoForward = webviews[id]?.canGoForward() ?? false
+}
+
+// In-page navigation (hash change / history.pushState) — keep address bar in sync.
+function onNavigatedInPage(id: string, e: any) {
+  const url = e?.url
+  if (url && e?.isMainFrame) browserStore.updateTab(id, { url })
 }
 
 function onTitleUpdated(id: string, e: any) {
@@ -155,9 +192,7 @@ function onTitleUpdated(id: string, e: any) {
 
 // Ctrl/Cmd+R / F5 → reload the active tab only (signal from main process).
 watch(() => browserReloadBus.nonce, () => {
-  if (browserStore.active && activeTabId.value) {
-    webviews[activeTabId.value]?.reload()
-  }
+  if (browserStore.active) reload()
 })
 
 onUnmounted(() => {
