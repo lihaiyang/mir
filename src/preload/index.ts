@@ -81,6 +81,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   getPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
+  onReloadBrowser: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('shortcut:reload-browser', listener)
+    return () => ipcRenderer.removeListener('shortcut:reload-browser', listener)
+  },
+  onWebviewNewWindow: (cb: (url: string) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, url: string) => cb(url)
+    ipcRenderer.on('webview:new-window', listener)
+    return () => ipcRenderer.removeListener('webview:new-window', listener)
+  },
 
   // Updater (macOS: auto-check/download from GitHub Releases, open dmg to drag-install)
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),

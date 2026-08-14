@@ -55,6 +55,7 @@ import { useI18n } from 'vue-i18n'
 import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
 import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
+import { browserReloadBus } from '../../stores/browser'
 import { useSettingsStore } from '../../stores/settings'
 import { useContextMenu } from '../../composables/useContextMenu'
 import Icon from '../ui/Icon.vue'
@@ -138,6 +139,22 @@ function goBack() { wv.value?.goBack() }
 function goForward() { wv.value?.goForward() }
 function reload() { wv.value?.reload() }
 function openDevTools() { wv.value?.openDevTools() }
+
+// Ctrl/Cmd+R / F5 → reload only the active browser tab (signal from main process).
+watch(() => browserReloadBus.nonce, () => {
+  if (isStandalone.value) {
+    if (webPageStore.selectedWebPageId && props.tab.id === `standalone-browser-${webPageStore.selectedWebPageId}`) {
+      wv.value?.reload()
+    }
+  } else {
+    const p = projectStore.activeProject
+    if (!p || props.tab.projectId !== p.id) return
+    const gid = tabStore.getFocusedGroupId(p.id)
+    if (gid && tabStore.getGroupActiveTabId(p.id, gid) === props.tab.id) {
+      wv.value?.reload()
+    }
+  }
+})
 
 const LOG_PREFIX = '[BrowserTab]'
 

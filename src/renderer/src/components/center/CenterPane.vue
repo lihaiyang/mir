@@ -46,8 +46,11 @@
       </template>
     </div>
 
-    <!-- Project view: shown when no web page is selected -->
-    <template v-if="!selectedWebPage">
+    <!-- Fixed multi-tab browser panel -->
+    <BrowserPanel v-if="browserStore.active" />
+
+    <!-- Project view: shown when no web page / browser panel is selected -->
+    <template v-if="!browserStore.active && !selectedWebPage">
       <div v-if="!activeProject" class="welcome-screen">
         <div class="welcome-logo"><Icon name="layout" :size="44" /></div>
         <h2 class="welcome-title">{{ $t('centerPane.welcome') }}</h2>
@@ -94,17 +97,20 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../../stores/projects'
 import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
+import { useBrowserStore } from '../../stores/browser'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore, type TabType, type TreeNode } from '../../stores/tabs'
 import { matchesShortcut } from '../../utils'
 import { getTabType } from '../../plugins/registries'
 import PaneGroup from './PaneGroup.vue'
 import BrowserTab from './BrowserTab.vue'
+import BrowserPanel from './BrowserPanel.vue'
 import Icon from '../ui/Icon.vue'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
 const webPageStore = useWebPageStore()
+const browserStore = useBrowserStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 

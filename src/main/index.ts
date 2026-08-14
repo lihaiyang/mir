@@ -40,6 +40,44 @@ function setupBrowserSession(): void {
   let updaterEnabled = true
   let appMenu: Electron.Menu | null = null
 
+// Reload keys (Cmd/Ctrl+R, Cmd/Ctrl+Shift+R, F5) must NOT reload the whole
+// window — that would wipe all renderer state. We intercept them at the input
+// level and forward a targeted "reload active browser tab" signal instead.
+function isReloadShortcut(input: Electron.Input): boolean {
+  if (input.type !== 'keyDown') return false
+  if (input.key === 'F5') return true
+  const mod = process.platform === 'darwin' ? input.meta : input.control
+  if (!mod) return false
+  return input.key.toLowerCase() === 'r'
+}
+
+// View submenu WITHOUT the default reload / forceReload accelerators.
+function buildViewSubmenu(): MenuItemConstructorOptions {
+  return {
+    label: '视图',
+    submenu: [
+      { role: 'toggleDevTools', label: '开发者工具' },
+      { type: 'separator' },
+      { role: 'resetZoom', label: '实际大小' },
+      { role: 'zoomIn', label: '放大' },
+      { role: 'zoomOut', label: '缩小' },
+      { type: 'separator' },
+      { role: 'togglefullscreen', label: '全屏' }
+    ]
+  }
+}
+
+// Windows/Linux: no app-name submenu, but still need an explicit menu so the
+// Electron default (which includes Ctrl+R reload) is not used.
+function buildDefaultMenu(): void {
+  const template: MenuItemConstructorOptions[] = [
+    { label: '文件', submenu: [{ role: 'quit' }] },
+    { role: 'editMenu' },
+    buildViewSubmenu()
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
 function buildAppMenu(): void {
   if (process.platform !== 'darwin') return
   const template: MenuItemConstructorOptions[] = [
@@ -66,7 +104,7 @@ function buildAppMenu(): void {
       ]
     },
     { role: 'editMenu' },
-    { role: 'viewMenu' },
+    buildViewSubmenu(),
     { role: 'windowMenu' }
   ]
   appMenu = Menu.buildFromTemplate(template)
@@ -74,7 +112,8 @@ function buildAppMenu(): void {
 }
 
 function setupMenu(): void {
-  buildAppMenu()
+  if (process.platform === 'darwin') buildAppMenu()
+  else buildDefaultMenu()
 }
 
 function updateMenuForState(e: UpdaterEvent): void {
@@ -144,6 +183,15 @@ function createWindow(): void {
   })
   mainWindow = win
 
+  // Intercept reload shortcuts (Cmd/Ctrl+R, F5) on the host so they never
+  // reload the whole window — instead forward a targeted signal to the renderer.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (isReloadShortcut(input)) {
+      event.preventDefault()
+      win.webContents.send('shortcut:reload-browser')
+    }
+  })
+
   // Forward renderer console to terminal for debugging plugin loading
   win.webContents.on('console-message', (_e, level, message) => {
     const tag = ['LOG', 'WARN', 'ERROR'][level] ?? 'LOG'
@@ -167,6 +215,21 @@ function createWindow(): void {
 app.on('web-contents-created', (_event, webContents) => {
   if (webContents.getType() === 'webview') {
     configureWebviewSession(webContents)
+    // Same reload-shortcut interception inside embedded browser pages.
+    webContents.on('before-input-event', (event, input) => {
+      if (isReloadShortcut(input)) {
+        event.preventDefault()
+        const host = webContents.hostWebContents
+        if (host) host.send('shortcut:reload-browser')
+      }
+    })
+    // Redirect window.open / target=_blank into a new tab: deny the actual
+    // popup window and forward the URL to the renderer for routing.
+    webContents.setWindowOpenHandler(({ url }) => {
+      const host = webContents.hostWebContents
+      if (host) host.send('webview:new-window', url)
+      return { action: 'deny' }
+    })
   }
 })
 

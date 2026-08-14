@@ -4,6 +4,15 @@
     <div class="icon-bar">
       <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="14" /></div>
       <div
+        class="icon-bar-btn browser-panel-btn"
+        :class="{ active: browserStore.active }"
+        :title="$t('leftPane.browserPanel')"
+        @click="openBrowserPanel"
+      >
+        <Icon name="globe" :size="14" />
+        <span class="pin-badge"><Icon name="pin" :size="9" /></span>
+      </div>
+      <div
         v-for="item in orderedItems"
         :key="item.orderKey"
         class="icon-bar-btn"
@@ -30,6 +39,18 @@
           </div>
         </div>
       </div>
+
+    <!-- Fixed browser panel entry (pinned, non-removable) -->
+    <div
+      class="left-item browser-panel-entry"
+      :class="{ active: browserStore.active }"
+      @click="openBrowserPanel"
+    >
+      <span class="item-icon"><Icon name="globe" :size="14" /></span>
+      <span class="item-name">{{ $t('leftPane.browserPanel') }}</span>
+      <span class="pin-badge" :title="$t('leftPane.pinned')"><Icon name="pin" :size="10" /></span>
+    </div>
+    <div class="left-divider" />
 
     <div class="item-list">
       <div
@@ -147,6 +168,7 @@ import { ref, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore, type Project } from '../../stores/projects'
 import { useWebPageStore, type WebPage } from '../../stores/webPages'
+import { useBrowserStore } from '../../stores/browser'
 import { useLayoutStore } from '../../stores/layout'
 import { useTabStore } from '../../stores/tabs'
 import { useContextMenu } from '../../composables/useContextMenu'
@@ -157,6 +179,7 @@ const { t } = useI18n()
 
 const projectStore = useProjectStore()
 const webPageStore = useWebPageStore()
+const browserStore = useBrowserStore()
 const layout = useLayoutStore()
 // Remember right-pane collapse state before entering webpage mode
 let rightCollapsedSnapshot = false
@@ -214,6 +237,7 @@ function onItemClick(item: OrderedItem) {
   if (item.type === 'project') {
     // Restore right-pane state that was saved before entering webpage mode
     layout.rightCollapsed = rightCollapsedSnapshot
+    browserStore.deactivate()
     projectStore.setActiveProject((item.data as Project).id)
     webPageStore.selectWebPage(null)
     layout.persist()
@@ -222,9 +246,20 @@ function onItemClick(item: OrderedItem) {
     rightCollapsedSnapshot = layout.rightCollapsed
     layout.rightCollapsed = true
     layout.persist()
+    browserStore.deactivate()
     webPageStore.selectWebPage((item.data as WebPage).id)
     projectStore.setActiveProject(null)
   }
+}
+
+// Fixed browser panel: a non-removable multi-tab browser entry.
+function openBrowserPanel() {
+  rightCollapsedSnapshot = layout.rightCollapsed
+  layout.rightCollapsed = true
+  layout.persist()
+  browserStore.activate()
+  projectStore.setActiveProject(null)
+  webPageStore.selectWebPage(null)
 }
 
 // Drag reorder.
@@ -343,6 +378,7 @@ async function onDrop(e: DragEvent) {
     const f = files[i] as any
     const path: string = f.path
     if (path) {
+      browserStore.deactivate()
       await projectStore.addProject(path)
       webPageStore.selectWebPage(null)
     }
@@ -358,6 +394,7 @@ async function addProject() {
   showAddMenu.value = false
   const path = await window.electronAPI.openFolder()
   if (path) {
+    browserStore.deactivate()
     await projectStore.addProject(path)
     webPageStore.selectWebPage(null)
   }
@@ -422,6 +459,7 @@ async function confirmNewFolder() {
   // Remember this parent path for next time
   await window.electronAPI.storeSet('lastNewFolderParentPath', newFolderParentPath.value)
   showNewFolderModal.value = false
+  browserStore.deactivate()
   await projectStore.addProject(fullPath)
   webPageStore.selectWebPage(null)
 }
@@ -665,6 +703,33 @@ function cancelEdit() { editing.value = false }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Fixed browser panel entry */
+.browser-panel-entry { cursor: pointer; }
+.browser-panel-entry .item-icon { color: var(--text-accent); }
+.pin-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-accent);
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.icon-bar-btn .pin-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  color: var(--text-accent);
+}
+.left-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 6px 8px;
 }
 
 /* Notification blink */

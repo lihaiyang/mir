@@ -48,7 +48,10 @@
     "parentDirectory": "父目录",
     "folderName": "文件夹名称",
     "browse": "浏览",
-    "create": "创建"
+    "create": "创建",
+    "browserPanel": "浏览器",
+    "pinned": "已固定",
+    "homeProject": "主目录"
   },
   "centerPane": {
     "noProject": "没有选中的项目",
@@ -198,7 +201,9 @@
     "back": "后退",
     "forward": "前进",
     "reload": "刷新",
-    "removeBookmark": "移除书签"
+    "removeBookmark": "移除书签",
+    "newTab": "新建标签",
+    "noTabs": "暂无标签"
   },
   "agentCommands": {
     "title": "AI Agent 命令",

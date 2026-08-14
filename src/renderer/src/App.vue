@@ -47,6 +47,7 @@ import { useProjectStore } from './stores/projects'
 import { useSettingsStore } from './stores/settings'
 import { useTabStore } from './stores/tabs'
 import { useWebPageStore } from './stores/webPages'
+import { useBrowserStore, browserReloadBus } from './stores/browser'
 import { useRecentStore } from './stores/recent'
 import { useFileMetaStore } from './stores/fileMeta'
 
@@ -69,6 +70,7 @@ const projectStore = useProjectStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
+const browserStore = useBrowserStore()
 const recentStore = useRecentStore()
 const fileMetaStore = useFileMetaStore()
 
@@ -86,8 +88,12 @@ onMounted(async () => {
   await fileMetaStore.load()
   await tabStore.load()
   await webPageStore.load()
+  await browserStore.load()
+  await seedDefaults()
   settingsStore.applyTheme()
   window.electronAPI.setAutoUpdate(settingsStore.settings.autoUpdate).catch(() => {})
+  window.electronAPI.onReloadBrowser(() => { browserReloadBus.nonce++ })
+  window.electronAPI.onWebviewNewWindow(handleWebviewNewWindow)
   setupShortcuts()
   registerBuiltinCommands()
   await initRendererPlugins()
@@ -165,6 +171,37 @@ function openSettings() {
 function openPluginManager() {
   if (!projectStore.activeProject) return
   tabStore.addTab(projectStore.activeProject.id, 'plugin-manager')
+}
+
+// First-run defaults: a home-directory project + a default browser tab.
+async function seedDefaults() {
+  if (projectStore.projects.length === 0) {
+    const home = await window.electronAPI.getPath('home')
+    if (home) {
+      const p = await projectStore.addProject(home)
+      await projectStore.renameProject(p.id, t('leftPane.homeProject'))
+    }
+  }
+  if (browserStore.tabs.length === 0) {
+    browserStore.openTab()
+  }
+}
+
+// A link inside an embedded page requested a new window (target=_blank /
+// window.open). Open it as a new tab in the appropriate browser surface.
+function handleWebviewNewWindow(url: string) {
+  if (!url || url === 'about:blank') return
+  if (browserStore.active) {
+    browserStore.openTab(url)
+  } else if (webPageStore.selectedWebPageId) {
+    // From a standalone web page bookmark → open in the fixed browser panel
+    browserStore.openTab(url)
+    browserStore.activate()
+    projectStore.setActiveProject(null)
+    webPageStore.selectWebPage(null)
+  } else if (projectStore.activeProject) {
+    tabStore.addTab(projectStore.activeProject.id, 'browser', { title: '', browserUrl: url })
+  }
 }
 
 function registerBuiltinCommands() {

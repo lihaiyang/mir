@@ -1,0 +1,276 @@
+<template>
+  <div class="browser-panel">
+    <!-- Tab bar -->
+    <div class="bp-tabbar">
+      <div
+        v-for="tab in tabs"
+        :key="tab.id"
+        class="bp-tab"
+        :class="{ active: tab.id === activeTabId }"
+        @click="browserStore.setActiveTab(tab.id)"
+        @mousedown.middle="browserStore.closeTab(tab.id)"
+      >
+        <span class="bp-tab-title">{{ tab.title || tab.url || $t('browser.newTab') }}</span>
+        <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id)"><Icon name="x" :size="10" /></button>
+      </div>
+      <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab()"><Icon name="plus" :size="13" /></button>
+    </div>
+
+    <!-- Toolbar: nav + address bar -->
+    <div class="bp-toolbar">
+      <button class="icon-btn" :disabled="!activeState.canGoBack" @click="goBack" :title="$t('browser.back')"><Icon name="chevron-left" :size="13" /></button>
+      <button class="icon-btn" :disabled="!activeState.canGoForward" @click="goForward" :title="$t('browser.forward')"><Icon name="chevron-right" :size="13" /></button>
+      <button class="icon-btn" @click="reload" :title="$t('browser.reload')"><Icon :name="activeState.isLoading ? 'x' : 'refresh'" :size="13" /></button>
+      <input
+        v-model="addrBar"
+        class="bp-url-input"
+        :placeholder="$t('browser.placeholder')"
+        @keydown.enter="navigateTo"
+        @focus="($event.target as HTMLInputElement).select()"
+      />
+      <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
+    </div>
+
+    <!-- Webviews: one per tab, hidden ones keep compositor state -->
+    <div class="bp-webviews">
+      <div
+        v-for="tab in tabs"
+        :key="tab.id"
+        class="bp-webview-slot"
+        :class="{ hidden: tab.id !== activeTabId }"
+      >
+        <webview
+          :ref="(el) => setWebview(tab.id, el)"
+          class="bp-webview"
+          :src="getInitialSrc(tab.id)"
+          allowpopups
+          webpreferences="contextIsolation=yes"
+          partition="persist:browser"
+          @did-navigate="(e) => onNavigated(tab.id, e)"
+          @did-navigate-in-page="(e) => onNavigated(tab.id, e)"
+          @did-start-loading="() => onStartLoading(tab.id)"
+          @did-stop-loading="() => onStopLoading(tab.id)"
+          @page-title-updated="(e) => onTitleUpdated(tab.id, e)"
+        />
+      </div>
+
+      <div v-if="tabs.length === 0" class="bp-empty">
+        <div class="empty-icon"><Icon name="globe" :size="28" /></div>
+        <p>{{ $t('browser.noTabs') }}</p>
+        <button class="btn-primary" @click="browserStore.openTab()"><Icon name="plus" :size="13" /> {{ $t('browser.newTab') }}</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, reactive, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useBrowserStore, browserReloadBus } from '../../stores/browser'
+import { useSettingsStore } from '../../stores/settings'
+import Icon from '../ui/Icon.vue'
+
+const { t } = useI18n()
+const browserStore = useBrowserStore()
+const settingsStore = useSettingsStore()
+
+const tabs = computed(() => browserStore.tabs)
+const activeTabId = computed(() => browserStore.activeTabId)
+const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null)
+
+// Webview registry: tabId → webview element
+const webviews = reactive<Record<string, Electron.WebviewTag | null>>({})
+function setWebview(id: string, el: unknown) {
+  if (el) webviews[id] = el as Electron.WebviewTag
+  else delete webviews[id]
+}
+
+// Frozen per-tab initial src. Unlike BrowserTab, we must NOT bind :src to the
+// live `tab.url` — updating tab.url on every navigation would change :src and
+// make the webview re-navigate, causing redirects to bounce back and forth.
+const initialSrcs = reactive<Record<string, string>>({})
+function getInitialSrc(id: string): string {
+  if (!initialSrcs[id]) {
+    initialSrcs[id] = tabs.value.find(t => t.id === id)?.url ?? ''
+  }
+  return initialSrcs[id]
+}
+
+// Transient per-tab state (not persisted)
+const tabState = reactive<Record<string, { canGoBack: boolean; canGoForward: boolean; isLoading: boolean }>>({})
+function state(id: string) {
+  if (!tabState[id]) tabState[id] = { canGoBack: false, canGoForward: false, isLoading: false }
+  return tabState[id]
+}
+const activeState = computed(() => activeTab.value ? state(activeTab.value.id) : { canGoBack: false, canGoForward: false, isLoading: false })
+
+const addrBar = ref('')
+watch(activeTabId, (id) => {
+  const tab = tabs.value.find(t => t.id === id)
+  addrBar.value = tab?.url ?? ''
+}, { immediate: true })
+
+function normalizeUrl(raw: string): string {
+  let u = raw.trim()
+  if (!u.startsWith('http://') && !u.startsWith('https://') && !u.startsWith('file://')) {
+    if (u.includes('.') && !u.includes(' ')) u = 'https://' + u
+    else u = settingsStore.settings.defaultSearchEngine + encodeURIComponent(u)
+  }
+  return u
+}
+
+function navigate(tabId: string, url: string) {
+  const wv = webviews[tabId]
+  if (wv) wv.loadURL(normalizeUrl(url))
+}
+
+function navigateTo() {
+  if (!activeTab.value) return
+  navigate(activeTab.value.id, addrBar.value)
+}
+
+function goBack() { webviews[activeTabId.value ?? '']?.goBack() }
+function goForward() { webviews[activeTabId.value ?? '']?.goForward() }
+function reload() { webviews[activeTabId.value ?? '']?.reload() }
+function openDevTools() { webviews[activeTabId.value ?? '']?.openDevTools() }
+
+function onStartLoading(id: string) { state(id).isLoading = true }
+function onStopLoading(id: string) { state(id).isLoading = false }
+
+function onNavigated(id: string, e: any) {
+  const url = e?.url
+  if (url) {
+    browserStore.updateTab(id, { url })
+    if (id === activeTabId.value) addrBar.value = url
+  }
+  const st = state(id)
+  st.canGoBack = webviews[id]?.canGoBack() ?? false
+  st.canGoForward = webviews[id]?.canGoForward() ?? false
+}
+
+function onTitleUpdated(id: string, e: any) {
+  const title = e?.title
+  if (title) browserStore.updateTab(id, { title })
+}
+
+// Ctrl/Cmd+R / F5 → reload the active tab only (signal from main process).
+watch(() => browserReloadBus.nonce, () => {
+  if (browserStore.active && activeTabId.value) {
+    webviews[activeTabId.value]?.reload()
+  }
+})
+
+onUnmounted(() => {
+  for (const id of Object.keys(webviews)) delete webviews[id]
+})
+</script>
+
+<style scoped>
+.browser-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+.bp-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 6px 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.bp-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px 6px 0 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  max-width: 200px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+.bp-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.bp-tab.active { background: var(--bg-primary); color: var(--text-primary); }
+.bp-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.bp-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.bp-tab-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.bp-new-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bp-new-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.bp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; }
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.icon-btn:disabled:hover { background: none; }
+.bp-url-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-primary);
+  outline: none;
+}
+.bp-url-input:focus { border-color: var(--text-accent); }
+.bp-webviews {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.bp-webview-slot {
+  position: absolute;
+  inset: 0;
+}
+.bp-webview-slot.hidden { visibility: hidden; pointer-events: none; }
+.bp-webview { width: 100%; height: 100%; }
+.bp-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+</style>

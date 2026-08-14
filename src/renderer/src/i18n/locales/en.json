@@ -48,7 +48,10 @@
     "parentDirectory": "Parent Directory",
     "folderName": "Folder Name",
     "browse": "Browse",
-    "create": "Create"
+    "create": "Create",
+    "browserPanel": "Browser",
+    "pinned": "Pinned",
+    "homeProject": "Home"
   },
   "centerPane": {
     "noProject": "No project selected",
@@ -198,7 +201,9 @@
     "back": "Back",
     "forward": "Forward",
     "reload": "Reload",
-    "removeBookmark": "Remove Bookmark"
+    "removeBookmark": "Remove Bookmark",
+    "newTab": "New Tab",
+    "noTabs": "No tabs"
   },
   "agentCommands": {
     "title": "AI Agent Commands",

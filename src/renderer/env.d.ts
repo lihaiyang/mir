@@ -24,6 +24,7 @@ interface ElectronAPI {
   storeSet: (key: string, value: unknown) => Promise<void>
   storeDelete: (key: string) => Promise<void>
   openFolder: () => Promise<string | null>
+  openFolderAt: (defaultPath: string) => Promise<string | null>
   showSaveDialog: () => Promise<string | null>
   readdir: (p: string) => Promise<{ name: string; isDirectory: boolean; isFile: boolean }[]>
   readFile: (p: string, encoding?: string) => Promise<{ content: string; encoding: string }>
@@ -65,6 +66,8 @@ interface ElectronAPI {
   onSearchError: (cb: (id: string, message: string) => void) => () => void
   getVersion: () => Promise<string>
   getPath: (name: string) => Promise<string>
+  onReloadBrowser: (cb: () => void) => () => void
+  onWebviewNewWindow: (cb: (url: string) => void) => () => void
   checkForUpdates: () => Promise<void>
   applyUpdate: () => Promise<void>
   setAutoUpdate: (enabled: boolean) => Promise<void>
