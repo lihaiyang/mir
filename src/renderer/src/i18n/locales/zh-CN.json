@@ -54,7 +54,15 @@
     "noProject": "没有选中的项目",
     "noProjectHint": "从左栏添加一个项目以开始",
     "noTabs": "暂无打开的标签",
-    "newTab": "+ 新建标签"
+    "newTab": "+ 新建标签",
+    "welcome": "欢迎使用 MIR",
+    "welcomeHint": "打开一个项目,开始使用终端、编辑器与 AI 代理",
+    "shortcuts": "快捷键",
+    "scNewTab": "新建终端标签",
+    "scQuickOpen": "快速打开文件",
+    "scSplit": "拆分窗格",
+    "scCommand": "命令面板",
+    "scNewTerminal": "新建终端"
   },
   "tab": {
     "terminal": "终端",
@@ -216,6 +224,9 @@
   "commandPalette": {
      "placeholder": "输入命令...",
      "noResults": "没有匹配的命令",
+     "navigate": "导航",
+     "select": "选择",
+     "close": "关闭",
      "openSettings": "打开设置",
      "toggleWordWrap": "切换编辑器自动换行",
      "quickOpen": "打开文件...",

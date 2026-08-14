@@ -2,9 +2,9 @@
   <div class="browser-tab">
     <!-- Toolbar: hidden in standalone mode (toolbar lives in TitleBar instead) -->
     <div v-if="!isStandalone" class="browser-toolbar">
-      <button class="icon-btn" :disabled="!canGoBack" @click="goBack">◀</button>
-      <button class="icon-btn" :disabled="!canGoForward" @click="goForward">▶</button>
-      <button class="icon-btn" @click="reload">↺</button>
+      <button class="icon-btn" :disabled="!canGoBack" @click="goBack"><Icon name="chevron-left" :size="13" /></button>
+      <button class="icon-btn" :disabled="!canGoForward" @click="goForward"><Icon name="chevron-right" :size="13" /></button>
+      <button class="icon-btn" @click="reload"><Icon name="refresh" :size="13" /></button>
       <input
         ref="urlInput"
         v-model="urlBar"
@@ -14,9 +14,9 @@
         @focus="$event.target.select()"
       />
       <button class="icon-btn" :class="{ bookmarked: isBookmarked }" @click="toggleBookmark" :title="$t('browser.bookmark')">
-        {{ isBookmarked ? '★' : '☆' }}
+        <Icon :name="isBookmarked ? 'check' : 'plus'" :size="13" />
       </button>
-      <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')">⚙</button>
+      <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
     </div>
 
     <!-- Bookmarks bar -->
@@ -57,6 +57,7 @@ import { useProjectStore } from '../../stores/projects'
 import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
 import { useSettingsStore } from '../../stores/settings'
 import { useContextMenu } from '../../composables/useContextMenu'
+import Icon from '../ui/Icon.vue'
 import type { Tab } from '../../stores/tabs'
 
 const { t } = useI18n()

@@ -11,10 +11,10 @@
 
         <!-- nav + address bar cluster -->
         <div class="tl-browser-bar" @dblclick.stop>
-          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoBack"  @click="navCmd('back')">◀</button>
-          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoForward" @click="navCmd('forward')">▶</button>
+          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoBack"  @click="navCmd('back')"><Icon name="chevron-left" :size="13" /></button>
+          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoForward" @click="navCmd('forward')"><Icon name="chevron-right" :size="13" /></button>
           <button class="tl-nav-btn" @click="navCmd('reload')">
-            {{ standaloneNavBus.isLoading ? '✕' : '↺' }}
+            <Icon :name="standaloneNavBus.isLoading ? 'x' : 'refresh'" :size="13" />
           </button>
           <input
             v-model="addrBar"
@@ -25,7 +25,7 @@
             @dblclick.stop
             @mousedown.stop
           />
-          <button class="tl-nav-btn" @click="openDevTools" :title="$t('browser.devTools')">⚙</button>
+          <button class="tl-nav-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
         </div>
 
         <!-- drag pad right -->
@@ -60,7 +60,7 @@
 
     <div class="tl-right" :style="{ width: rightWidthPx }">
       <div class="tl-right-spacer" />
-      <button class="tl-btn" :title="$t('common.settings')" @click="openSettings">⚙</button>
+      <button class="tl-btn" :title="$t('common.settings')" @click="openSettings"><Icon name="settings" :size="14" /></button>
     </div>
   </div>
 </template>
@@ -73,6 +73,7 @@ import { useProjectStore } from '../stores/projects'
 import { useTabStore } from '../stores/tabs'
 import { useWebPageStore, standaloneNavBus } from '../stores/webPages'
 import TabBar from './center/TabBar.vue'
+import Icon from './ui/Icon.vue'
 
 const { t } = useI18n()
 const layout = useLayoutStore()

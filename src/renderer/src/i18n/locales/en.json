@@ -54,7 +54,15 @@
     "noProject": "No project selected",
     "noProjectHint": "Add a project from the left panel to get started",
     "noTabs": "No tabs open",
-    "newTab": "+ New Tab"
+    "newTab": "+ New Tab",
+    "welcome": "Welcome to MIR",
+    "welcomeHint": "Open a project to start working with terminals, editors and AI agents",
+    "shortcuts": "Shortcuts",
+    "scNewTab": "New terminal tab",
+    "scQuickOpen": "Quick open file",
+    "scSplit": "Split pane",
+    "scCommand": "Command palette",
+    "scNewTerminal": "New terminal"
   },
   "tab": {
     "terminal": "Terminal",
@@ -216,6 +224,9 @@
   "commandPalette": {
      "placeholder": "Type a command...",
      "noResults": "No matching commands",
+     "navigate": "Navigate",
+     "select": "Select",
+     "close": "Close",
      "openSettings": "Open Settings",
      "toggleWordWrap": "Toggle Editor Word Wrap",
      "quickOpen": "Go to File...",

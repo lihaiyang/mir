@@ -19,6 +19,7 @@
         <BrowserTab :tab="tab" />
       </div>
       <div v-if="tabs.length === 0" class="no-tabs-hint">
+        <div class="empty-icon"><Icon name="terminal" :size="22" /></div>
         <p>{{ $t('tab.noTabs') }}</p>
       </div>
     </div>
@@ -33,6 +34,7 @@ import { useProjectStore } from '../../stores/projects'
 import { resolveTabTitle } from '../../plugins/registries'
 import TabBar from './TabBar.vue'
 import BrowserTab from './BrowserTab.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   projectId: string
@@ -108,6 +110,12 @@ async function createTab(type: TabType) {
   justify-content: center;
   height: 100%;
   color: var(--text-secondary);
-  gap: 12px;
+  gap: 10px;
+}
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
 }
 </style>

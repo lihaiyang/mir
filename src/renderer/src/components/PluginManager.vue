@@ -4,17 +4,17 @@
     <div class="pm-header">
       <span class="pm-title">{{ t('plugins.title') }}</span>
       <div class="pm-header-actions">
-        <button class="pm-btn" @click="openFolder" :disabled="!pluginsDir" :title="t('plugins.openFolder')">📂 {{ t('plugins.openFolder') }}</button>
-        <button class="pm-btn" @click="showGitModal = true">🔗 {{ t('plugins.installFromGit') }}</button>
-        <button class="pm-btn pm-btn-primary" @click="installFromDir">📁 {{ t('plugins.installFromFolder') }}</button>
-        <button class="pm-btn" @click="reload" title="Refresh">↻</button>
+        <button class="pm-btn" @click="openFolder" :disabled="!pluginsDir" :title="t('plugins.openFolder')"><Icon name="folder-open" :size="13" /> {{ t('plugins.openFolder') }}</button>
+        <button class="pm-btn" @click="showGitModal = true"><Icon name="git-branch" :size="13" /> {{ t('plugins.installFromGit') }}</button>
+        <button class="pm-btn pm-btn-primary" @click="installFromDir"><Icon name="folder-plus" :size="13" /> {{ t('plugins.installFromFolder') }}</button>
+        <button class="pm-btn" @click="reload" title="Refresh"><Icon name="refresh" :size="13" /></button>
       </div>
     </div>
 
     <!-- Git install modal -->
     <div v-if="showGitModal" class="pm-modal-overlay" @click.self="showGitModal = false">
       <div class="pm-modal">
-        <div class="pm-modal-title">🔗 {{ t('plugins.installFromGit') }}</div>
+        <div class="pm-modal-title"><Icon name="git-branch" :size="15" /> {{ t('plugins.installFromGit') }}</div>
         <div class="pm-modal-field">
           <label>{{ t('plugins.gitUrl') }}</label>
           <input
@@ -89,7 +89,7 @@
 
     <!-- Restart hint -->
     <div v-if="needsRestart" class="pm-restart-hint">
-      ⚠ {{ t('plugins.restartHint') }}
+      <Icon name="alert-triangle" :size="14" /> {{ t('plugins.restartHint') }}
     </div>
   </div>
 </template>
@@ -97,6 +97,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Icon from './ui/Icon.vue'
 
 const { t } = useI18n()
 
@@ -254,6 +255,9 @@ onMounted(() => {
 .pm-card-author { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
 .pm-card-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .pm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 12px;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -270,6 +274,9 @@ onMounted(() => {
 .pm-btn-danger { color: #e55; }
 .pm-btn-danger:hover { background: rgba(238,85,85,0.15); }
 .pm-restart-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 12px;
   background: rgba(255,180,0,0.12);
   color: #e90;
@@ -296,7 +303,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 14px;
 }
-.pm-modal-title { font-size: 15px; font-weight: 600; }
+.pm-modal-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .pm-modal-field { display: flex; flex-direction: column; gap: 4px; }
 .pm-modal-field label { font-size: 12px; color: var(--text-secondary); }
 .pm-input {

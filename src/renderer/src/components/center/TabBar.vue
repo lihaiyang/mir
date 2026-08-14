@@ -13,7 +13,7 @@
       @dragover.prevent
       @drop="dragDrop(idx)"
     >
-      <span class="tab-icon">{{ tabIcon(tab.type) }}</span>
+      <span class="tab-icon"><Icon :name="tabIcon(tab.type)" :size="12" /></span>
       <span
         v-if="!editingTabId || editingTabId !== tab.id"
         class="tab-title"
@@ -32,18 +32,18 @@
       <button
         class="tab-close"
         @click.stop="confirmCloseTab(tab)"
-      ></button>
+      ><Icon name="x" :size="10" /></button>
     </div>
     <div class="tab-toolbar" ref="toolbarRef">
       <template v-if="!toolbarOverflow">
-        <button class="tab-action-btn" :title="t('tab.terminal')" @click.stop="createTab('terminal')">⬛</button>
-        <button class="tab-action-btn" :title="t('tab.fileEditor')" @click.stop="createTab('editor')">📝</button>
-        <button class="tab-action-btn" :title="t('tab.browser')" @click.stop="createTab('browser')">🌐</button>
-        <button class="tab-action-btn" :title="t('tab.splitDown')" @click.stop="splitPane('vertical')">⊟</button>
-        <button class="tab-action-btn" :title="t('tab.splitRight')" @click.stop="splitPane('horizontal')">⊞</button>
-        <button class="tab-action-btn" :title="t('tab.closePane')" @click.stop="closeThisPane">×</button>
+        <button class="tab-action-btn" :title="t('tab.terminal')" @click.stop="createTab('terminal')"><Icon name="terminal" :size="13" /></button>
+        <button class="tab-action-btn" :title="t('tab.fileEditor')" @click.stop="createTab('editor')"><Icon name="file-text" :size="13" /></button>
+        <button class="tab-action-btn" :title="t('tab.browser')" @click.stop="createTab('browser')"><Icon name="globe" :size="13" /></button>
+        <button class="tab-action-btn" :title="t('tab.splitDown')" @click.stop="splitPane('vertical')"><Icon name="rows" :size="13" /></button>
+        <button class="tab-action-btn" :title="t('tab.splitRight')" @click.stop="splitPane('horizontal')"><Icon name="columns" :size="13" /></button>
+        <button class="tab-action-btn" :title="t('tab.closePane')" @click.stop="closeThisPane"><Icon name="x" :size="13" /></button>
       </template>
-      <button v-else ref="moreBtnRef" class="tab-action-btn" @click.stop="toggleMoreDropdown">…</button>
+      <button v-else ref="moreBtnRef" class="tab-action-btn" @click.stop="toggleMoreDropdown"><Icon name="more" :size="13" /></button>
     </div>
 
     <!-- Overflow dropdown -->
@@ -56,28 +56,28 @@
       @mouseleave="showMoreDropdown = false"
     >
       <div class="tab-dropdown-item" @click="createTab('terminal'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon">⬛</span>
+        <span class="tab-dropdown-icon"><Icon name="terminal" :size="14" /></span>
         <div class="tab-dropdown-name">{{ t('tab.terminal') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="createTab('editor'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon">📝</span>
+        <span class="tab-dropdown-icon"><Icon name="file-text" :size="14" /></span>
         <div class="tab-dropdown-name">{{ t('tab.fileEditor') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="createTab('browser'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon">🌐</span>
+        <span class="tab-dropdown-icon"><Icon name="globe" :size="14" /></span>
         <div class="tab-dropdown-name">{{ t('tab.browser') }}</div>
       </div>
       <div class="tab-dropdown-separator"></div>
       <div class="tab-dropdown-item" @click="splitPane('vertical'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon">⊟</span>
+        <span class="tab-dropdown-icon"><Icon name="rows" :size="14" /></span>
         <div class="tab-dropdown-name">{{ t('tab.splitDown') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="splitPane('horizontal'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon">⊞</span>
+        <span class="tab-dropdown-icon"><Icon name="columns" :size="14" /></span>
         <div class="tab-dropdown-name">{{ t('tab.splitRight') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="closeThisPane(); showMoreDropdown = false">
-        <span class="tab-dropdown-icon">×</span>
+        <span class="tab-dropdown-icon"><Icon name="x" :size="14" /></span>
         <div class="tab-dropdown-name">{{ t('tab.closePane') }}</div>
       </div>
     </div>
@@ -91,6 +91,7 @@ import { useTabStore, type Tab, type TabType } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
 import { useContextMenu } from '../../composables/useContextMenu'
 import { resolveTabIcon, resolveTabTitle } from '../../plugins/registries'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   projectId: string
@@ -231,18 +232,19 @@ function closeThisPane() {
 
 function showTabMenu(e: MouseEvent, tab: Tab, _idx: number) {
   showMenu(e, [
-    { label: t('tab.splitRight'), action: () => tabStore.splitPane(props.projectId, 'horizontal', tab) },
-    { label: t('tab.splitDown'), action: () => tabStore.splitPane(props.projectId, 'vertical', tab) },
+    { label: t('tab.splitRight'), icon: 'columns', action: () => tabStore.splitPane(props.projectId, 'horizontal', tab) },
+    { label: t('tab.splitDown'), icon: 'rows', action: () => tabStore.splitPane(props.projectId, 'vertical', tab) },
     { separator: true },
-    { label: t('tab.rename'), action: () => startTabRename(tab) },
-    { label: t('tab.duplicate'), action: () => tabStore.duplicateTab(props.projectId, tab.id) },
+    { label: t('tab.rename'), icon: 'file-text', action: () => startTabRename(tab) },
+    { label: t('tab.duplicate'), icon: 'copy', action: () => tabStore.duplicateTab(props.projectId, tab.id) },
     { separator: true },
-    { label: t('tab.close'), action: () => confirmCloseTab(tab) },
-    { label: t('tab.closeOthers'), action: () => confirmCloseOtherTabs(tab.id) },
-    { label: t('tab.closeToRight'), action: () => confirmCloseTabsToRight(tab.id) },
+    { label: t('tab.close'), icon: 'x', action: () => confirmCloseTab(tab) },
+    { label: t('tab.closeOthers'), icon: 'x-circle', action: () => confirmCloseOtherTabs(tab.id) },
+    { label: t('tab.closeToRight'), icon: 'chevrons-right', action: () => confirmCloseTabsToRight(tab.id) },
     { separator: true },
     {
       label: t('tab.closePane'),
+      icon: 'x',
       danger: true,
       action: () => tabStore.closePane(props.projectId, props.groupId)
     }
@@ -346,16 +348,25 @@ onUnmounted(() => {
   flex-shrink: 0;
   border-radius: 6px 6px 0 0;
   background: transparent;
+  border-top: 1px solid transparent;
   -webkit-app-region: no-drag;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .tab:hover { background: var(--bg-hover); color: var(--text-primary); }
 .tab.active {
   background: var(--bg-primary);
   color: var(--text-primary);
   height: calc(var(--tab-height, 30px) - 2px);
+  border-top: 1px solid var(--text-accent);
 }
 
-.tab-icon { font-size: 11px; }
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+.tab.active .tab-icon { color: var(--text-accent); }
 .tab-title {
   flex: 1;
   overflow: hidden;
@@ -379,18 +390,18 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .tab-close {
-  font-size: 13px;
-  line-height: 1;
   color: var(--text-secondary);
   flex-shrink: 0;
   width: 14px;
   height: 14px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 3px;
+  opacity: 0;
 }
-.tab-close::before { content: '×'; }
+.tab:hover .tab-close,
+.tab.active .tab-close { opacity: 1; }
 .tab-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 .tab-toolbar {
@@ -402,9 +413,11 @@ onUnmounted(() => {
   -webkit-app-region: no-drag;
 }
 .tab-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 6px;
   height: 100%;
-  font-size: 13px;
   color: var(--text-secondary);
 }
 .tab-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
@@ -430,7 +443,13 @@ onUnmounted(() => {
   transition: background 0.15s;
 }
 .tab-dropdown-item:hover { background: var(--bg-hover); }
-.tab-dropdown-icon { font-size: 14px; }
+.tab-dropdown-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: var(--text-secondary);
+}
 .tab-dropdown-name { font-size: 13px; font-weight: 500; }
 .tab-dropdown-separator {
   height: 1px;

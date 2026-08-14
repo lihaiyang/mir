@@ -11,7 +11,7 @@
         class="icon-bar-btn"
         :title="layout.rightCollapsed ? t('common.expand') : t('common.collapse')"
         @click="toggleCollapse"
-      >{{ layout.rightCollapsed ? '«' : '»' }}</div>
+      ><Icon :name="layout.rightCollapsed ? 'chevrons-left' : 'chevrons-right'" :size="14" /></div>
       <div
         v-for="panel in panels"
         :key="panel.id"
@@ -19,7 +19,7 @@
         :class="{ active: !layout.rightCollapsed && layout.rightActivePanel === panel.id }"
         :title="panel.label"
         @click="onPanelClick(panel.id)"
-      >{{ panel.icon }}</div>
+      ><Icon :name="panel.icon" :size="16" /></div>
     </div>
   </div>
 </template>
@@ -30,6 +30,7 @@ import { useI18n } from 'vue-i18n'
 import { useLayoutStore } from '../../stores/layout'
 import { useSettingsStore } from '../../stores/settings'
 import { getAllRightPanels, getRightPanel } from '../../plugins/registries'
+import Icon from '../ui/Icon.vue'
 
 const { t } = useI18n()
 const layout = useLayoutStore()
@@ -106,7 +107,7 @@ function toggleCollapse() {
 }
 .icon-bar-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .icon-bar-btn.active {
-  color: var(--text-primary);
+  color: var(--text-accent);
 }
 .icon-bar-btn.active::before {
   content: '';

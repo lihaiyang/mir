@@ -29,7 +29,7 @@
               @mousedown.prevent="selectItem(item)"
             >
               <span class="sbp-label">{{ item.label }}</span>
-              <span v-if="item.value === currentValue" class="sbp-check">✓</span>
+              <span v-if="item.value === currentValue" class="sbp-check"><Icon name="check" :size="12" /></span>
             </div>
           </template>
           <div v-if="flatItems.length === 0" class="sbp-empty">No results</div>
@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import Icon from './ui/Icon.vue'
 
 export interface PickerItem {
   value: string
@@ -243,7 +244,9 @@ onBeforeUnmount(() => {
 }
 
 .sbp-check {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-accent);
   flex-shrink: 0;
 }
 

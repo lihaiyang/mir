@@ -8,7 +8,7 @@
           <input type="checkbox" v-model="showHidden" @change="loadTree" />
           <span class="toggle-label">.</span>
         </label>
-        <button class="icon-btn" :title="$t('fileTree.refresh')" @click="loadTree">↺</button>
+        <button class="icon-btn" :title="$t('fileTree.refresh')" @click="loadTree"><Icon name="refresh" :size="13" /></button>
       </div>
       <div class="tree-scroll" @contextmenu.prevent="showRootMenu">
         <RightTreeNode
@@ -54,6 +54,7 @@ import { useTabStore } from '../../stores/tabs'
 import { useFileTree, type FileNode } from '../../composables/useFileTree'
 import { useContextMenu } from '../../composables/useContextMenu'
 import RightTreeNode from './RightTreeNode.vue'
+import Icon from '../ui/Icon.vue'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
@@ -86,8 +87,8 @@ onUnmounted(() => {
 
 function showRootMenu(e: MouseEvent) {
   showMenu(e, [
-    { label: t('fileTree.newFile'), action: () => createItem(false) },
-    { label: t('fileTree.newFolder'), action: () => createItem(true) }
+    { label: t('fileTree.newFile'), icon: 'file-plus', action: () => createItem(false) },
+    { label: t('fileTree.newFolder'), icon: 'folder-plus', action: () => createItem(true) }
   ])
 }
 

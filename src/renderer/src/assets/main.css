@@ -7,17 +7,52 @@
   --bg-tertiary: #2d2d2d;
   --bg-hover: #3a3a3a;
   --bg-active: #094771;
+  --bg-selected: #04395e;
   --border-color: #3a3a3a;
+  --border-strong: #4a4a4a;
   --text-primary: #d4d4d4;
   --text-secondary: #9d9d9d;
+  --text-faint: #6e6e6e;
   --text-accent: #569cd6;
+  --text-on-accent: #ffffff;
   --text-danger: #f44747;
   --text-success: #4ec9b0;
   --text-warning: #dcdcaa;
+  --overlay: rgba(0, 0, 0, 0.5);
   --scrollbar-track: #1e1e1e;
   --scrollbar-thumb: #424242;
   --tab-height: 30px;
   --titlebar-height: 32px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* Motion */
+  --transition-fast: 120ms;
+  --transition-base: 180ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--text-accent);
+
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'Courier New', monospace;
 }
 
 [data-theme='light'] {
@@ -26,15 +61,23 @@
   --bg-tertiary: #e8e8e8;
   --bg-hover: #d0d0d0;
   --bg-active: #0078d4;
+  --bg-selected: #c8e4f8;
   --border-color: #c8c8c8;
+  --border-strong: #b0b0b0;
   --text-primary: #1e1e1e;
   --text-secondary: #6a6a6a;
+  --text-faint: #9a9a9a;
   --text-accent: #0070c1;
+  --text-on-accent: #ffffff;
   --text-danger: #d32f2f;
   --text-success: #007462;
   --text-warning: #7b5900;
+  --overlay: rgba(0, 0, 0, 0.35);
   --scrollbar-track: #f3f3f3;
   --scrollbar-thumb: #b0b0b0;
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -46,17 +89,33 @@
 html, body, #app {
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-ui);
   font-size: var(--base-font-size);
   background: var(--bg-primary);
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::selection { background: var(--bg-active); color: #fff; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); background-clip: content-box; border: 2px solid transparent; }
 ::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Focus visibility: only for keyboard users ── */
+:focus { outline: none; }
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
 
 button {
   background: none;
@@ -64,19 +123,26 @@ button {
   color: var(--text-primary);
   cursor: pointer;
   font-size: var(--base-font-size);
+  font-family: inherit;
 }
-button:hover { background: var(--bg-hover); border-radius: 4px; }
+button:disabled { opacity: 0.45; cursor: default; }
+button:not(:disabled):hover { background: var(--bg-hover); border-radius: var(--radius-sm); }
+button:not(:disabled):active { transform: translateY(0.5px); }
 
-input, textarea {
+input, textarea, select {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 4px 8px;
   outline: none;
   font-size: var(--base-font-size);
+  font-family: inherit;
+  transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
-input:focus, textarea:focus { border-color: var(--text-accent); }
+input:focus, textarea:focus, select:focus { border-color: var(--text-accent); box-shadow: 0 0 0 2px rgba(86, 156, 214, 0.25); }
+[data-theme='light'] input:focus, [data-theme='light'] textarea:focus, [data-theme='light'] select:focus { box-shadow: 0 0 0 2px rgba(0, 112, 193, 0.2); }
+input::placeholder, textarea::placeholder { color: var(--text-faint); }
 
 .icon-btn {
   display: inline-flex;
@@ -84,22 +150,41 @@ input:focus, textarea:focus { border-color: var(--text-accent); }
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-secondary);
   flex-shrink: 0;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
 
 .context-menu {
   position: fixed;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
   z-index: 1000;
   min-width: 160px;
   padding: 4px 0;
+  animation: menu-in var(--transition-fast) var(--ease-out);
+}
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 .context-menu-item {
   padding: 6px 16px;
@@ -112,24 +197,34 @@ input:focus, textarea:focus { border-color: var(--text-accent); }
 }
 .context-menu-item:hover { background: var(--bg-hover); }
 .context-menu-item.danger { color: var(--text-danger); }
+.context-menu-item:disabled { opacity: 0.4; cursor: default; }
 .context-menu-sep { height: 1px; background: var(--border-color); margin: 4px 0; }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: var(--overlay);
   z-index: 900;
   display: flex;
   align-items: center;
   justify-content: center;
+  backdrop-filter: blur(1px);
+  animation: overlay-in var(--transition-base) ease;
 }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
 .modal {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   padding: 20px;
   min-width: 320px;
   max-width: 540px;
+  box-shadow: var(--shadow-3);
+  animation: modal-in var(--transition-base) var(--ease-out);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .modal-title {
   font-size: 15px;
@@ -144,11 +239,12 @@ input:focus, textarea:focus { border-color: var(--text-accent); }
 }
 .btn-primary {
   background: var(--text-accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border: none;
   padding: 6px 14px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: opacity var(--transition-fast) ease;
 }
 .btn-primary:hover { opacity: 0.85; }
 .btn-secondary {
@@ -156,17 +252,19 @@ input:focus, textarea:focus { border-color: var(--text-accent); }
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   padding: 6px 14px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background var(--transition-fast) ease, border-color var(--transition-fast) ease;
 }
-.btn-secondary:hover { background: var(--bg-hover); }
+.btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-strong); }
 .btn-danger {
   background: var(--text-danger);
   color: #fff;
   border: none;
   padding: 6px 14px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: opacity var(--transition-fast) ease;
 }
 .btn-danger:hover { opacity: 0.85; }
 

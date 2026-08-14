@@ -14,6 +14,7 @@
           :class="{ danger: item.danger, disabled: item.disabled }"
           @click="!item.disabled && execute(item)"
         >
+          <span class="context-menu-icon"><Icon v-if="item.icon" :name="item.icon" :size="13" /></span>
           {{ item.label }}
         </div>
       </template>
@@ -25,6 +26,7 @@
 
 <script setup lang="ts">
 import { useContextMenu } from '../composables/useContextMenu'
+import Icon from './ui/Icon.vue'
 const { menu, close, execute } = useContextMenu()
 </script>
 
@@ -37,6 +39,16 @@ const { menu, close, execute } = useContextMenu()
 .context-menu {
   z-index: 1000;
 }
+.context-menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.context-menu-item:hover .context-menu-icon { color: var(--text-primary); }
+.context-menu-item.danger .context-menu-icon { color: var(--text-danger); }
 .context-menu-item.disabled {
   opacity: 0.5;
   cursor: default;

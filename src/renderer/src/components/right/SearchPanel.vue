@@ -12,7 +12,7 @@
           @keydown.enter="runSearch"
           @keydown.escape="showHistory = false"
         />
-        <button class="icon-btn" title="Search" @click="runSearch" :disabled="searching">🔍</button>
+        <button class="icon-btn" title="Search" @click="runSearch" :disabled="searching"><Icon name="search" :size="14" /></button>
       </div>
 
       <!-- History dropdown -->
@@ -53,7 +53,7 @@
           class="search-input"
           :placeholder="$t('search.replaceWith')"
         />
-        <button class="icon-btn" :title="$t('search.replaceAll')" @click="confirmReplace" :disabled="searching || !replaceQuery">⇄</button>
+        <button class="icon-btn" :title="$t('search.replaceAll')" @click="confirmReplace" :disabled="searching || !replaceQuery"><Icon name="rotate" :size="14" /></button>
       </div>
     </div>
 
@@ -105,6 +105,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useProjectStore } from '../../stores/projects'
 import { useTabStore } from '../../stores/tabs'
 import { useFileTree } from '../../composables/useFileTree'
+import Icon from '../ui/Icon.vue'
 
 const projectStore = useProjectStore()
 const tabStore = useTabStore()

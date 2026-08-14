@@ -48,16 +48,42 @@
 
     <!-- Project view: shown when no web page is selected -->
     <template v-if="!selectedWebPage">
-      <div v-if="!activeProject" class="no-project-hint">
-        <p style="font-size:18px;margin-bottom:12px">{{ $t('centerPane.noProject') }}</p>
-        <p style="font-size:13px;color:var(--text-secondary)">
-          {{ $t('centerPane.noProjectHint') }}
-        </p>
+      <div v-if="!activeProject" class="welcome-screen">
+        <div class="welcome-logo"><Icon name="layout" :size="44" /></div>
+        <h2 class="welcome-title">{{ $t('centerPane.welcome') }}</h2>
+        <p class="welcome-hint">{{ $t('centerPane.welcomeHint') }}</p>
+        <div class="welcome-shortcuts">
+          <div class="welcome-sc-title">{{ $t('centerPane.shortcuts') }}</div>
+          <div class="welcome-sc-grid">
+            <div class="welcome-sc-item">
+              <Icon name="terminal" :size="14" />
+              <span>{{ $t('centerPane.scNewTerminal') }}</span>
+              <span class="kbd">⌘T</span>
+            </div>
+            <div class="welcome-sc-item">
+              <Icon name="file" :size="14" />
+              <span>{{ $t('centerPane.scQuickOpen') }}</span>
+              <span class="kbd">⌘P</span>
+            </div>
+            <div class="welcome-sc-item">
+              <Icon name="columns" :size="14" />
+              <span>{{ $t('centerPane.scSplit') }}</span>
+              <span class="kbd">⌘\</span>
+            </div>
+            <div class="welcome-sc-item">
+              <Icon name="command" :size="14" />
+              <span>{{ $t('centerPane.scCommand') }}</span>
+              <span class="kbd">⌘⇧P</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary welcome-btn" @click="openFolder">{{ $t('titlebar.addProject') }}</button>
       </div>
 
       <div v-else-if="!paneTree" class="no-tabs-hint">
+        <div class="empty-icon"><Icon name="terminal" :size="28" /></div>
         <p>{{ $t('centerPane.noTabs') }}</p>
-        <button class="btn-primary" @click="createTab('terminal')">{{ $t('centerPane.newTab') }}</button>
+        <button class="btn-primary" @click="createTab('terminal')"><Icon name="plus" :size="13" /> {{ $t('centerPane.newTab') }}</button>
       </div>
     </template>
   </div>
@@ -74,6 +100,7 @@ import { matchesShortcut } from '../../utils'
 import { getTabType } from '../../plugins/registries'
 import PaneGroup from './PaneGroup.vue'
 import BrowserTab from './BrowserTab.vue'
+import Icon from '../ui/Icon.vue'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
@@ -406,6 +433,14 @@ async function createTab(type: TabType) {
   if (!activeProject.value) return
   await tabStore.addTab(activeProject.value.id, type)
 }
+
+async function openFolder() {
+  const path = await window.electronAPI.openFolder()
+  if (path) {
+    await projectStore.addProject(path)
+    webPageStore.selectWebPage(null)
+  }
+}
 </script>
 
 <style scoped>
@@ -430,6 +465,65 @@ async function createTab(type: TabType) {
   gap: 12px;
 }
 
+.welcome-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+.welcome-logo {
+  color: var(--text-accent);
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+.welcome-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.welcome-hint { font-size: 13px; max-width: 340px; text-align: center; }
+.welcome-shortcuts {
+  margin-top: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  min-width: 320px;
+}
+.welcome-sc-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+.welcome-sc-grid { display: flex; flex-direction: column; gap: 6px; }
+.welcome-sc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: 4px 0;
+}
+.welcome-sc-item .mir-icon { color: var(--text-accent); }
+.welcome-sc-item span:nth-child(2) { flex: 1; }
+.welcome-btn { margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; }
+
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
 .standalone-browser {
   position: absolute;
   inset: 0;
@@ -452,11 +546,12 @@ async function createTab(type: TabType) {
 }
 
 .splitter {
-  background: var(--border-color);
+  background: transparent;
   z-index: 10;
+  transition: background var(--transition-fast) ease;
 }
 .splitter:hover {
-  background: var(--text-accent);
+  background: rgba(86, 156, 214, 0.45);
 }
 .splitter-h { cursor: col-resize; }
 .splitter-v { cursor: row-resize; }

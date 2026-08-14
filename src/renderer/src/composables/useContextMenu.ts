@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 
 export interface MenuItemDef {
   label?: string
+  icon?: string
   action?: () => void | Promise<void>
   danger?: boolean
   disabled?: boolean

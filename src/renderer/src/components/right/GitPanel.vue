@@ -5,16 +5,16 @@
       <!-- Branch / status header -->
       <div class="git-header">
         <div class="git-branch" @click="showBranchMenu">
-          <span>🔀</span>
+          <span class="git-branch-icon"><Icon name="git-branch" :size="14" /></span>
           <span class="branch-name">{{ status?.branch || '...' }}</span>
           <span v-if="(status?.ahead ?? 0) > 0" class="badge-up">↑{{ status!.ahead }}</span>
           <span v-if="(status?.behind ?? 0) > 0" class="badge-down">↓{{ status!.behind }}</span>
         </div>
         <div class="git-actions">
-          <button class="icon-btn" :title="$t('git.fetch')" @click="runFetch" :disabled="running">⬇</button>
-          <button class="icon-btn" :title="$t('git.pull')" @click="runPull" :disabled="running">⇩</button>
-          <button class="icon-btn" :title="$t('git.push')" @click="runPush" :disabled="running">⇧</button>
-          <button class="icon-btn" :title="$t('git.refresh')" @click="loadStatus">↺</button>
+          <button class="icon-btn" :title="$t('git.fetch')" @click="runFetch" :disabled="running"><Icon name="download" :size="13" /></button>
+          <button class="icon-btn" :title="$t('git.pull')" @click="runPull" :disabled="running"><Icon name="chevron-down" :size="13" /></button>
+          <button class="icon-btn" :title="$t('git.push')" @click="runPush" :disabled="running"><Icon name="upload" :size="13" /></button>
+          <button class="icon-btn" :title="$t('git.refresh')" @click="loadStatus"><Icon name="refresh" :size="13" /></button>
         </div>
       </div>
 
@@ -26,7 +26,7 @@
         <div class="git-section-header" @click="stagedCollapsed = !stagedCollapsed">
           <span>{{ stagedCollapsed ? '▸' : '▾' }}</span>
           <span>{{ $t('git.staged') }} ({{ stagedFiles.length }})</span>
-          <button class="mini-btn" :title="$t('git.unstage') + ' all'" @click.stop="unstageAll">−</button>
+          <button class="mini-btn" :title="$t('git.unstage') + ' all'" @click.stop="unstageAll"><Icon name="minus" :size="12" /></button>
         </div>
         <template v-if="!stagedCollapsed">
           <div
@@ -38,7 +38,7 @@
           >
             <span class="git-file-status" :class="statusClass(f.indexStatus)">{{ f.indexStatus }}</span>
             <span class="git-file-name">{{ f.path }}</span>
-            <button class="mini-btn" :title="$t('git.unstage')" @click.stop="unstageFile(f.path)">−</button>
+            <button class="mini-btn" :title="$t('git.unstage')" @click.stop="unstageFile(f.path)"><Icon name="minus" :size="12" /></button>
           </div>
         </template>
       </div>
@@ -48,7 +48,7 @@
         <div class="git-section-header" @click="changesCollapsed = !changesCollapsed">
           <span>{{ changesCollapsed ? '▸' : '▾' }}</span>
           <span>{{ $t('git.changes') }} ({{ unstagedFiles.length }})</span>
-          <button class="mini-btn" :title="$t('git.stage') + ' all'" @click.stop="stageAll">+</button>
+          <button class="mini-btn" :title="$t('git.stage') + ' all'" @click.stop="stageAll"><Icon name="plus" :size="12" /></button>
         </div>
         <template v-if="!changesCollapsed">
           <div v-if="unstagedFiles.length === 0" class="git-file-empty">{{ $t('git.noUnstagedChanges') }}</div>
@@ -61,7 +61,7 @@
           >
             <span class="git-file-status" :class="statusClass(f.workingStatus)">{{ f.workingStatus }}</span>
             <span class="git-file-name">{{ f.path }}</span>
-            <button class="mini-btn" :title="$t('git.stage')" @click.stop="stageFile(f.path)">+</button>
+            <button class="mini-btn" :title="$t('git.stage')" @click.stop="stageFile(f.path)"><Icon name="plus" :size="12" /></button>
           </div>
         </template>
       </div>
@@ -143,6 +143,7 @@ import { useTabStore } from '../../stores/tabs'
 
 import { useContextMenu } from '../../composables/useContextMenu'
 import BranchSwitchConfirm from '../BranchSwitchConfirm.vue'
+import Icon from '../ui/Icon.vue'
 import type { GitStatus, GitCommit } from '../../../main/git'
 
 const { t } = useI18n()
@@ -289,9 +290,9 @@ async function viewDiff(fp: string, staged: boolean) {
 
 function showFileMenu(e: MouseEvent, f: GitFile, staged: boolean) {
   showMenu(e, [
-    { label: staged ? t('git.unstage') : t('git.stage'), action: () => staged ? unstageFile(f.path) : stageFile(f.path) },
-    { label: t('git.viewDiff'), action: () => viewDiff(f.path, staged) },
-    { label: t('fileTree.copyPath'), action: () => navigator.clipboard.writeText(f.path) }
+    { label: staged ? t('git.unstage') : t('git.stage'), icon: staged ? 'minus' : 'plus', action: () => staged ? unstageFile(f.path) : stageFile(f.path) },
+    { label: t('git.viewDiff'), icon: 'diff', action: () => viewDiff(f.path, staged) },
+    { label: t('fileTree.copyPath'), icon: 'copy', action: () => navigator.clipboard.writeText(f.path) }
   ])
 }
 
@@ -401,6 +402,7 @@ function formatDate(d: string): string {
   border-radius: 3px;
 }
 .git-branch:hover { background: var(--bg-hover); }
+.git-branch-icon { display: inline-flex; align-items: center; color: var(--text-secondary); }
 .branch-name { font-weight: 600; color: var(--text-accent); }
 .badge-up { color: var(--text-success); font-size: 10px; }
 .badge-down { color: #f59e0b; font-size: 10px; }

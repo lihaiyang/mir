@@ -9,9 +9,9 @@
           :class="`notification-${n.type}`"
           @click="dismiss(n.id)"
         >
-          <span class="notification-icon">{{ icon(n.type) }}</span>
+          <span class="notification-icon"><Icon :name="icon(n.type)" :size="14" /></span>
           <span class="notification-text">{{ n.text }}</span>
-          <button class="notification-close" @click.stop="dismiss(n.id)">&times;</button>
+          <button class="notification-close" @click.stop="dismiss(n.id)"><Icon name="x" :size="12" /></button>
         </div>
       </TransitionGroup>
     </div>
@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import Icon from './ui/Icon.vue'
 
 export interface Notification {
   id: string
@@ -33,10 +34,10 @@ let idCounter = 0
 
 function icon(type: string): string {
   switch (type) {
-    case 'success': return '✓'
-    case 'warning': return '⚠'
-    case 'error': return '✕'
-    default: return 'ℹ'
+    case 'success': return 'check-circle'
+    case 'warning': return 'alert-triangle'
+    case 'error': return 'x-circle'
+    default: return 'info'
   }
 }
 
@@ -116,12 +117,15 @@ defineExpose({ show, dismiss, info, success, warning, error })
 }
 
 .notification-close {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-secondary);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0 2px;
+  padding: 2px;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 

@@ -22,65 +22,65 @@ export function registerBuiltin(): void {
   registerTabType({
     type: 'terminal',
     component: TerminalTab,
-    icon: '⬛',
+    icon: 'terminal',
     defaultTitle: () => t('tab.terminal'),
     showInToolbar: true
   })
   registerTabType({
     type: 'editor',
     component: EditorTab,
-    icon: '📝',
+    icon: 'file-text',
     defaultTitle: () => t('tab.fileEditor'),
     showInToolbar: true
   })
   registerTabType({
     type: 'browser',
     component: BrowserTab,
-    icon: '🌐',
+    icon: 'globe',
     defaultTitle: () => t('tab.browser'),
     showInToolbar: true
   })
   registerTabType({
     type: 'file',
     component: FileTab,
-    icon: '📄',
+    icon: 'file',
     defaultTitle: () => t('tab.file')
   })
   registerTabType({
     type: 'diff',
     component: DiffTab,
-    icon: '🔀',
+    icon: 'diff',
     defaultTitle: 'Diff'
   })
   registerTabType({
     type: 'settings',
     component: SettingsTab,
-    icon: '⚙',
+    icon: 'settings',
     defaultTitle: 'Settings'
   })
   registerTabType({
     type: 'plugin-manager',
     component: PluginManager,
-    icon: '🧩',
+    icon: 'plugin',
     defaultTitle: () => t('plugins.title')
   })
 
   registerRightPanel({
     id: 'files',
     label: () => t('rightPane.files'),
-    icon: '📁',
+    icon: 'folder',
     component: FileTreeRight
   })
   registerRightPanel({
     id: 'git',
     label: () => t('rightPane.git'),
-    icon: '🔀',
+    icon: 'git-branch',
     component: GitPanel
   })
   registerRightPanel({
     id: 'search',
     label: () => t('rightPane.search'),
-    icon: '🔍',
+    icon: 'search',
     component: SearchPanel
   })
 }

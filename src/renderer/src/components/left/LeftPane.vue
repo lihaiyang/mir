@@ -2,7 +2,7 @@
   <!-- Collapsed icon bar -->
   <div v-if="layout.leftCollapsed" class="left-pane-inner collapsed">
     <div class="icon-bar">
-      <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()">»</div>
+      <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="14" /></div>
       <div
         v-for="item in orderedItems"
         :key="item.orderKey"
@@ -11,9 +11,7 @@
         :title="itemTitle(item)"
         @click="onItemClick(item)"
       >
-        <span v-if="item.type === 'project'">📁</span>
-        <span v-else-if="item.data.hasNotification">🔔</span>
-        <span v-else>🌐</span>
+        <Icon :name="itemIcon(item)" :size="14" />
       </div>
     </div>
   </div>
@@ -21,14 +19,14 @@
   <!-- Expanded -->
   <div v-else class="left-pane-inner" @dragover.prevent @drop="onDrop">
       <div class="left-header">
-        <button class="icon-btn" :title="$t('common.collapse')" @click="layout.leftCollapsed = true; layout.persist()">«</button>
+        <button class="icon-btn" :title="$t('common.collapse')" @click="layout.leftCollapsed = true; layout.persist()"><Icon name="chevrons-left" :size="14" /></button>
         <span class="left-title">{{ $t('titlebar.leftTitle') }}</span>
         <div class="add-wrapper" ref="addBtnRef">
-          <button class="icon-btn" title="Add" @click.stop="toggleAddMenu">+</button>
+          <button class="icon-btn" title="Add" @click.stop="toggleAddMenu"><Icon name="plus" :size="14" /></button>
           <div v-if="showAddMenu" class="add-dropdown" @click.stop @mouseleave="showAddMenu = false">
-            <div class="add-dropdown-item" @click="addProject">📁 {{ $t('titlebar.addProject') }}</div>
-            <div class="add-dropdown-item" @click="startNewFolder">📂 {{ $t('leftPane.newFolder') }}</div>
-            <div class="add-dropdown-item" @click="startAddWebPage">🌐 {{ $t('titlebar.addWebPage') }}</div>
+            <div class="add-dropdown-item" @click="addProject"><Icon name="folder" :size="14" /> {{ $t('titlebar.addProject') }}</div>
+            <div class="add-dropdown-item" @click="startNewFolder"><Icon name="folder-plus" :size="14" /> {{ $t('leftPane.newFolder') }}</div>
+            <div class="add-dropdown-item" @click="startAddWebPage"><Icon name="globe" :size="14" /> {{ $t('titlebar.addWebPage') }}</div>
           </div>
         </div>
       </div>
@@ -59,9 +57,7 @@
         @dragend="dragEnd"
       >
         <span class="item-icon">
-          <template v-if="item.type === 'project'">📁</template>
-          <template v-else-if="item.data.hasNotification">🔔</template>
-          <template v-else>🌐</template>
+          <Icon :name="itemIcon(item)" :size="14" />
         </span>
         <span
           v-if="!editing || editingId !== item.orderKey"
@@ -155,6 +151,7 @@ import { useLayoutStore } from '../../stores/layout'
 import { useTabStore } from '../../stores/tabs'
 import { useContextMenu } from '../../composables/useContextMenu'
 import AgentCommandsModal from './AgentCommandsModal.vue'
+import Icon from '../ui/Icon.vue'
 
 const { t } = useI18n()
 
@@ -196,6 +193,11 @@ function isItemActive(item: OrderedItem): boolean {
 function itemTitle(item: OrderedItem): string {
   if (item.type === 'project') return (item.data as Project).name
   return (item.data as WebPage).title
+}
+
+function itemIcon(item: OrderedItem): string {
+  if (item.type === 'project') return 'folder'
+  return item.data.hasNotification ? 'bell' : 'globe'
 }
 
 function itemSubtitle(item: OrderedItem): string {
@@ -433,24 +435,24 @@ function showItemMenu(e: MouseEvent, item: OrderedItem, idx: number) {
   if (item.type === 'project') {
     const project = item.data as Project
     showMenu(e, [
-      { label: t('common.rename'), action: () => startEdit(item) },
-      { label: t('leftPane.agentCommands'), action: () => { agentProject.value = project } },
-      { label: t('common.moveUp'), disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
-      { label: t('common.moveDown'), disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
+      { label: t('common.rename'), icon: 'file-text', action: () => startEdit(item) },
+      { label: t('leftPane.agentCommands'), icon: 'robot', action: () => { agentProject.value = project } },
+      { label: t('common.moveUp'), icon: 'arrow-up', disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
+      { label: t('common.moveDown'), icon: 'arrow-down', disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
       { separator: true },
-      { label: t('contextMenu.removeFromList'), danger: true, action: () => { removingItem.value = { type: 'project', id: project.id, title: project.name, hint: t('leftPane.removeProjectHint') } } }
+      { label: t('contextMenu.removeFromList'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'project', id: project.id, title: project.name, hint: t('leftPane.removeProjectHint') } } }
     ])
   } else {
     const wp = item.data as WebPage
     showMenu(e, [
-      { label: t('common.open'), action: () => onItemClick(item) },
-      { label: t('contextMenu.copyUrl'), action: () => navigator.clipboard.writeText(wp.url) },
-      { label: t('common.rename'), action: () => startEdit(item) },
-      { label: t('contextMenu.markAsRead'), disabled: !wp.hasNotification, action: () => markAsRead(wp) },
-      { label: t('common.moveUp'), disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
-      { label: t('common.moveDown'), disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
+      { label: t('common.open'), icon: 'globe', action: () => onItemClick(item) },
+      { label: t('contextMenu.copyUrl'), icon: 'copy', action: () => navigator.clipboard.writeText(wp.url) },
+      { label: t('common.rename'), icon: 'file-text', action: () => startEdit(item) },
+      { label: t('contextMenu.markAsRead'), icon: 'check', disabled: !wp.hasNotification, action: () => markAsRead(wp) },
+      { label: t('common.moveUp'), icon: 'arrow-up', disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
+      { label: t('common.moveDown'), icon: 'arrow-down', disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
       { separator: true },
-      { label: t('common.remove'), danger: true, action: () => { removingItem.value = { type: 'webpage', id: wp.id, title: wp.title, hint: t('leftPane.removeWebPageHint') } } }
+      { label: t('common.remove'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'webpage', id: wp.id, title: wp.title, hint: t('leftPane.removeWebPageHint') } } }
     ])
   }
 }
@@ -536,8 +538,8 @@ function cancelEdit() { editing.value = false }
   font-size: 14px;
   position: relative;
 }
-.icon-bar-btn:hover { background: var(--bg-hover); }
-.icon-bar-btn.active { background: var(--bg-active); }
+.icon-bar-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.icon-bar-btn.active { background: var(--bg-active); color: #fff; }
 
 .left-header {
   display: flex;
@@ -573,10 +575,14 @@ function cancelEdit() { editing.value = false }
   overflow: hidden;
 }
 .add-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 12px;
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 .add-dropdown-item:hover { background: var(--bg-hover); }
 
@@ -624,7 +630,15 @@ function cancelEdit() { editing.value = false }
 .left-item.drop-above::before { top: 0; }
 .left-item.drop-below::before { bottom: 0; }
 
-.item-icon { font-size: 14px; flex-shrink: 0; }
+.item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.left-item.active .item-icon { color: var(--text-accent); }
 
 .item-name {
   flex: 1;

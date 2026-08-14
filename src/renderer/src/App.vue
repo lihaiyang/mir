@@ -172,17 +172,23 @@ function registerBuiltinCommands() {
   registerCommand({
     id: 'mir.settings',
     label: t('commandPalette.openSettings'),
+    group: 'Preferences',
+    icon: 'settings',
     keybinding: s.settings,
     run: () => { openSettings() }
   })
   registerCommand({
     id: 'mir.plugins',
     label: t('plugins.manage'),
+    group: 'Preferences',
+    icon: 'plugin',
     run: () => { openPluginManager() }
   })
   registerCommand({
     id: 'editor.toggleWordWrap',
     label: t('commandPalette.toggleWordWrap'),
+    group: 'Editor',
+    icon: 'file-text',
     run: () => {
       const cur = settingsStore.settings.editorWordWrap
       settingsStore.update({ editorWordWrap: cur === 'off' ? 'on' : 'off' })
@@ -191,30 +197,40 @@ function registerBuiltinCommands() {
   registerCommand({
     id: 'mir.quickOpen',
     label: t('commandPalette.quickOpen'),
+    group: 'File',
+    icon: 'file',
     keybinding: 'Ctrl+P',
     run: () => { showQuickOpen.value = true }
   })
   registerCommand({
     id: 'mir.search',
     label: t('commandPalette.search'),
+    group: 'View',
+    icon: 'search',
     keybinding: 'Ctrl+Shift+F',
     run: () => { layout.rightActivePanel = 'search'; layout.rightCollapsed = false; layout.persist() }
   })
   registerCommand({
     id: 'mir.toggleRightPanel',
     label: t('commandPalette.toggleRightPanel'),
+    group: 'View',
+    icon: 'panel-right',
     keybinding: 'Ctrl+B',
     run: () => { layout.rightCollapsed = !layout.rightCollapsed; layout.persist() }
   })
   registerCommand({
     id: 'mir.reopenClosedTab',
     label: t('commandPalette.reopenClosedTab'),
+    group: 'File',
+    icon: 'rotate',
     keybinding: 'Ctrl+Shift+T',
     run: () => { reopenLastClosedTab() }
   })
   registerCommand({
     id: 'mir.newTerminal',
     label: t('commandPalette.newTerminal'),
+    group: 'Terminal',
+    icon: 'terminal',
     keybinding: s.newTab,
     run: () => {
       if (projectStore.activeProject) tabStore.addTab(projectStore.activeProject.id, 'terminal')
@@ -223,16 +239,22 @@ function registerBuiltinCommands() {
   registerCommand({
     id: 'mir.toggleFiles',
     label: t('commandPalette.toggleFiles'),
+    group: 'View',
+    icon: 'folder',
     run: () => { layout.rightActivePanel = 'files'; layout.rightCollapsed = false; layout.persist() }
   })
   registerCommand({
     id: 'mir.toggleGit',
     label: t('commandPalette.toggleGit'),
+    group: 'View',
+    icon: 'git-branch',
     run: () => { layout.rightActivePanel = 'git'; layout.rightCollapsed = false; layout.persist() }
   })
   registerCommand({
     id: 'mir.togglePanelIcons',
     label: t('commandPalette.togglePanelIcons'),
+    group: 'View',
+    icon: 'columns',
     run: () => {
       settingsStore.update({ showPanelIcons: !settingsStore.settings.showPanelIcons })
     }
@@ -355,20 +377,26 @@ onUnmounted(() => {
   flex-shrink: 0;
   overflow: hidden;
   border-right: 1px solid var(--border-color);
+  transition: width var(--transition-base) var(--ease-out);
 }
 .right-pane {
   flex-shrink: 0;
   overflow: hidden;
   border-left: 1px solid var(--border-color);
-  transition: width 0.15s ease;
+  transition: width var(--transition-base) var(--ease-out);
 }
 .splitter {
-  width: 1px;
+  width: 3px;
+  margin: 0 -1px;
   cursor: col-resize;
   background: var(--border-color);
   flex-shrink: 0;
+  transition: background var(--transition-fast) ease, width var(--transition-fast) ease;
 }
-.splitter:hover { background: var(--text-accent); width: 3px; }
+.splitter:hover {
+  background: var(--text-accent);
+  width: 5px;
+}
 </style>
 
 <style>

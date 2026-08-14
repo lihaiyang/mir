@@ -11,8 +11,8 @@
         >
           <div class="agent-item-row">
             <input v-model="cmd.name" :placeholder="$t('agentCommands.namePlaceholder')" class="agent-name-input" />
-            <button class="icon-btn" :title="$t('agentCommands.launch')" @click="launch(cmd)">▶</button>
-            <button class="icon-btn danger" :title="$t('common.remove')" @click="removeCmd(cmd.id)">×</button>
+            <button class="icon-btn" :title="$t('agentCommands.launch')" @click="launch(cmd)"><Icon name="play" :size="13" /></button>
+            <button class="icon-btn danger" :title="$t('common.remove')" @click="removeCmd(cmd.id)"><Icon name="x" :size="14" /></button>
           </div>
           <input v-model="cmd.command" :placeholder="$t('agentCommands.commandPlaceholder')" class="agent-cmd-input" />
           <input v-model="cmd.description" :placeholder="$t('agentCommands.descriptionPlaceholder')" class="agent-desc-input" />
@@ -35,6 +35,7 @@ import { ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { useProjectStore, type Project, type AgentCommand } from '../../stores/projects'
 import { useTabStore } from '../../stores/tabs'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{ project: Project }>()
 const emit = defineEmits<{ (e: 'close'): void }>()

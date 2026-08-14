@@ -7,9 +7,12 @@
       @dblclick="handleDblClick"
       @contextmenu.prevent="showNodeMenu"
     >
-      <span v-if="node.isDirectory" class="node-arrow">{{ expanded ? '▾' : '▸' }}</span>
+      <span v-if="node.isDirectory" class="node-arrow"><Icon :name="expanded ? 'chevron-down' : 'chevron-right'" :size="11" /></span>
       <span v-else class="node-no-arrow" />
-      <span class="node-icon">{{ node.isDirectory ? (expanded ? '📂' : '📁') : fileIcon(node.name) }}</span>
+      <span class="node-icon">
+        <Icon v-if="node.isDirectory" :name="expanded ? 'folder-open' : 'folder'" :size="13" class="folder-icon" />
+        <span v-else class="file-emoji">{{ fileIcon(node.name) }}</span>
+      </span>
       <span class="node-name">{{ node.name }}</span>
     </div>
 
@@ -38,6 +41,7 @@ import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
 import { fileIcon } from '../../constants'
 import { useFileTree, type FileNode } from '../../composables/useFileTree'
+import Icon from '../ui/Icon.vue'
 
 const { t } = useI18n()
 
@@ -89,16 +93,16 @@ function handleDblClick() {
 
 function showNodeMenu(e: MouseEvent) {
   showMenu(e, [
-    { label: t('fileTree.openInEditor'), disabled: props.node.isDirectory, action: () => emit('open-in-editor', props.node.path) },
-    { label: t('fileTree.openInTerminal'), action: openInTerminal },
-    { label: t('fileTree.revealInFinder'), action: () => window.electronAPI.showItemInFolder(props.node.path) },
-    { label: t('fileTree.copyPath'), action: () => navigator.clipboard.writeText(props.node.path) },
+    { label: t('fileTree.openInEditor'), icon: 'file-text', disabled: props.node.isDirectory, action: () => emit('open-in-editor', props.node.path) },
+    { label: t('fileTree.openInTerminal'), icon: 'terminal', action: openInTerminal },
+    { label: t('fileTree.revealInFinder'), icon: 'external-link', action: () => window.electronAPI.showItemInFolder(props.node.path) },
+    { label: t('fileTree.copyPath'), icon: 'copy', action: () => navigator.clipboard.writeText(props.node.path) },
     { separator: true },
-    { label: t('fileTree.newFile'), action: () => createHere(false) },
-    { label: t('fileTree.newFolder'), action: () => createHere(true) },
-    { label: t('fileTree.rename'), action: renameNode },
+    { label: t('fileTree.newFile'), icon: 'file-plus', action: () => createHere(false) },
+    { label: t('fileTree.newFolder'), icon: 'folder-plus', action: () => createHere(true) },
+    { label: t('fileTree.rename'), icon: 'file-text', action: renameNode },
     { separator: true },
-    { label: t('fileTree.delete'), danger: true, action: deleteNode }
+    { label: t('fileTree.delete'), icon: 'trash', danger: true, action: deleteNode }
   ])
 }
 
@@ -156,8 +160,16 @@ async function renameNode() {
   white-space: nowrap;
 }
 .tree-node:hover { background: var(--bg-hover); }
-.node-arrow { width: 12px; font-size: 10px; flex-shrink: 0; }
+.node-arrow { width: 12px; display: inline-flex; align-items: center; color: var(--text-faint); flex-shrink: 0; }
 .node-no-arrow { width: 12px; flex-shrink: 0; }
-.node-icon { font-size: 11px; flex-shrink: 0; }
+.node-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+}
+.folder-icon { color: var(--text-accent); }
+.file-emoji { font-size: 11px; line-height: 1; }
 .node-name { overflow: hidden; text-overflow: ellipsis; }
 </style>

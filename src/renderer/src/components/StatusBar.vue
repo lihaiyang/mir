@@ -2,7 +2,7 @@
   <div class="status-bar">
     <div class="status-left">
       <span v-if="gitBranch" ref="branchEl" class="status-item git-branch clickable" @click="openBranchPicker">
-        🔀 {{ gitBranch }}
+        <Icon name="git-branch" :size="12" /> {{ gitBranch }}
       </span>
       <span v-if="gitAhead > 0" class="status-badge ahead">↑{{ gitAhead }}</span>
       <span v-if="gitBehind > 0" class="status-badge behind">↓{{ gitBehind }}</span>
@@ -63,6 +63,7 @@ import { useProjectStore } from '../stores/projects'
 import { useTabStore } from '../stores/tabs'
 import StatusBarPicker from './StatusBarPicker.vue'
 import BranchSwitchConfirm from './BranchSwitchConfirm.vue'
+import Icon from './ui/Icon.vue'
 import type { PickerItem } from './StatusBarPicker.vue'
 import type { GitStatus } from '../../main/git'
 
@@ -420,6 +421,9 @@ async function refreshGitStatus() {
   cursor: default;
   padding: 1px 4px;
   border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .status-item:hover {

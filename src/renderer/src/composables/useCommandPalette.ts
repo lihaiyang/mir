@@ -3,6 +3,8 @@ import { reactive } from 'vue'
 export interface PaletteCommand {
   id: string
   label: string
+  group?: string
+  icon?: string
   keybinding?: string
   run: () => void
 }
