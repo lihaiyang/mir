@@ -80,7 +80,13 @@ async function initTerminal() {
   searchAddon = new SearchAddon()
   term.loadAddon(fitAddon)
   term.loadAddon(searchAddon)
-  term.loadAddon(new WebLinksAddon())
+  // Cmd/Ctrl+click a URL opens it in a new browser tab; a plain click is a no-op
+  // (so the terminal doesn't accidentally navigate away).
+  term.loadAddon(new WebLinksAddon((event, uri) => {
+    if (event.metaKey || event.ctrlKey) {
+      openBrowserTab(uri)
+    }
+  }))
   term.open(terminalEl.value)
 
   // Wire pty — create before fit so ptyResize has a target
@@ -180,6 +186,11 @@ function terminalTheme() {
 
 function clearTerminal() {
   term?.clear()
+}
+
+// Cmd/Ctrl+click a URL in the terminal → open it in a new browser tab.
+function openBrowserTab(url: string) {
+  tabStore.addTab(props.tab.projectId, 'browser', { title: url, browserUrl: url })
 }
 
 async function restartTerminal() {
