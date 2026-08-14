@@ -12,3 +12,4 @@ build/
 data/
 doc/
 .opencode/
+.reasonix/
