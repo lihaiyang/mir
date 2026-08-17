@@ -138,8 +138,11 @@ const firstRowSplitters = computed(() => {
   return tabStore.getFirstRowSplitters(activeProject.value.id)
 })
 
-const leftWidthPx = computed(() => (layout.leftCollapsed ? '40px' : layout.leftWidth + 'px'))
-const rightWidthPx = computed(() => (layout.rightCollapsed ? '32px' : layout.rightWidth + 'px'))
+// The side panes are border-box sized (width includes their 1px divider
+// border), so the titlebar segments must be 1px narrower for the titlebar
+// splitters to land exactly on the same pixels as the pane borders below.
+const leftWidthPx = computed(() => (layout.leftCollapsed ? 40 : layout.leftWidth) - 1 + 'px')
+const rightWidthPx = computed(() => (layout.rightCollapsed ? 32 : layout.rightWidth) - 1 + 'px')
 
 // Splitter drag
 let resizeNodeId: string | null = null
