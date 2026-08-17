@@ -108,13 +108,28 @@ function parseSemver(v: string): { major: number; minor: number; patch: number }
   return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) }
 }
 
+// Full semver including the dev iteration: 0.2.2-dev.1 → {0,2,2,pre:1}.
+// pre === null means no prerelease suffix (a stable version).
+function parseFullSemver(v: string): { major: number; minor: number; patch: number; pre: number | null } | null {
+  const cleaned = v.replace(/^dev-/, '').replace(/^v/, '')
+  const m = cleaned.match(/^(\d+)\.(\d+)\.(\d+)(?:-dev\.(\d+))?/)
+  if (!m) return null
+  return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10), pre: m[4] != null ? parseInt(m[4], 10) : null }
+}
+
 function isNewer(remote: string, local: string): boolean {
-  const rp = parseSemver(remote)
-  const lp = parseSemver(local)
+  const rp = parseFullSemver(remote)
+  const lp = parseFullSemver(local)
   if (!rp || !lp) return false
   if (rp.major !== lp.major) return rp.major > lp.major
   if (rp.minor !== lp.minor) return rp.minor > lp.minor
-  return rp.patch > lp.patch
+  if (rp.patch !== lp.patch) return rp.patch > lp.patch
+  // Same base version (0.2.2-dev.0 vs 0.2.2-dev.1): compare the dev iteration.
+  // A missing prerelease (stable) is treated as greater than any -dev.N —
+  // channels are isolated so this only matters within one channel.
+  const rPre = rp.pre === null ? Infinity : rp.pre
+  const lPre = lp.pre === null ? Infinity : lp.pre
+  return rPre > lPre
 }
 
 // Channel: 'dev' if version has a prerelease tag (e.g. 0.2.0-dev.0),
@@ -132,23 +147,33 @@ function getChannel(version: string): 'dev' | 'stable' {
 // Both channels use the same releases.atom feed — GitHub serves it from
 // github.com (not the API), so it has no rate limit. We filter by tag
 // prefix to isolate channels.
-function fetchLatestVersion(): Promise<string> {
-  const localChannel = getChannel(app.getVersion())
-  return fetchLatestFromAtom(localChannel)
+//
+// IMPORTANT: the feed only carries the TAG name (dev-0.2.2), which does NOT
+// include the dev iteration of the version (0.2.2-dev.1). The exact version
+// is recovered from the release asset name (MIR-Dev-0.2.2-dev.1-arm64-mac.zip)
+// so the updater can distinguish 0.2.2-dev.0 from 0.2.2-dev.1.
+interface LatestRelease {
+  tag: string
+  version: string
+  assetName: string
 }
 
-// Fetch the Atom feed and find the latest release for the given channel.
+// electron-builder mac zip naming: MIR-{version}-arm64-mac.zip
+// (MIR-Dev- prefix for dev builds, from productName "MIR Dev").
+const ZIP_ASSET_RE = /^MIR(?:-Dev)?-([\d.]+(?:-dev\.\d+)?)-(?:arm64|x64)-mac\.zip$/
+
+// Fetch the atom feed and find the newest release tag for the given channel.
 // Stable: first entry with tag 'vX.Y.Z'. Dev: first entry with 'dev-X.Y.Z'.
-function fetchLatestFromAtom(channel: 'dev' | 'stable'): Promise<string> {
+function fetchLatestTagFromAtom(channel: 'dev' | 'stable'): Promise<string> {
   const { promise, resolve, reject } = Promise.withResolvers<string>()
   const req = https.get(
-    `https://github.com/${REPO}/releases.atom`,
+    'https://github.com/' + REPO + '/releases.atom',
     { headers: { 'User-Agent': UA } },
     (res) => {
       const status = res.statusCode ?? 0
       if (status !== 200) {
         res.resume()
-        reject(new Error(`atom feed HTTP ${status}`))
+        reject(new Error('atom feed HTTP ' + status))
         return
       }
       let xml = ''
@@ -163,20 +188,16 @@ function fetchLatestFromAtom(channel: 'dev' | 'stable'): Promise<string> {
           const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/(v?\d+\.\d+\.\d+|dev-\d+\.\d+\.\d+)"/)
           const tag = idMatch?.[1] || linkMatch?.[1]
           if (!tag) continue
-
           if (channel === 'dev' && tag.startsWith('dev-')) {
-            // Convert tag dev-0.2.1 → app version 0.2.1-dev.0
-            const ver = tag.replace(/^dev-/, '')
-            resolve(ver + '-dev.0')
+            resolve(tag)
             return
           }
           if (channel === 'stable' && (tag.startsWith('v') || /^\d+\.\d+\.\d+$/.test(tag))) {
-            // Convert tag v0.2.0 → app version 0.2.0
-            resolve(tag.replace(/^v/, ''))
+            resolve(tag)
             return
           }
         }
-        reject(new Error(`no ${channel} release found in atom feed`))
+        reject(new Error('no ' + channel + ' release found in atom feed'))
       })
     }
   )
@@ -185,6 +206,88 @@ function fetchLatestFromAtom(channel: 'dev' | 'stable'): Promise<string> {
     req.destroy(new Error('request timeout'))
   })
   return promise
+}
+
+// Fetch the release page's asset list (GitHub's lazy-load endpoint) and pick
+// the newest mac zip asset. Returns its exact name, e.g.
+// "MIR-Dev-0.2.2-dev.1-arm64-mac.zip". When a release hosts multiple zips
+// (e.g. a re-published tag), the highest version wins.
+function fetchZipAssetName(tag: string): Promise<string | null> {
+  const { promise, resolve, reject } = Promise.withResolvers<string | null>()
+  const req = https.get(
+    'https://github.com/' + REPO + '/releases/expanded_assets/' + encodeURIComponent(tag),
+    { headers: { 'User-Agent': UA } },
+    (res) => {
+      const status = res.statusCode ?? 0
+      if (status !== 200) {
+        res.resume()
+        reject(new Error('release assets HTTP ' + status))
+        return
+      }
+      let html = ''
+      res.setEncoding('utf-8')
+      res.on('data', (c: string) => { html += c })
+      res.on('end', () => {
+        // <a href="/lihaiyang/mir/releases/download/dev-0.2.2/MIR-Dev-0.2.2-dev.1-arm64-mac.zip" ...>
+        const names: string[] = []
+        const re = /href="[^"]*\/releases\/download\/[^"]+\/(MIR(?:-Dev)?-[\d.]+(?:-dev\.\d+)?-(?:arm64|x64)-mac\.zip)"/g
+        let m: RegExpExecArray | null
+        while ((m = re.exec(html)) !== null) names.push(m[1])
+        if (names.length === 0) {
+          resolve(null)
+          return
+        }
+        // Pick the zip with the highest version
+        let best: string | null = null
+        for (const n of names) {
+          const v = n.match(ZIP_ASSET_RE)?.[1]
+          if (!v) continue
+          if (best === null || isNewer(v, best.match(ZIP_ASSET_RE)?.[1] ?? '')) best = n
+        }
+        resolve(best)
+      })
+    }
+  )
+  req.on('error', reject)
+  req.setTimeout(15000, () => {
+    req.destroy(new Error('release assets request timeout'))
+  })
+  return promise
+}
+
+// Resolve the newest release for the local channel with its full version.
+// The atom feed gives the tag; the asset name on the release page gives the
+// exact version (including the dev iteration). Falls back to deriving the
+// version from the tag alone when the asset list cannot be fetched.
+async function fetchLatestRelease(): Promise<LatestRelease> {
+  const localChannel = getChannel(app.getVersion())
+  const tag = await fetchLatestTagFromAtom(localChannel)
+
+  let assetName: string | null = null
+  try {
+    assetName = await fetchZipAssetName(tag)
+  } catch (err) {
+    logToFile('asset name fetch failed, falling back to tag-derived version: ' + (err instanceof Error ? err.message : String(err)))
+  }
+
+  if (assetName) {
+    const ver = assetName.match(ZIP_ASSET_RE)?.[1]
+    if (ver) {
+      logToFile('latest release: tag=' + tag + ' asset=' + assetName + ' version=' + ver)
+      return { tag, version: ver, assetName }
+    }
+  }
+
+  // Fallback: derive the version from the tag (dev-0.2.2 -> 0.2.2-dev.0).
+  // This matches releases whose version is exactly X.Y.Z-dev.0.
+  const fallbackAsset = localChannel === 'dev'
+    ? 'MIR-Dev-' + tag.replace(/^dev-/, '') + '-dev.0-' + process.arch + '-mac.zip'
+    : 'MIR-' + tag.replace(/^v/, '') + '-' + process.arch + '-mac.zip'
+  const fallbackVersion = localChannel === 'dev'
+    ? tag.replace(/^dev-/, '') + '-dev.0'
+    : tag.replace(/^v/, '')
+  logToFile('latest release (fallback): tag=' + tag + ' version=' + fallbackVersion)
+  return { tag, version: fallbackVersion, assetName: fallbackAsset }
 }
 
 function downloadFile(
@@ -765,7 +868,8 @@ async function checkForUpdate(manual: boolean): Promise<void> {
     }
 
     emit({ status: 'checking', manual: activeManual })
-    const remoteVersion = await fetchLatestVersion()
+    const latest = await fetchLatestRelease()
+    const remoteVersion = latest.version
     const localVersion = app.getVersion()
 
     // Channel isolation: dev builds only update to newer dev builds,
@@ -790,16 +894,11 @@ async function checkForUpdate(manual: boolean): Promise<void> {
       return
     }
 
-    // electron-builder mac zip naming: MIR-{version}-arm64-mac.zip
-    // Tag naming: stable = v0.2.0, dev = dev-0.2.0 (tag uses dev- prefix
-    // without the prerelease suffix, e.g. dev-0.2.0 for version 0.2.0-dev.0)
-    const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
-    const isDev = getChannel(remoteVersion) === 'dev'
-    const productPrefix = isDev ? 'MIR-Dev' : 'MIR'
-    const assetName = `${productPrefix}-${remoteVersion}-${arch}-mac.zip`
-    const tag = isDev
-      ? `dev-${parseSemver(remoteVersion)!.major}.${parseSemver(remoteVersion)!.minor}.${parseSemver(remoteVersion)!.patch}`
-      : `v${remoteVersion}`
+    // Asset name and tag come from the resolved release (atom feed + asset
+    // list): the asset name carries the exact version (e.g. MIR-Dev-0.2.2-
+    // dev.1-arm64-mac.zip) while the tag is used for the download URL.
+    const assetName = latest.assetName
+    const tag = latest.tag
     const assetUrl = `https://github.com/${REPO}/releases/download/${tag}/${assetName}`
     const blockmapUrl = `${assetUrl}.blockmap`
 
