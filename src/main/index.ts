@@ -9,7 +9,16 @@ import { existsSync } from 'fs'
 // the two instances. Without this, the release instance overwrites itemOrder
 // (and all other state) with its stale in-memory copy, making drag-reorder
 // appear to have no effect after a restart.
-if (process.env.ELECTRON_RENDERER_URL) {
+//
+// NOTE: installed apps derive userData from the package.json "name" field
+// (app.getName()), which is "mir" for BOTH the stable build (MIR.app) and the
+// dev-channel build (MIR Dev.app) — so without this redirect the two installed
+// versions would share ~/Library/Application Support/mir, including the
+// webview partition storage (Service Workers, cookies, IndexedDB). Concurrent
+// or alternating use corrupts the shared partition (e.g. SW registration
+// fails with "The document is in an invalid state" and pages won't open).
+// Redirect every dev-channel build (version contains "-dev") to mir-dev.
+if (process.env.ELECTRON_RENDERER_URL || app.getVersion().includes('-dev')) {
   app.setPath('userData', join(app.getPath('appData'), 'mir-dev'))
 }
 
