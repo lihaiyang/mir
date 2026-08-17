@@ -348,7 +348,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   border-radius: 6px 6px 0 0;
   background: transparent;
-  border-top: 1px solid transparent;
+  border-top: 2px solid transparent;
   -webkit-app-region: no-drag;
   transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
@@ -356,8 +356,8 @@ onUnmounted(() => {
 .tab.active {
   background: var(--bg-primary);
   color: var(--text-primary);
-  height: calc(var(--tab-height, 30px) - 2px);
-  border-top: 1px solid var(--text-accent);
+  height: calc(var(--tab-height, 30px) - 1px);
+  border-top: 2px solid var(--text-accent);
 }
 
 .tab-icon {
@@ -402,7 +402,7 @@ onUnmounted(() => {
 }
 .tab:hover .tab-close,
 .tab.active .tab-close { opacity: 1; }
-.tab-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.tab-close:hover { background: var(--bg-hover); color: var(--text-danger); }
 
 .tab-toolbar {
   display: flex;

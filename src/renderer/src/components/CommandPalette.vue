@@ -133,7 +133,7 @@ function runItem(cmd: PaletteCommand) {
   background: var(--overlay);
   display: flex;
   justify-content: center;
-  padding-top: 80px;
+  padding-top: 12vh;
   animation: overlay-in var(--transition-base) ease;
 }
 
@@ -194,7 +194,9 @@ function runItem(cmd: PaletteCommand) {
   color: var(--text-primary);
   gap: 10px;
 }
-.cp-item:hover,
+.cp-item:hover {
+  background: var(--bg-hover);
+}
 .cp-item.active {
   background: var(--bg-active);
   color: #fff;

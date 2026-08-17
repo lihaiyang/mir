@@ -231,7 +231,7 @@ onUnmounted(() => {
   min-width: 90px;
   font-size: 11px;
   border-radius: 6px 6px 0 0;
-  border-top: 1px solid transparent;
+  border-top: 2px solid transparent;
   color: var(--text-secondary);
   cursor: pointer;
   max-width: 200px;
@@ -246,8 +246,8 @@ onUnmounted(() => {
 .bp-tab.active {
   background: var(--bg-primary);
   color: var(--text-primary);
-  border-top: 1px solid var(--text-accent);
-  height: calc(var(--tab-height, 30px) - 2px);
+  border-top: 2px solid var(--text-accent);
+  height: calc(var(--tab-height, 30px) - 1px);
 }
 .bp-tab-title {
   overflow: hidden;
@@ -265,7 +265,7 @@ onUnmounted(() => {
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
-.bp-tab-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.bp-tab-close:hover { background: var(--bg-hover); color: var(--text-danger); }
 .bp-new-tab {
   display: inline-flex;
   align-items: center;

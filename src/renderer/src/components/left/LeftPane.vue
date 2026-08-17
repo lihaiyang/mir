@@ -651,7 +651,10 @@ function cancelEdit() { editing.value = false }
   flex-wrap: wrap;
 }
 .left-item:hover { background: var(--bg-hover); }
-.left-item.active { background: var(--bg-active); }
+.left-item.active {
+  background: var(--bg-selected);
+  box-shadow: inset 2px 0 0 var(--text-accent);
+}
 .left-item.drag-source { opacity: 0.4; }
 /* Drop indicator: an absolutely-positioned line that does NOT change the
    item's box, so it cannot shift layout mid-drag and disrupt the drop. */
