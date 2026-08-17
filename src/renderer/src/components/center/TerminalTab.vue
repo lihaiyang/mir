@@ -19,6 +19,7 @@ import '@xterm/xterm/css/xterm.css'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
+import { useTerminalStore } from '../../stores/terminal'
 
 import { useContextMenu } from '../../composables/useContextMenu'
 import type { Tab } from '../../stores/tabs'
@@ -30,6 +31,7 @@ const props = defineProps<{ tab: Tab }>()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const projectStore = useProjectStore()
+const terminalStore = useTerminalStore()
 
 const { show: showMenu } = useContextMenu()
 
@@ -43,6 +45,23 @@ let unsubExit: (() => void) | null = null
 let resizeObserver: ResizeObserver | null = null
 let isUnmounting = false
 const cleanupRef: { current: (() => void) | null } = { current: null }
+
+// Scrollback + cwd tracking for session restore.
+const MAX_SCROLLBACK_CHARS = 256 * 1024
+let scrollback = ''
+let trackedCwd = ''
+
+// Best-effort cwd tracking via OSC 7 (iTerm2/kitty prompt integration).
+// Returns the decoded path when a `OSC 7 ; file://host/path ST` sequence is present.
+function parseOsc7Cwd(data: string): string | null {
+  const re = /\x1b\]7;file:\/\/[^/]*([^\x07\x1b\\]+)(?:\x07|\x1b\\)/g
+  let m: RegExpExecArray | null
+  let last: string | null = null
+  while ((m = re.exec(data))) {
+    try { last = decodeURIComponent(m[1]) } catch { /* ignore malformed */ }
+  }
+  return last
+}
 
 onMounted(async () => {
   await initTerminal()
@@ -91,12 +110,27 @@ async function initTerminal() {
 
   // Wire pty — create before fit so ptyResize has a target
   const homeDir = await window.electronAPI.getPath('home')
-  const cwd = props.tab.terminalCwd || projectStore.activeProject?.path || homeDir || '/'
+  const saved = terminalStore.getSession(props.tab.id)
+  const cwd = saved?.cwd || props.tab.terminalCwd || projectStore.activeProject?.path || homeDir || '/'
+  trackedCwd = cwd
+  scrollback = saved?.scrollback || ''
+
+  // Restore previous session scrollback as read-only history above the fresh shell.
+  if (saved?.scrollback) {
+    term.write(saved.scrollback)
+    term.write('\r\n──── 上次会话 ────\r\n')
+  }
 
   unsubData = window.electronAPI.onPtyData(props.tab.id, (data) => {
     term?.write(data)
+    scrollback = (scrollback + data).slice(-MAX_SCROLLBACK_CHARS)
+    const c = parseOsc7Cwd(data)
+    if (c) trackedCwd = c
+    terminalStore.saveSession(props.tab.id, scrollback, trackedCwd)
   })
   unsubExit = window.electronAPI.onPtyExit(props.tab.id, () => {
+    terminalStore.saveSession(props.tab.id, scrollback, trackedCwd)
+    terminalStore.persistNow()
     if (!isUnmounting) {
       exited.value = true
       window.dispatchEvent(new CustomEvent('mir-notification', {

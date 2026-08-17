@@ -1,20 +1,22 @@
 <template>
   <div class="browser-panel">
-    <!-- Tab bar -->
-    <div class="bp-tabbar">
-      <div
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="bp-tab"
-        :class="{ active: tab.id === activeTabId }"
-        @click="browserStore.setActiveTab(tab.id)"
-        @mousedown.middle="browserStore.closeTab(tab.id)"
-      >
-        <span class="bp-tab-title">{{ tab.title || tab.url || $t('browser.newTab') }}</span>
-        <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id)"><Icon name="x" :size="10" /></button>
+    <!-- Tab bar (teleported into the title bar) -->
+    <Teleport to="#mir-browser-tabs">
+      <div class="bp-tabbar">
+        <div
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="bp-tab"
+          :class="{ active: tab.id === activeTabId }"
+          @click="browserStore.setActiveTab(tab.id)"
+          @mousedown.middle="browserStore.closeTab(tab.id)"
+        >
+          <span class="bp-tab-title">{{ tab.title || tab.url || $t('browser.newTab') }}</span>
+          <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id)"><Icon name="x" :size="10" /></button>
+        </div>
+        <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab()"><Icon name="plus" :size="13" /></button>
       </div>
-      <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab()"><Icon name="plus" :size="13" /></button>
-    </div>
+    </Teleport>
 
     <!-- Toolbar: nav + address bar -->
     <div class="bp-toolbar">
@@ -212,11 +214,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 3px 6px 0;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 0 6px;
+  height: 100%;
+  background: transparent;
   overflow-x: auto;
   flex-shrink: 0;
+  -webkit-app-region: drag;
 }
 .bp-tab {
   display: flex;
@@ -231,6 +234,7 @@ onUnmounted(() => {
   white-space: nowrap;
   flex-shrink: 0;
   user-select: none;
+  -webkit-app-region: no-drag;
 }
 .bp-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
 .bp-tab.active { background: var(--bg-primary); color: var(--text-primary); }
@@ -248,6 +252,7 @@ onUnmounted(() => {
   border-radius: 3px;
   color: var(--text-faint);
   cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 .bp-tab-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 .bp-new-tab {
@@ -260,6 +265,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 .bp-new-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
 .bp-toolbar {

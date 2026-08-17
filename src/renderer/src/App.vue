@@ -34,6 +34,7 @@
      <UpdateToast />
      <NotificationToast ref="notificationToast" />
      <QuickOpenModal v-if="showQuickOpen" @close="showQuickOpen = false" @open="openQuickOpenFile" />
+     <WorkspaceModal v-if="showWorkspaces" @close="showWorkspaces = false" />
      <StatusBar />
    </div>
 </template>
@@ -48,6 +49,8 @@ import { useSettingsStore } from './stores/settings'
 import { useTabStore } from './stores/tabs'
 import { useWebPageStore } from './stores/webPages'
 import { useBrowserStore, browserReloadBus } from './stores/browser'
+import { useTerminalStore } from './stores/terminal'
+import { useWorkspaceStore } from './stores/workspaces'
 import { useRecentStore } from './stores/recent'
 import { useFileMetaStore } from './stores/fileMeta'
 
@@ -61,6 +64,7 @@ import UpdateToast from './components/UpdateToast.vue'
 import StatusBar from './components/StatusBar.vue'
 import NotificationToast from './components/NotificationToast.vue'
 import QuickOpenModal from './components/QuickOpenModal.vue'
+import WorkspaceModal from './components/WorkspaceModal.vue'
 import { registerCommand } from './composables/useCommandPalette'
 import { initRendererPlugins } from './plugins/loader'
 
@@ -71,11 +75,14 @@ const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
 const browserStore = useBrowserStore()
+const terminalStore = useTerminalStore()
+const workspaceStore = useWorkspaceStore()
 const recentStore = useRecentStore()
 const fileMetaStore = useFileMetaStore()
 
 const showPalette = ref(false)
 const showQuickOpen = ref(false)
+const showWorkspaces = ref(false)
 
 provide('showPalette', showPalette)
 
@@ -89,6 +96,9 @@ onMounted(async () => {
   await tabStore.load()
   await webPageStore.load()
   await browserStore.load()
+  await terminalStore.load()
+  await workspaceStore.load()
+  pruneTerminalSessions()
   await seedDefaults()
   settingsStore.applyTheme()
   window.electronAPI.setAutoUpdate(settingsStore.settings.autoUpdate).catch(() => {})
@@ -127,6 +137,7 @@ onMounted(async () => {
   window.addEventListener('beforeunload', () => {
     layout.doPersist()
     tabStore.doPersist()
+    terminalStore.persistNow()
   })
 
   // Listen for editor asking to open the global command palette
@@ -185,6 +196,17 @@ async function seedDefaults() {
   if (browserStore.tabs.length === 0) {
     browserStore.openTab()
   }
+}
+
+// Drop terminal sessions whose terminal tab no longer exists (closed tabs).
+function pruneTerminalSessions() {
+  const ids = new Set<string>()
+  for (const p of projectStore.projects) {
+    for (const t of tabStore.getAllTabs(p.id)) {
+      if (t.type === 'terminal') ids.add(t.id)
+    }
+  }
+  terminalStore.prune(ids)
 }
 
 // A link inside an embedded page requested a new window (target=_blank /
@@ -295,6 +317,13 @@ function registerBuiltinCommands() {
     run: () => {
       settingsStore.update({ showPanelIcons: !settingsStore.settings.showPanelIcons })
     }
+  })
+  registerCommand({
+    id: 'mir.workspaces',
+    label: t('workspace.title'),
+    group: 'View',
+    icon: 'layout',
+    run: () => { showWorkspaces.value = true }
   })
 }
 

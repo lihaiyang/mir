@@ -17,6 +17,14 @@ import { setupIpcHandlers } from './ipc'
 import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, openReleasesPage, UpdaterEvent } from './updater'
 import { registerPluginScheme, registerPluginProtocol, initMainPlugins } from './plugins'
 
+// Prevent "Error: write EIO/EPIPE" uncaught exceptions: when the app is launched
+// from a terminal that later closes (or its stdout/stderr pipe breaks), any
+// console.* write in the main process would otherwise crash the whole app.
+// Swallowing stream errors is safe — a failed log write is never worth crashing.
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on('error', () => {})
+}
+
 const ICON_PATH = join(__dirname, '../../build/icon.png')
 
 

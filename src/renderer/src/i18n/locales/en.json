@@ -53,6 +53,12 @@
     "pinned": "Pinned",
     "homeProject": "Home"
   },
+  "workspace": {
+    "title": "Workspaces",
+    "saveAs": "Save As",
+    "namePlaceholder": "Workspace name",
+    "empty": "No workspaces yet"
+  },
   "centerPane": {
     "noProject": "No project selected",
     "noProjectHint": "Add a project from the left panel to get started",

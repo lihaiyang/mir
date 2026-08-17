@@ -53,6 +53,12 @@
     "pinned": "已固定",
     "homeProject": "主目录"
   },
+  "workspace": {
+    "title": "工作区",
+    "saveAs": "保存为",
+    "namePlaceholder": "工作区名称",
+    "empty": "还没有工作区,先保存一个吧"
+  },
   "centerPane": {
     "noProject": "没有选中的项目",
     "noProjectHint": "从左栏添加一个项目以开始",

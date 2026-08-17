@@ -33,8 +33,19 @@
       </div>
     </template>
 
+    <!-- ── Browser panel mode: tab bar teleported here from BrowserPanel ──
+         The container stays in the DOM permanently (v-show, NOT v-if): destroying
+         it on a mode switch would also destroy the <Teleport> content mounted into
+         it from BrowserPanel, and the Teleport never re-mounts into the rebuilt
+         container — the tab bar would then be gone until the app restarts. -->
+    <div
+      v-show="!selectedWebPage && browserStore.active"
+      id="mir-browser-tabs"
+      class="tl-center tl-center--browser-tabs"
+    />
+
     <!-- ── Normal project mode: first-row TabBars ── -->
-    <template v-else>
+    <template v-if="!selectedWebPage && !browserStore.active">
       <div class="tl-center">
         <div
           v-for="(pane, i) in firstRowPanes"
@@ -72,6 +83,7 @@ import { useLayoutStore } from '../stores/layout'
 import { useProjectStore } from '../stores/projects'
 import { useTabStore } from '../stores/tabs'
 import { useWebPageStore, standaloneNavBus } from '../stores/webPages'
+import { useBrowserStore } from '../stores/browser'
 import TabBar from './center/TabBar.vue'
 import Icon from './ui/Icon.vue'
 
@@ -80,6 +92,7 @@ const layout = useLayoutStore()
 const projectStore = useProjectStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
+const browserStore = useBrowserStore()
 
 function openSettings() {
   if (!projectStore.activeProject) return
@@ -206,6 +219,24 @@ function onMouseUp() {
 .tl-center :deep(.tab-bar) {
   border-bottom: none;
   -webkit-app-region: drag;
+}
+
+/* ── Browser panel tabs (teleported in from BrowserPanel) ── */
+.tl-center--browser-tabs {
+  overflow: hidden;
+  -webkit-app-region: drag;
+}
+.tl-center--browser-tabs :deep(.bp-tabbar) {
+  height: 100%;
+  padding: 0 6px;
+  background: transparent;
+  border-bottom: none;
+  -webkit-app-region: drag;
+}
+.tl-center--browser-tabs :deep(.bp-tab),
+.tl-center--browser-tabs :deep(.bp-tab-close),
+.tl-center--browser-tabs :deep(.bp-new-tab) {
+  -webkit-app-region: no-drag;
 }
 
 /* ── Browser / standalone mode ── */
