@@ -212,7 +212,7 @@ onUnmounted(() => {
 }
 .bp-tabbar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 2px;
   padding: 0 6px;
   height: 100%;
@@ -221,13 +221,17 @@ onUnmounted(() => {
   flex-shrink: 0;
   -webkit-app-region: drag;
 }
+/* Same sizing/alignment as project TabBar tabs */
 .bp-tab {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: 0 8px;
+  height: 26px;
+  min-width: 90px;
+  font-size: 11px;
   border-radius: 6px 6px 0 0;
+  border-top: 1px solid transparent;
   color: var(--text-secondary);
   cursor: pointer;
   max-width: 200px;
@@ -235,9 +239,16 @@ onUnmounted(() => {
   flex-shrink: 0;
   user-select: none;
   -webkit-app-region: no-drag;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .bp-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
-.bp-tab.active { background: var(--bg-primary); color: var(--text-primary); }
+/* Same active highlight as project TabBar tabs: taller + top accent line */
+.bp-tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-top: 1px solid var(--text-accent);
+  height: calc(var(--tab-height, 30px) - 2px);
+}
 .bp-tab-title {
   overflow: hidden;
   text-overflow: ellipsis;
