@@ -13,3 +13,9 @@ data/
 doc/
 .opencode/
 .reasonix/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Local audit artifacts
+.optimization-audit/
