@@ -451,17 +451,20 @@ onUnmounted(() => {
   border-left: 1px solid var(--border-color);
   transition: width var(--transition-base) var(--ease-out);
 }
+/* Drag hot-zone only: the visible divider is the 1px panel border, so the
+   line stays uniform and aligned with the titlebar splitters. The hot-zone
+   turns into a subtle accent glow while dragging/hovering. */
 .splitter {
   width: 3px;
   margin: 0 -1px;
   cursor: col-resize;
-  background: var(--border-color);
+  background: transparent;
   flex-shrink: 0;
-  transition: background var(--transition-fast) ease, width var(--transition-fast) ease;
+  transition: background var(--transition-fast) ease;
 }
-.splitter:hover {
-  background: var(--text-accent);
-  width: 5px;
+.splitter:hover,
+.splitter.dragging {
+  background: rgba(76, 194, 255, 0.35);
 }
 </style>
 

@@ -583,7 +583,7 @@ async function openFolder() {
   transition: background var(--transition-fast) ease;
 }
 .splitter:hover {
-  background: rgba(86, 156, 214, 0.45);
+  background: rgba(76, 194, 255, 0.35);
 }
 .splitter-h { cursor: col-resize; }
 .splitter-v { cursor: row-resize; }
