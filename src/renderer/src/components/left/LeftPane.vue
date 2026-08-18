@@ -583,7 +583,7 @@ function cancelEdit() { editing.value = false }
 .left-header {
   display: flex;
   align-items: center;
-  height: var(--tab-height);
+  height: var(--titlebar-height);
   padding: 0 8px;
   border-bottom: 1px solid var(--border-color);
   gap: 4px;
@@ -733,7 +733,7 @@ function cancelEdit() { editing.value = false }
 .left-divider {
   height: 1px;
   background: var(--border-color);
-  margin: 6px 8px;
+  margin: 3px 8px;
 }
 
 /* Notification blink */
