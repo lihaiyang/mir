@@ -46,15 +46,17 @@
       </template>
     </div>
 
-    <!-- Fixed multi-tab browser panel: mounted once then kept alive (hidden via
-         visibility) so its webviews survive switching to a project and back -->
-    <div
-      v-if="browserPanelMounted"
-      class="browser-panel-host"
-      :class="{ 'browser-panel-hidden': !browserStore.active }"
-    >
-      <BrowserPanel />
-    </div>
+    <!-- Browser projects (pinned panel + user-created browser projects).
+         Each panel is mounted lazily on first activation and then kept alive
+         (hidden via visibility) so its webviews survive switching away and back. -->
+    <template v-for="bp in mountedBrowserProjects" :key="bp.id">
+      <div
+        class="browser-panel-host"
+        :class="{ 'browser-panel-hidden': browserStore.activeProjectId !== bp.id }"
+      >
+        <BrowserPanel :project-id="bp.id" />
+      </div>
+    </template>
 
     <!-- Project view: shown when no web page / browser panel is selected -->
     <template v-if="!browserStore.active && !selectedWebPage">
@@ -121,13 +123,17 @@ const browserStore = useBrowserStore()
 const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 
-// Mount the browser panel lazily, then keep it alive across project switches.
-// If it were unmounted (v-if) its <webview> guests would be destroyed, forcing a
-// fresh reload on return — which lets SSO/redirects jump to a different page.
-const browserPanelMounted = ref(browserStore.active)
-watch(() => browserStore.active, (v) => {
-  if (v) browserPanelMounted.value = true
+// Mount each browser project's panel lazily on first activation, then keep it
+// alive across switches. If a panel were unmounted (v-if) its <webview> guests
+// would be destroyed, forcing a fresh reload on return — which lets SSO/redirects
+// jump to a different page.
+const browserPanelMounted = ref<Record<string, boolean>>({})
+watch(() => browserStore.activeProjectId, (v) => {
+  if (v) browserPanelMounted.value = { ...browserPanelMounted.value, [v]: true }
 })
+const mountedBrowserProjects = computed(() =>
+  browserStore.projects.filter(p => browserPanelMounted.value[p.id])
+)
 
 // Collect all non-browser tabs across ALL projects, so KeepAlive never evicts them
 // when switching between projects

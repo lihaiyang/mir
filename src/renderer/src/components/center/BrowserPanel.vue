@@ -1,20 +1,20 @@
 <template>
   <div class="browser-panel">
     <!-- Tab bar (teleported into the title bar) -->
-    <Teleport to="#mir-browser-tabs">
+    <Teleport :to="`#mir-browser-tabs-${projectId}`">
       <div class="bp-tabbar">
         <div
           v-for="tab in tabs"
           :key="tab.id"
           class="bp-tab"
           :class="{ active: tab.id === activeTabId }"
-          @click="browserStore.setActiveTab(tab.id)"
-          @mousedown.middle="browserStore.closeTab(tab.id)"
+          @click="browserStore.setActiveTab(tab.id, projectId)"
+          @mousedown.middle="browserStore.closeTab(tab.id, projectId)"
         >
           <span class="bp-tab-title">{{ tab.title || tab.url || $t('browser.newTab') }}</span>
-          <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id)"><Icon name="x" :size="10" /></button>
+          <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id, projectId)"><Icon name="x" :size="10" /></button>
         </div>
-        <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab()"><Icon name="plus" :size="13" /></button>
+        <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab(undefined, projectId)"><Icon name="plus" :size="13" /></button>
       </div>
     </Teleport>
 
@@ -61,7 +61,7 @@
       <div v-if="tabs.length === 0" class="bp-empty">
         <div class="empty-icon"><Icon name="globe" :size="28" /></div>
         <p>{{ $t('browser.noTabs') }}</p>
-        <button class="btn-primary" @click="browserStore.openTab()"><Icon name="plus" :size="13" /> {{ $t('browser.newTab') }}</button>
+        <button class="btn-primary" @click="browserStore.openTab(undefined, projectId)"><Icon name="plus" :size="13" /> {{ $t('browser.newTab') }}</button>
       </div>
     </div>
   </div>
@@ -70,16 +70,20 @@
 <script setup lang="ts">
 import { ref, computed, watch, reactive, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useBrowserStore, browserReloadBus } from '../../stores/browser'
+import { useBrowserStore, browserReloadBus, PINNED_BROWSER_PROJECT_ID } from '../../stores/browser'
 import { useSettingsStore } from '../../stores/settings'
 import Icon from '../ui/Icon.vue'
+
+const props = withDefaults(defineProps<{ projectId?: string }>(), {
+  projectId: PINNED_BROWSER_PROJECT_ID
+})
 
 const { t } = useI18n()
 const browserStore = useBrowserStore()
 const settingsStore = useSettingsStore()
 
-const tabs = computed(() => browserStore.tabs)
-const activeTabId = computed(() => browserStore.activeTabId)
+const tabs = computed(() => browserStore.getTabs(props.projectId))
+const activeTabId = computed(() => browserStore.getActiveTabId(props.projectId))
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null)
 
 // Webview registry: tabId → webview element
@@ -129,7 +133,7 @@ function navigate(tabId: string, url: string) {
   const u = normalizeUrl(url)
   // Record the URL the user asked for as the display/persisted URL before loading;
   // redirects will not overwrite it.
-  browserStore.updateTab(tabId, { url: u })
+  browserStore.updateTab(tabId, { url: u }, props.projectId)
   webviews[tabId]?.loadURL(u)
 }
 
@@ -157,7 +161,7 @@ function onStopLoading(id: string) { state(id).isLoading = false }
 // Link click / location.href change — this is the user-visible intended URL.
 function onWillNavigate(id: string, e: any) {
   const url = e?.url
-  if (url) browserStore.updateTab(id, { url })
+  if (url) browserStore.updateTab(id, { url }, props.projectId)
 }
 
 // A server-side redirect happened; mark the tab so did-navigate keeps the URL.
@@ -173,7 +177,7 @@ function onNavigated(id: string, e: any) {
       // Intended URL already recorded (via navigate/will-navigate); do not
       // overwrite it with the redirect target.
     } else {
-      browserStore.updateTab(id, { url })
+      browserStore.updateTab(id, { url }, props.projectId)
     }
   }
   const st = state(id)
@@ -184,17 +188,17 @@ function onNavigated(id: string, e: any) {
 // In-page navigation (hash change / history.pushState) — keep address bar in sync.
 function onNavigatedInPage(id: string, e: any) {
   const url = e?.url
-  if (url && e?.isMainFrame) browserStore.updateTab(id, { url })
+  if (url && e?.isMainFrame) browserStore.updateTab(id, { url }, props.projectId)
 }
 
 function onTitleUpdated(id: string, e: any) {
   const title = e?.title
-  if (title) browserStore.updateTab(id, { title })
+  if (title) browserStore.updateTab(id, { title }, props.projectId)
 }
 
 // Ctrl/Cmd+R / F5 → reload the active tab only (signal from main process).
 watch(() => browserReloadBus.nonce, () => {
-  if (browserStore.active) reload()
+  if (browserStore.activeProjectId === props.projectId) reload()
 })
 
 onUnmounted(() => {

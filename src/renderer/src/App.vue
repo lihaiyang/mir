@@ -35,6 +35,7 @@
      <NotificationToast ref="notificationToast" />
      <QuickOpenModal v-if="showQuickOpen" @close="showQuickOpen = false" @open="openQuickOpenFile" />
      <WorkspaceModal v-if="showWorkspaces" @close="showWorkspaces = false" />
+     <SettingsOverlay v-if="uiStore.overlayMode" :mode="uiStore.overlayMode" @close="uiStore.closeOverlay()" />
      <StatusBar />
    </div>
 </template>
@@ -47,8 +48,9 @@ import { useLayoutStore } from './stores/layout'
 import { useProjectStore } from './stores/projects'
 import { useSettingsStore } from './stores/settings'
 import { useTabStore } from './stores/tabs'
+import { useUIStore } from './stores/ui'
 import { useWebPageStore } from './stores/webPages'
-import { useBrowserStore, browserReloadBus } from './stores/browser'
+import { useBrowserStore, browserReloadBus, PINNED_BROWSER_PROJECT_ID } from './stores/browser'
 import { useTerminalStore } from './stores/terminal'
 import { useWorkspaceStore } from './stores/workspaces'
 import { useRecentStore } from './stores/recent'
@@ -65,7 +67,9 @@ import StatusBar from './components/StatusBar.vue'
 import NotificationToast from './components/NotificationToast.vue'
 import QuickOpenModal from './components/QuickOpenModal.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
+import SettingsOverlay from './components/SettingsOverlay.vue'
 import { registerCommand } from './composables/useCommandPalette'
+import { openSettings, openPluginManager } from './composables/useGlobalActions'
 import { initRendererPlugins } from './plugins/loader'
 
 const { locale, t } = useI18n()
@@ -75,6 +79,7 @@ const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
 const browserStore = useBrowserStore()
+const uiStore = useUIStore()
 const terminalStore = useTerminalStore()
 const workspaceStore = useWorkspaceStore()
 const recentStore = useRecentStore()
@@ -96,6 +101,7 @@ onMounted(async () => {
   await tabStore.load()
   await webPageStore.load()
   await browserStore.load()
+  syncBrowserProjectsToOrder()
   await terminalStore.load()
   await workspaceStore.load()
   pruneTerminalSessions()
@@ -174,14 +180,16 @@ function onMouseUp() {
   layout.persist()
 }
 
-function openSettings() {
-  if (!projectStore.activeProject) return
-  tabStore.addTab(projectStore.activeProject.id, 'settings')
-}
-
-function openPluginManager() {
-  if (!projectStore.activeProject) return
-  tabStore.addTab(projectStore.activeProject.id, 'plugin-manager')
+// Make sure every user-created browser project is part of the sortable
+// left-pane item order (pinned panel is excluded — it has a fixed entry).
+function syncBrowserProjectsToOrder() {
+  for (const bp of browserStore.projects) {
+    if (bp.id === PINNED_BROWSER_PROJECT_ID) continue
+    const key = 'browser:' + bp.id
+    if (!projectStore.itemOrder.includes(key)) {
+      projectStore.addToOrder(key)
+    }
+  }
 }
 
 // First-run defaults: a home-directory project + a default browser tab.
@@ -193,8 +201,8 @@ async function seedDefaults() {
       await projectStore.renameProject(p.id, t('leftPane.homeProject'))
     }
   }
-  if (browserStore.tabs.length === 0) {
-    browserStore.openTab()
+  if (browserStore.getTabs(PINNED_BROWSER_PROJECT_ID).length === 0) {
+    browserStore.openTab(undefined, PINNED_BROWSER_PROJECT_ID)
   }
 }
 
@@ -214,10 +222,10 @@ function pruneTerminalSessions() {
 function handleWebviewNewWindow(url: string) {
   if (!url || url === 'about:blank') return
   if (browserStore.active) {
-    browserStore.openTab(url)
+    browserStore.openTab(url, browserStore.activeProjectId ?? PINNED_BROWSER_PROJECT_ID)
   } else if (webPageStore.selectedWebPageId) {
     // From a standalone web page bookmark → open in the fixed browser panel
-    browserStore.openTab(url)
+    browserStore.openTab(url, PINNED_BROWSER_PROJECT_ID)
     browserStore.activate()
     projectStore.setActiveProject(null)
     webPageStore.selectWebPage(null)

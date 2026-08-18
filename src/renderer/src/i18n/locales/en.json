@@ -50,6 +50,8 @@
     "browse": "Browse",
     "create": "Create",
     "browserPanel": "Browser",
+    "addBrowserProject": "Browser Project",
+    "removeBrowserProjectHint": "This browser project and its tabs will be removed from the list.",
     "pinned": "Pinned",
     "homeProject": "Home"
   },
@@ -209,7 +211,8 @@
     "reload": "Reload",
     "removeBookmark": "Remove Bookmark",
     "newTab": "New Tab",
-    "noTabs": "No tabs"
+    "noTabs": "No tabs",
+    "tabs": "tabs"
   },
   "agentCommands": {
     "title": "AI Agent Commands",

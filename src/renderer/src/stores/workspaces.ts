@@ -4,7 +4,7 @@ import { toPlainObject } from '../utils'
 import { useProjectStore } from './projects'
 import { useTabStore } from './tabs'
 import { useWebPageStore } from './webPages'
-import { useBrowserStore } from './browser'
+import { useBrowserStore, PINNED_BROWSER_PROJECT_ID, type BrowserTabState } from './browser'
 import { useLayoutStore } from './layout'
 
 // A workspace is a named snapshot of the full app state: projects, pane layout,
@@ -18,8 +18,8 @@ export interface WorkspaceSnapshot {
   focusedGroupId: ReturnType<typeof useTabStore>['focusedGroupId']
   webPages: ReturnType<typeof useWebPageStore>['webPages']
   selectedWebPageId: string | null
-  browserTabs: ReturnType<typeof useBrowserStore>['tabs']
-  browserActiveTabId: string | null
+  browserProjects: ReturnType<typeof useBrowserStore>['projects']
+  browserActiveProjectId: string | null
   browserPanelActive: boolean
   layout: {
     leftWidth: number
@@ -70,8 +70,8 @@ export const useWorkspaceStore = defineStore('workspaces', () => {
       focusedGroupId: toPlainObject(tabStore.focusedGroupId),
       webPages: toPlainObject(webPageStore.webPages),
       selectedWebPageId: webPageStore.selectedWebPageId,
-      browserTabs: toPlainObject(browserStore.tabs),
-      browserActiveTabId: browserStore.activeTabId,
+      browserProjects: toPlainObject(browserStore.projects),
+      browserActiveProjectId: browserStore.activeProjectId,
       browserPanelActive: browserStore.active,
       layout: {
         leftWidth: layout.leftWidth,
@@ -106,9 +106,27 @@ export const useWorkspaceStore = defineStore('workspaces', () => {
     webPageStore.selectedWebPageId = s.selectedWebPageId
     await webPageStore.persist()
 
-    browserStore.tabs = s.browserTabs
-    browserStore.activeTabId = s.browserActiveTabId
-    browserStore.active = s.browserPanelActive
+    // Browser projects (new format). Fall back to the legacy single-panel
+    // snapshot so old workspaces still apply correctly.
+    const legacyBrowserTabs = (s as unknown as Record<string, unknown>).browserTabs
+    if (Array.isArray(s.browserProjects) && s.browserProjects.length > 0) {
+      browserStore.projects = s.browserProjects
+      browserStore.ensurePinned()
+    } else {
+      browserStore.projects = []
+      const pinned = browserStore.ensurePinned()
+      if (Array.isArray(legacyBrowserTabs)) {
+        pinned.tabs = legacyBrowserTabs as BrowserTabState[]
+        const legacyActiveTabId = (s as unknown as Record<string, unknown>).browserActiveTabId
+        pinned.activeTabId = typeof legacyActiveTabId === 'string'
+          ? legacyActiveTabId
+          : pinned.tabs[0]?.id ?? null
+      }
+    }
+    browserStore.activeProjectId = typeof s.browserActiveProjectId === 'string'
+      ? s.browserActiveProjectId
+      : (s.browserPanelActive ? PINNED_BROWSER_PROJECT_ID : null)
+    browserStore.active = browserStore.activeProjectId !== null
     await browserStore.persist()
 
     layout.leftWidth = s.layout.leftWidth

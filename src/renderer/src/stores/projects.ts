@@ -85,6 +85,18 @@ export const useProjectStore = defineStore('projects', () => {
     await persistOrder()
   }
 
+  // Key-based reorder: safer than index-based reorder when the rendered list
+  // is a filtered view of itemOrder (e.g. browser projects / web pages).
+  async function reorderItemsByKey(fromKey: string, toKey: string) {
+    if (fromKey === toKey) return
+    const from = itemOrder.value.indexOf(fromKey)
+    const to = itemOrder.value.indexOf(toKey)
+    if (from === -1 || to === -1) return
+    const [item] = itemOrder.value.splice(from, 1)
+    itemOrder.value.splice(to, 0, item)
+    await persistOrder()
+  }
+
   // Key-based move: finds the item's actual position in itemOrder and moves it
   // direction: -1 (up) or +1 (down)
   async function moveItem(key: string, direction: -1 | 1) {
@@ -122,7 +134,7 @@ export const useProjectStore = defineStore('projects', () => {
   return {
     projects, activeProjectId, activeProject, itemOrder,
     load, persist, persistOrder, addProject, removeProject,
-    renameProject, reorderItems, moveItem, addToOrder, removeFromOrder,
+    renameProject, reorderItems, reorderItemsByKey, moveItem, addToOrder, removeFromOrder,
     setActiveProject, updateProjectAgentCommands
   }
 })

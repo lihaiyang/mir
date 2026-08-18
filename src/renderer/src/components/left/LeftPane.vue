@@ -5,7 +5,7 @@
       <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="14" /></div>
       <div
         class="icon-bar-btn browser-panel-btn"
-        :class="{ active: browserStore.active }"
+        :class="{ active: browserStore.activeProjectId === PINNED_BROWSER_PROJECT_ID }"
         :title="$t('leftPane.browserPanel')"
         @click="openBrowserPanel"
       >
@@ -35,6 +35,7 @@
           <div v-if="showAddMenu" class="add-dropdown" @click.stop @mouseleave="showAddMenu = false">
             <div class="add-dropdown-item" @click="addProject"><Icon name="folder" :size="14" /> {{ $t('titlebar.addProject') }}</div>
             <div class="add-dropdown-item" @click="startNewFolder"><Icon name="folder-plus" :size="14" /> {{ $t('leftPane.newFolder') }}</div>
+            <div class="add-dropdown-item" @click="addBrowserProject"><Icon name="globe" :size="14" /> {{ $t('leftPane.addBrowserProject') }}</div>
             <div class="add-dropdown-item" @click="startAddWebPage"><Icon name="globe" :size="14" /> {{ $t('titlebar.addWebPage') }}</div>
           </div>
         </div>
@@ -43,7 +44,7 @@
     <!-- Fixed browser panel entry (pinned, non-removable) -->
     <div
       class="left-item browser-panel-entry"
-      :class="{ active: browserStore.active }"
+      :class="{ active: browserStore.activeProjectId === PINNED_BROWSER_PROJECT_ID }"
       @click="openBrowserPanel"
     >
       <span class="item-icon"><Icon name="globe" :size="14" /></span>
@@ -71,10 +72,10 @@
         draggable="true"
         @click="onItemClick(item)"
         @contextmenu="showItemMenu($event, item, idx)"
-        @dragstart="dragStart($event, idx)"
-        @dragover.prevent="dragOver($event, idx)"
+        @dragstart="dragStart($event, idx, item)"
+        @dragover.prevent="dragOver($event, idx, item)"
         @dragleave="dragLeave($event, idx)"
-        @drop.stop="dragDrop(idx)"
+        @drop.stop="dragDrop(idx, item)"
         @dragend="dragEnd"
       >
         <span class="item-icon">
@@ -168,7 +169,7 @@ import { ref, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore, type Project } from '../../stores/projects'
 import { useWebPageStore, type WebPage } from '../../stores/webPages'
-import { useBrowserStore } from '../../stores/browser'
+import { useBrowserStore, type BrowserProject, PINNED_BROWSER_PROJECT_ID } from '../../stores/browser'
 import { useLayoutStore } from '../../stores/layout'
 import { useTabStore } from '../../stores/tabs'
 import { useContextMenu } from '../../composables/useContextMenu'
@@ -187,8 +188,8 @@ const tabStore = useTabStore()
 const { show: showMenu } = useContextMenu()
 
 interface OrderedItem {
-  type: 'project' | 'webpage'
-  data: Project | WebPage
+  type: 'project' | 'webpage' | 'browser'
+  data: Project | WebPage | BrowserProject
   orderKey: string
 }
 
@@ -201,6 +202,12 @@ const orderedItems = computed<OrderedItem[]>(() => {
     } else if (type === 'webpage') {
       const w = webPageStore.webPages.find(w => w.id === id)
       return w ? { type: 'webpage', data: w, orderKey: key } : null
+    } else if (type === 'browser') {
+      // The pinned browser panel is shown as a separate fixed entry; only
+      // user-created browser projects participate in the sortable list.
+      if (id === PINNED_BROWSER_PROJECT_ID) return null
+      const bp = browserStore.projects.find(b => b.id === id)
+      return bp ? { type: 'browser', data: bp, orderKey: key } : null
     }
     return null
   }).filter(Boolean) as OrderedItem[]
@@ -210,17 +217,22 @@ function isItemActive(item: OrderedItem): boolean {
   if (item.type === 'project') {
     return (item.data as Project).id === projectStore.activeProjectId
   }
+  if (item.type === 'browser') {
+    return (item.data as BrowserProject).id === browserStore.activeProjectId
+  }
   return (item.data as WebPage).id === webPageStore.selectedWebPageId
 }
 
 function itemTitle(item: OrderedItem): string {
   if (item.type === 'project') return (item.data as Project).name
+  if (item.type === 'browser') return (item.data as BrowserProject).name
   return (item.data as WebPage).title
 }
 
 function itemIcon(item: OrderedItem): string {
   if (item.type === 'project') return 'folder'
-  return item.data.hasNotification ? 'bell' : 'globe'
+  if (item.type === 'browser') return 'globe'
+  return (item.data as WebPage).hasNotification ? 'bell' : 'globe'
 }
 
 function itemSubtitle(item: OrderedItem): string {
@@ -229,6 +241,10 @@ function itemSubtitle(item: OrderedItem): string {
     const parts = p.path.split('/')
     if (parts.length <= 3) return p.path
     return '…/' + parts.slice(-2).join('/')
+  }
+  if (item.type === 'browser') {
+    const bp = item.data as BrowserProject
+    return `${bp.tabs.length} ${t('browser.tabs')}`
   }
   return (item.data as WebPage).url
 }
@@ -241,6 +257,16 @@ function onItemClick(item: OrderedItem) {
     projectStore.setActiveProject((item.data as Project).id)
     webPageStore.selectWebPage(null)
     layout.persist()
+  } else if (item.type === 'browser') {
+    // Leave project / web page mode, then activate the chosen browser project.
+    // The browser project's panel stays mounted in CenterPane, so its webviews
+    // keep their state and are not reloaded on switching back.
+    if (projectStore.activeProject) rightCollapsedSnapshot = layout.rightCollapsed
+    layout.rightCollapsed = true
+    layout.persist()
+    webPageStore.selectWebPage(null)
+    projectStore.setActiveProject(null)
+    browserStore.activateProject((item.data as BrowserProject).id)
   } else {
     // Save the project's right-pane state only when actually leaving project
     // mode; keep the snapshot intact when hopping between web page / browser.
@@ -276,7 +302,9 @@ function openBrowserPanel() {
 // by the parent onDrop so that dropping on empty space does not trigger the
 // fallback.
 let dragFromIdx = -1
+let dragFromKey = ''
 let lastDropIdx = -1
+let lastDropKey = ''
 let lastDropTarget: HTMLElement | null = null
 let dropHandled = false
 
@@ -287,7 +315,7 @@ function clearDropIndicator() {
   }
 }
 
-function dragStart(e: DragEvent, idx: number) {
+function dragStart(e: DragEvent, idx: number, item: OrderedItem) {
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move'
     // Non-empty payload: some Chromium builds won't initiate a usable drag
@@ -295,7 +323,9 @@ function dragStart(e: DragEvent, idx: number) {
     e.dataTransfer.setData('text/plain', 'mir-reorder')
   }
   dragFromIdx = idx
+  dragFromKey = item.orderKey
   lastDropIdx = -1
+  lastDropKey = ''
   lastDropTarget = null
   dropHandled = false
   // Mark body as dragging so embedded <webview> elements become click-through,
@@ -304,13 +334,14 @@ function dragStart(e: DragEvent, idx: number) {
   ;(e.currentTarget as HTMLElement).classList.add('drag-source')
 }
 
-function dragOver(e: DragEvent, idx: number) {
+function dragOver(e: DragEvent, idx: number, item: OrderedItem) {
   // Explicit preventDefault (in addition to the .prevent modifier) to
   // guarantee the target accepts the drop.
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
   const el = e.currentTarget as HTMLElement
   lastDropIdx = idx
+  lastDropKey = item.orderKey
   if (lastDropTarget !== el) {
     clearDropIndicator()
     lastDropTarget = el
@@ -329,23 +360,26 @@ function dragLeave(e: DragEvent, _idx: number) {
   if (lastDropTarget === e.currentTarget) clearDropIndicator()
 }
 
-function dragDrop(toIdx: number) {
-  if (dragFromIdx !== -1 && dragFromIdx !== toIdx) {
-    projectStore.reorderItems(dragFromIdx, toIdx)
+function dragDrop(_toIdx: number, item: OrderedItem) {
+  if (dragFromKey && item.orderKey && dragFromKey !== item.orderKey) {
+    projectStore.reorderItemsByKey(dragFromKey, item.orderKey)
   }
   dropHandled = true
   dragFromIdx = -1
+  dragFromKey = ''
   clearDropIndicator()
 }
 
 function dragEnd() {
   // Safety net: if `drop` never fired on a target (e.g. webview interference),
   // complete the reorder here using the last hovered item.
-  if (!dropHandled && dragFromIdx !== -1 && lastDropIdx !== -1 && dragFromIdx !== lastDropIdx) {
-    projectStore.reorderItems(dragFromIdx, lastDropIdx)
+  if (!dropHandled && dragFromKey && lastDropKey && dragFromKey !== lastDropKey) {
+    projectStore.reorderItemsByKey(dragFromKey, lastDropKey)
   }
   dragFromIdx = -1
+  dragFromKey = ''
   lastDropIdx = -1
+  lastDropKey = ''
   dropHandled = false
   clearDropIndicator()
   document.body.classList.remove('mir-dragging')
@@ -399,6 +433,14 @@ async function addProject() {
     await projectStore.addProject(path)
     webPageStore.selectWebPage(null)
   }
+}
+
+function addBrowserProject() {
+  showAddMenu.value = false
+  const bp = browserStore.addProject()
+  projectStore.addToOrder('browser:' + bp.id)
+  // Activate the new browser project immediately.
+  onItemClick({ type: 'browser', data: bp, orderKey: 'browser:' + bp.id })
 }
 
 // Add web page
@@ -481,6 +523,15 @@ function showItemMenu(e: MouseEvent, item: OrderedItem, idx: number) {
       { separator: true },
       { label: t('contextMenu.removeFromList'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'project', id: project.id, title: project.name, hint: t('leftPane.removeProjectHint') } } }
     ])
+  } else if (item.type === 'browser') {
+    const bp = item.data as BrowserProject
+    showMenu(e, [
+      { label: t('common.rename'), icon: 'file-text', action: () => startEdit(item) },
+      { label: t('common.moveUp'), icon: 'arrow-up', disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
+      { label: t('common.moveDown'), icon: 'arrow-down', disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
+      { separator: true },
+      { label: t('common.remove'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'browser', id: bp.id, title: bp.name, hint: t('leftPane.removeBrowserProjectHint') } } }
+    ])
   } else {
     const wp = item.data as WebPage
     showMenu(e, [
@@ -514,8 +565,11 @@ async function confirmRemove() {
   if (!removingItem.value) return
   if (removingItem.value.type === 'project') {
     await projectStore.removeProject(removingItem.value.id)
-  } else {
+  } else if (removingItem.value.type === 'webpage') {
     await webPageStore.removeWebPage(removingItem.value.id)
+  } else if (removingItem.value.type === 'browser') {
+    projectStore.removeFromOrder('browser:' + removingItem.value.id)
+    await browserStore.removeProject(removingItem.value.id)
   }
   removingItem.value = null
 }
@@ -541,6 +595,8 @@ async function commitEdit() {
       await projectStore.renameProject(id, val)
     } else if (type === 'webpage') {
       await webPageStore.renameWebPage(id, val)
+    } else if (type === 'browser') {
+      await browserStore.renameProject(id, val)
     }
   }
   editing.value = false

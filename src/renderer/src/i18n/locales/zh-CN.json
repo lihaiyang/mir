@@ -50,6 +50,8 @@
     "browse": "浏览",
     "create": "创建",
     "browserPanel": "浏览器",
+    "addBrowserProject": "浏览器项目",
+    "removeBrowserProjectHint": "该浏览器项目及其标签将从列表中移除。",
     "pinned": "已固定",
     "homeProject": "主目录"
   },
@@ -209,7 +211,8 @@
     "reload": "刷新",
     "removeBookmark": "移除书签",
     "newTab": "新建标签",
-    "noTabs": "暂无标签"
+    "noTabs": "暂无标签",
+    "tabs": "个标签"
   },
   "agentCommands": {
     "title": "AI Agent 命令",
