@@ -59,12 +59,16 @@ function getCacheDir(): string {
 }
 
 let _logPath: string | null = null
+function getUpdaterLogPath(): string {
+  if (!_logPath) _logPath = path.join(getCacheDir(), 'updater.log')
+  return _logPath
+}
+
 function logToFile(msg: string): void {
   try {
-    if (!_logPath) _logPath = path.join(getCacheDir(), 'updater.log')
     fs.mkdirSync(getCacheDir(), { recursive: true })
     const ts = new Date().toISOString()
-    fs.appendFileSync(_logPath, `[${ts}] ${msg}\n`)
+    fs.appendFileSync(getUpdaterLogPath(), `[${ts}] ${msg}\n`)
   } catch {
     /* ignore */
   }
@@ -1106,39 +1110,64 @@ function findInstalledAppPath(): string | null {
 // where /Applications/MIR.app would be missing if the app were force-killed
 // mid-swap.
 function spawnSwapScript(installedPath: string, newAppPath: string, relaunch: boolean): void {
+  const logPath = getUpdaterLogPath()
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true })
+  } catch {
+    /* ignore */
+  }
+  // Wait for the OLD app by PID (not by pgrep name matching): productName may
+  // differ between stable ("MIR") and dev ("MIR Dev") channels, and pgrep -x
+  // does not always match the Electron main-process command name. If the wait
+  // finishes too early, `open` can be delivered to the still-running old
+  // instance — the update applies but the new app never launches.
   const lines = [
     'APP="$1"',
     'NEW="$2"',
     'REL="$3"',
+    'OLD_PID="$4"',
+    'LOG="$5"',
     'PROC="${APP##*/}"',
     'PROC="${PROC%.app}"',
+    'log() { echo "[swap] $(date "+%Y-%m-%dT%H:%M:%S") $*" >>"$LOG" 2>/dev/null; }',
+    'log "start app=$APP new=$NEW relaunch=$REL old_pid=$OLD_PID"',
     'i=0',
-    'while [ "$i" -lt 100 ]; do',
-    '  pgrep -x "$PROC" >/dev/null 2>&1 || break',
+    'while [ "$i" -lt 150 ]; do',
+    '  kill -0 "$OLD_PID" 2>/dev/null || break',
     '  sleep 0.1',
     '  i=$((i+1))',
     'done',
+    'log "old process gone after $((i * 100))ms"',
     'sleep 0.3',
     'DIR="$(dirname "$APP")"',
     'BACKUP="$DIR/.MIR.app.old.$$"',
     'STAGING="$DIR/.MIR.app.staging.$$"',
-    'mv "$NEW" "$STAGING" || exit 1',
-    'if ! mv "$APP" "$BACKUP"; then mv "$STAGING" "$NEW" 2>/dev/null; exit 1; fi',
-    'if ! mv "$STAGING" "$APP"; then mv "$BACKUP" "$APP" 2>/dev/null; mv "$STAGING" "$NEW" 2>/dev/null; exit 1; fi',
+    'mv "$NEW" "$STAGING" || { log "stage mv failed"; exit 1; }',
+    'if ! mv "$APP" "$BACKUP"; then mv "$STAGING" "$NEW" 2>/dev/null; log "backup mv failed"; exit 1; fi',
+    'if ! mv "$STAGING" "$APP"; then mv "$BACKUP" "$APP" 2>/dev/null; mv "$STAGING" "$NEW" 2>/dev/null; log "install mv failed"; exit 1; fi',
     'rm -rf "$BACKUP" "$(dirname "$NEW")" 2>/dev/null',
     'rmdir "$(dirname "$(dirname "$NEW")")" 2>/dev/null',
-    '[ "$REL" = "1" ] && open "$APP"',
+    'log "swap complete"',
+    'if [ "$REL" = "1" ]; then',
+    '  if open -n "$APP" >>"$LOG" 2>&1; then',
+    '    log "relaunch via open succeeded"',
+    '  else',
+    '    log "open failed; falling back to direct executable launch"',
+    '    "$APP/Contents/MacOS/$PROC" >>"$LOG" 2>&1 &',
+    '  fi',
+    'fi',
     'exit 0'
   ]
   const script = lines.join('\n')
   const child = spawn(
     'bash',
-    ['-c', script, 'mir-swap', installedPath, newAppPath, relaunch ? '1' : '0'],
+    ['-c', script, 'mir-swap', installedPath, newAppPath, relaunch ? '1' : '0', String(process.pid), logPath],
     { detached: true, stdio: 'ignore' }
   )
   child.unref()
-  child.on('error', () => {
-    /* swallow — spawn failures are non-fatal for the quitting app */
+  child.on('error', (err) => {
+    // Swallow — but leave a trace in the updater log for diagnosis.
+    logToFile(`swap script spawn failed: ${err.message}`)
   })
 }
 
@@ -1165,6 +1194,9 @@ export function performPendingUpdate(relaunch = false): boolean {
 export function applyUpdate(): void {
   if (process.platform !== 'darwin') return
   if (!hasPendingUpdate()) return
-  performPendingUpdate(true)
+  // Only quit when a swap was actually scheduled. Otherwise the app would
+  // close without applying anything (e.g. app is running translocated from
+  // a dmg and the installed .app path cannot be determined).
+  if (!performPendingUpdate(true)) return
   app.quit()
 }
