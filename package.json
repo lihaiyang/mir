@@ -1,6 +1,6 @@
 {
   "name": "mir",
-  "version": "0.2.6-dev.0",
+  "version": "0.2.6",
   "description": "Multi-pane IDE for AI agent management",
   "main": "out/main/index.js",
   "scripts": {
@@ -63,9 +63,8 @@
     "vue-i18n": "^9.14.4"
   },
   "build": {
-    "appId": "com.mir.ide.dev",
-    "productName": "MIR Dev",
-    "artifactName": "MIR-Dev-${version}-${arch}-mac.${ext}",
+    "appId": "com.mir.ide",
+    "productName": "MIR",
     "directories": {
       "output": "release"
     },
