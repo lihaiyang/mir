@@ -203,6 +203,9 @@ function fetchLatestTagFromAtom(channel: 'dev' | 'stable'): Promise<string> {
         }
         reject(new Error('no ' + channel + ' release found in atom feed'))
       })
+      // Mid-body socket resets would otherwise retain `xml` until the
+      // request timeout fires (up to 15s).
+      res.on('error', reject)
     }
   )
   req.on('error', reject)
@@ -250,6 +253,7 @@ function fetchZipAssetName(tag: string): Promise<string | null> {
         }
         resolve(best)
       })
+      res.on('error', reject)
     }
   )
   req.on('error', reject)
@@ -306,7 +310,12 @@ function downloadFile(
     return promise
   }
   const file = fs.createWriteStream(dest)
+  // Capture the current response so a file-stream error can destroy it —
+  // otherwise the HTTP body keeps flowing into a dead write stream until the
+  // 180s timeout fires.
+  let activeRes: import('http').IncomingMessage | null = null
   const req = https.get(url, { headers: { 'User-Agent': UA } }, (res) => {
+    activeRes = res
     const status = res.statusCode ?? 0
     if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
       file.close()
@@ -353,6 +362,16 @@ function downloadFile(
       file.close(() => resolve())
     })
     file.on('error', (err) => {
+      activeRes?.destroy()
+      try {
+        fs.unlinkSync(dest)
+      } catch {
+        /* ignore */
+      }
+      reject(err)
+    })
+    res.on('error', (err) => {
+      file.close()
       try {
         fs.unlinkSync(dest)
       } catch {
@@ -433,6 +452,7 @@ function downloadBlockmap(url: string): Promise<Blockmap> {
           reject(e)
         }
       })
+      res.on('error', reject)
     })
     req.on('error', reject)
     req.setTimeout(15000, () => req.destroy(new Error('blockmap request timeout')))
@@ -663,6 +683,9 @@ function downloadRange(url: string, start: number, end: number): Promise<Buffer>
     const chunks: Buffer[] = []
     res.on('data', (c: Buffer) => chunks.push(c))
     res.on('end', () => resolve(Buffer.concat(chunks)))
+    // Without this, a mid-body socket reset leaves the chunk array retained
+    // until the 60s timeout (downloadRange runs many in parallel).
+    res.on('error', reject)
   })
   req.on('error', reject)
   req.setTimeout(60000, () => req.destroy(new Error('range request timeout')))

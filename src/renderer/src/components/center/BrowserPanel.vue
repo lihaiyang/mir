@@ -110,6 +110,20 @@ function state(id: string) {
   if (!tabState[id]) tabState[id] = { canGoBack: false, canGoForward: false, isLoading: false }
   return tabState[id]
 }
+// Prune per-tab bookkeeping when browser tabs close, so long panel lifetimes
+// don't accumulate entries for dead tab ids.
+watch(() => tabs.value.map(t => t.id).join(','), () => {
+  const alive = new Set(tabs.value.map(t => t.id))
+  for (const id of Object.keys(initialSrcs)) {
+    if (!alive.has(id)) delete initialSrcs[id]
+  }
+  for (const id of Object.keys(tabState)) {
+    if (!alive.has(id)) delete tabState[id]
+  }
+  for (const id of Array.from(redirecting)) {
+    if (!alive.has(id)) redirecting.delete(id)
+  }
+})
 const activeState = computed(() => activeTab.value ? state(activeTab.value.id) : { canGoBack: false, canGoForward: false, isLoading: false })
 
 const addrBar = ref('')

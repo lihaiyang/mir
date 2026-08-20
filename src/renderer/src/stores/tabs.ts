@@ -277,6 +277,17 @@ export const useTabStore = defineStore('tabs', () => {
     await window.electronAPI.storeSet('focusedGroupId', toPlainObject(focusedGroupId.value))
   }
 
+  // Drop ALL state for a project (pane tree, tab groups, focus). Called when a
+  // project is removed — otherwise its tabs/groups stay in memory (and in the
+  // persisted store) forever.
+  async function purgeProject(projectId: string) {
+    if (!tabGroups.value[projectId] && !paneTrees.value[projectId]) return
+    delete tabGroups.value[projectId]
+    delete paneTrees.value[projectId]
+    delete focusedGroupId.value[projectId]
+    await doPersist()
+  }
+
   // --- Group helpers ---
 
   function ensureProject(projectId: string): string {
@@ -591,6 +602,7 @@ export const useTabStore = defineStore('tabs', () => {
     findTabGroup,
     load,
     doPersist,
+    purgeProject,
     splitPane,
     closePane,
     focusPane,

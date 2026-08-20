@@ -29,6 +29,7 @@ import { useSettingsStore } from '../../stores/settings'
 import { useRecentStore } from '../../stores/recent'
 import { useFileMetaStore } from '../../stores/fileMeta'
 import type { Tab } from '../../stores/tabs'
+import { acquireModel, releaseModel } from '../../utils/monacoModels'
 import MarkdownPreview from './MarkdownPreview.vue'
 
 const { t } = useI18n()
@@ -53,7 +54,9 @@ const isMarkdown = computed(() => {
 
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 let model: monaco.editor.ITextModel | null = null
-let modelIsOwned = false
+// Path of the model currently held via acquireModel(); released on unmount /
+// file switch. Shared models are refcounted — see utils/monacoModels.ts.
+let acquiredPath: string | null = null
 let resizeObs: ResizeObserver | null = null
 let autoSaveTimer: number | null = null
 let cleanContent = ''
@@ -183,16 +186,10 @@ function createScratch() {
 function initMonaco(fp: string, content: string) {
   if (!monacoEl.value) return
 
-  const uri = monaco.Uri.file(fp)
-  const existing = monaco.editor.getModel(uri)
-  if (existing) {
-    model = existing
-    if (existing.getValue() !== content) existing.setValue(content)
-  } else {
-    const lang = props.tab.languageOverride || fileMetaStore.get(fp)?.languageOverride || detectLanguage(fp)
-    model = monaco.editor.createModel(content, lang, uri)
-    modelIsOwned = true
-  }
+  const lang = props.tab.languageOverride || fileMetaStore.get(fp)?.languageOverride || detectLanguage(fp)
+  model = acquireModel(fp, content, lang)
+  if (model.getValue() !== content) model.setValue(content)
+  acquiredPath = fp
 
   const le = props.tab.lineEnding || fileMetaStore.get(fp)?.lineEnding
   if (le && model) {
@@ -344,21 +341,12 @@ async function openFile(fp: string) {
     if (!props.tab.encoding && detectedEncoding) {
       tabStore.updateTab(props.tab.projectId, props.tab.id, { encoding: detectedEncoding })
     }
-    const uri = monaco.Uri.file(fp)
-    const existing = monaco.editor.getModel(uri)
-    if (existing) {
-      if (model !== existing) {
-        if (modelIsOwned) model?.dispose()
-        modelIsOwned = false
-      }
-      model = existing
-      if (existing.getValue() !== content) existing.setValue(content)
-    } else {
-      if (modelIsOwned) model?.dispose()
-      model = monaco.editor.createModel(content, detectLanguage(fp), uri)
-      modelIsOwned = true
-    }
-    editor?.setModel(model)
+    const newModel = acquireModel(fp, content, detectLanguage(fp))
+    if (newModel.getValue() !== content) newModel.setValue(content)
+    editor?.setModel(newModel)
+    if (model !== newModel && acquiredPath && acquiredPath !== fp) releaseModel(acquiredPath)
+    model = newModel
+    acquiredPath = fp
     currentFilePath.value = fp
     cleanContent = model.getValue()
     modified.value = false
@@ -383,20 +371,14 @@ async function saveCurrentFile() {
     const savePath = await window.electronAPI.showSaveDialog()
     if (!savePath) return
     await window.electronAPI.writeFile(savePath, content)
-    const saveUri = monaco.Uri.file(savePath)
-    const saveExisting = monaco.editor.getModel(saveUri)
-    let newModel: monaco.editor.ITextModel
-    if (saveExisting) {
-      newModel = saveExisting
-      if (saveExisting.getValue() !== content) saveExisting.setValue(content)
-      modelIsOwned = false
-    } else {
-      newModel = monaco.editor.createModel(content, detectLanguage(savePath), saveUri)
-      modelIsOwned = true
-    }
+    const newModel = acquireModel(savePath, content, detectLanguage(savePath))
+    if (newModel.getValue() !== content) newModel.setValue(content)
     editor.setModel(newModel)
-    if (model !== newModel) model.dispose()
+    // Release the old scratch model (detached by setModel above) — refcounted,
+    // so a shared model is only disposed when the last viewer releases it.
+    if (model !== newModel && acquiredPath && acquiredPath !== savePath) releaseModel(acquiredPath)
     model = newModel
+    acquiredPath = savePath
     currentFilePath.value = savePath
     cleanContent = model.getValue()
     modified.value = false
@@ -495,7 +477,10 @@ watch(() => settingsStore.settings.editorWordWrapColumn, (newVal) => {
 onBeforeUnmount(() => {
   resizeObs?.disconnect()
   editor?.dispose()
-  if (modelIsOwned) model?.dispose()
+  // Editor disposed above (model detached) — release our refcount; the model
+  // is disposed only when the last viewer of the file goes away.
+  if (acquiredPath) releaseModel(acquiredPath)
+  acquiredPath = null
   if (autoSaveTimer !== null) clearTimeout(autoSaveTimer)
   window.removeEventListener('editor-toggle-wordwrap', onToggleWordWrapEvent)
   window.removeEventListener('statusbar-goto-line', onStatusBarGotoLine)

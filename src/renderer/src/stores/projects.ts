@@ -70,6 +70,10 @@ export const useProjectStore = defineStore('projects', () => {
       activeProjectId.value = projects.value[0]?.id ?? null
     }
     itemOrder.value = itemOrder.value.filter(o => o !== 'project:' + id)
+    // Cascade: drop the project's pane tree / tab groups so they don't linger
+    // in memory (and in the persisted state) after the project is gone.
+    // Terminal scrollback sessions are pruned reactively by App.vue's watcher.
+    await useTabStore().purgeProject(id)
     await persist()
     await persistOrder()
   }

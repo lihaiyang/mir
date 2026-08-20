@@ -134,6 +134,17 @@ watch(() => browserStore.activeProjectId, (v) => {
 const mountedBrowserProjects = computed(() =>
   browserStore.projects.filter(p => browserPanelMounted.value[p.id])
 )
+// Drop stale mount flags for removed browser projects (the computed filter
+// already unmounts their panels; this just keeps the record clean).
+watch(() => browserStore.projects.map(p => p.id), (ids) => {
+  const alive = new Set(ids)
+  const stale = Object.keys(browserPanelMounted.value).filter(k => !alive.has(k))
+  if (stale.length) {
+    const next = { ...browserPanelMounted.value }
+    for (const k of stale) delete next[k]
+    browserPanelMounted.value = next
+  }
+})
 
 // Collect all non-browser tabs across ALL projects, so KeepAlive never evicts them
 // when switching between projects
@@ -197,6 +208,20 @@ watch(selectedWebPage, (wp) => {
   if (wp) {
     standaloneNavBus.url = wp.url
     standaloneNavBus.isLoading = false
+  }
+})
+
+// Prune cached standalone BrowserTabs whose web page was removed from the
+// sidebar. Without this, every removed web page keeps its <webview> guest
+// process mounted forever (a full Chromium renderer per leaked page).
+// (Selection reset is handled by webPageStore.removeWebPage itself.)
+watch(() => webPageStore.webPages.map(w => w.id), (ids) => {
+  const alive = new Set(ids)
+  const stale = Object.keys(standaloneTabCache.value).filter(k => !alive.has(k))
+  if (stale.length) {
+    const next = { ...standaloneTabCache.value }
+    for (const k of stale) delete next[k]
+    standaloneTabCache.value = next
   }
 })
 

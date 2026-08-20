@@ -25,6 +25,7 @@ import { useProjectStore } from '../../stores/projects'
 import { useRecentStore } from '../../stores/recent'
 import { useFileMetaStore } from '../../stores/fileMeta'
 import type { Tab } from '../../stores/tabs'
+import { acquireModel, releaseModel } from '../../utils/monacoModels'
 import MarkdownPreview from './MarkdownPreview.vue'
 
 const { t } = useI18n()
@@ -139,16 +140,12 @@ function initEditor(content: string) {
   if (!monacoEl.value) return
 
   const lang = props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride || detectLanguage(filePath)
-  const uri = monaco.Uri.file(filePath)
-  const existing = monaco.editor.getModel(uri)
-  if (existing) {
-    model = existing
-    if (existing.getValue() !== content) existing.setValue(content)
-    if (props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride) {
-      monaco.editor.setModelLanguage(model, props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride!)
-    }
-  } else {
-    model = monaco.editor.createModel(content, lang, uri)
+  // Refcounted: split panes viewing the same file share one model; the last
+  // one to close disposes it (Monaco never evicts models on its own).
+  model = acquireModel(filePath, content, lang)
+  if (model.getValue() !== content) model.setValue(content)
+  if (props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride) {
+    monaco.editor.setModelLanguage(model, props.tab.languageOverride || fileMetaStore.get(filePath)?.languageOverride!)
   }
 
   const le = props.tab.lineEnding || fileMetaStore.get(filePath)?.lineEnding
@@ -317,8 +314,9 @@ onDeactivated(() => {
 onBeforeUnmount(() => {
   resizeObs?.disconnect()
   editor?.dispose()
-  // Don't dispose model — it may be shared by other FileTab instances
-  // (e.g. split pane opens the same file). Monaco manages model cache internally.
+  // Editor is disposed above (detaching the model) — safe to drop our
+  // refcount now; the model is disposed only if no other viewer holds it.
+  if (filePath) releaseModel(filePath)
   if (autoSaveTimer !== null) clearTimeout(autoSaveTimer)
   window.removeEventListener('statusbar-goto-line', onStatusBarGotoLine)
   window.removeEventListener('editor-set-language', onSetLanguage)

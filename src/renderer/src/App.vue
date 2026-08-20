@@ -105,6 +105,18 @@ onMounted(async () => {
   await terminalStore.load()
   await workspaceStore.load()
   pruneTerminalSessions()
+  // Re-prune whenever terminal tabs change: without this, closing a terminal
+  // tab leaves its scrollback session (up to 256KB) in the store — and in
+  // mir-state.json — until the next app launch.
+  watch(() => {
+    const ids: string[] = []
+    for (const p of projectStore.projects) {
+      for (const t of tabStore.getAllTabs(p.id)) {
+        if (t.type === 'terminal') ids.push(t.id)
+      }
+    }
+    return ids.join(',')
+  }, () => { pruneTerminalSessions() })
   await seedDefaults()
   settingsStore.applyTheme()
   window.electronAPI.setAutoUpdate(settingsStore.settings.autoUpdate).catch(() => {})
