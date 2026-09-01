@@ -1,6 +1,6 @@
 {
   "name": "mir",
-  "version": "0.2.7.1",
+  "version": "0.2.7",
   "description": "Multi-pane IDE for AI agent management",
   "main": "out/main/index.js",
   "scripts": {
@@ -65,6 +65,9 @@
   "build": {
     "appId": "com.mir.ide",
     "productName": "MIR",
+    "extraMetadata": {
+      "version": "0.2.7.1"
+    },
     "directories": {
       "output": "release"
     },
