@@ -103,31 +103,39 @@ function emit(event: UpdaterEvent): void {
   }
 }
 
-// Parse semver from either app version (0.2.0-dev.0) or tag (dev-0.2.0).
-// Strips 'dev-' prefix, 'v' prefix, and prerelease suffix for comparison.
-function parseSemver(v: string): { major: number; minor: number; patch: number } | null {
-  const cleaned = v.replace(/^dev-/, '').replace(/^v/, '')
-  const m = cleaned.match(/^(\d+)\.(\d+)\.(\d+)/)
-  if (!m) return null
-  return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) }
+// Parse a release/app version for comparison. Supports both semver-style
+// versions (0.2.7) and four-part hotfix versions (0.2.7.1), plus the
+// dev- prefixed tags (dev-0.2.7) and -dev.N prerelease iterations.
+// A missing fourth component is treated as revision 0.
+interface ParsedVersion {
+  major: number
+  minor: number
+  patch: number
+  revision: number
+  pre: number | null
 }
 
-// Full semver including the dev iteration: 0.2.2-dev.1 → {0,2,2,pre:1}.
-// pre === null means no prerelease suffix (a stable version).
-function parseFullSemver(v: string): { major: number; minor: number; patch: number; pre: number | null } | null {
+function parseVersion(v: string): ParsedVersion | null {
   const cleaned = v.replace(/^dev-/, '').replace(/^v/, '')
-  const m = cleaned.match(/^(\d+)\.(\d+)\.(\d+)(?:-dev\.(\d+))?/)
+  const m = cleaned.match(/^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-dev\.(\d+))?/)
   if (!m) return null
-  return { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10), pre: m[4] != null ? parseInt(m[4], 10) : null }
+  return {
+    major: parseInt(m[1], 10),
+    minor: parseInt(m[2], 10),
+    patch: parseInt(m[3], 10),
+    revision: m[4] != null ? parseInt(m[4], 10) : 0,
+    pre: m[5] != null ? parseInt(m[5], 10) : null
+  }
 }
 
 function isNewer(remote: string, local: string): boolean {
-  const rp = parseFullSemver(remote)
-  const lp = parseFullSemver(local)
+  const rp = parseVersion(remote)
+  const lp = parseVersion(local)
   if (!rp || !lp) return false
   if (rp.major !== lp.major) return rp.major > lp.major
   if (rp.minor !== lp.minor) return rp.minor > lp.minor
   if (rp.patch !== lp.patch) return rp.patch > lp.patch
+  if (rp.revision !== lp.revision) return rp.revision > lp.revision
   // Same base version (0.2.2-dev.0 vs 0.2.2-dev.1): compare the dev iteration.
   // A missing prerelease (stable) is treated as greater than any -dev.N —
   // channels are isolated so this only matters within one channel.
@@ -140,9 +148,6 @@ function isNewer(remote: string, local: string): boolean {
 // otherwise 'stable'. Dev and stable are isolated update channels —
 // a dev build never updates to a stable release and vice versa.
 function getChannel(version: string): 'dev' | 'stable' {
-  const parsed = parseSemver(version)
-  if (!parsed) return 'stable'
-  // semver prerelease: 0.2.0-dev.0 has a '-dev.0' suffix
   return version.replace(/^v/, '').includes('-') ? 'dev' : 'stable'
 }
 
@@ -188,15 +193,15 @@ function fetchLatestTagFromAtom(channel: 'dev' | 'stable'): Promise<string> {
         for (const entry of entries) {
           // <id>tag:github.com,2008:Repository/.../v0.2.0</id>
           // or <id>tag:github.com,2008:Repository/.../dev-0.2.0</id>
-          const idMatch = entry.match(/<id>[^<]*\/(v?\d+\.\d+\.\d+|dev-\d+\.\d+\.\d+)<\/id>/)
-          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/(v?\d+\.\d+\.\d+|dev-\d+\.\d+\.\d+)"/)
+          const idMatch = entry.match(/<id>[^<]*\/(v?\d+\.\d+\.\d+(?:\.\d+)?|dev-\d+\.\d+\.\d+(?:\.\d+)?)<\/id>/)
+          const linkMatch = entry.match(/<link[^>]*href="[^"]*\/releases\/tag\/(v?\d+\.\d+\.\d+(?:\.\d+)?|dev-\d+\.\d+\.\d+(?:\.\d+)?)"/)
           const tag = idMatch?.[1] || linkMatch?.[1]
           if (!tag) continue
           if (channel === 'dev' && tag.startsWith('dev-')) {
             resolve(tag)
             return
           }
-          if (channel === 'stable' && (tag.startsWith('v') || /^\d+\.\d+\.\d+$/.test(tag))) {
+          if (channel === 'stable' && (tag.startsWith('v') || /^\d+\.\d+\.\d+(?:\.\d+)?$/.test(tag))) {
             resolve(tag)
             return
           }
