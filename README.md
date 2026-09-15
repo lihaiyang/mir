@@ -257,7 +257,7 @@ ipcRenderer.on(`pty:data:${id}`, listener)
 
 | 层级 | 技术 | 用途 |
 |---|---|---|
-| 桌面框架 | Electron 28 | 窗口管理、系统集成 |
+| 桌面框架 | Electron 44 (Chromium 152 / Node 24) | 窗口管理、系统集成 |
 | 构建工具 | electron-vite | 开发/构建/热更新 |
 | 前端框架 | Vue 3 + Composition API | UI 组件、响应式状态 |
 | 状态管理 | Pinia | 全局 Store（tabs / projects / settings / webPages / layout） |
@@ -306,16 +306,23 @@ mir/
 
 ### 环境要求
 
-- Node.js ≥ 18
+- Node.js ≥ 22.12（Electron 44 的二进制下载依赖 `@electron/get` 5.x，其要求 ≥ 22.12）
 - macOS 13+ (Apple Silicon) / Windows 10+ / Linux x64/arm64
 - git
 
 ### 开发
 
 ```bash
-npm install
+# electron-vite@2.3.0 声明的 peer 仍是 vite ^4||^5，而实际装的是 vite 6，
+# 因此必须带 --legacy-peer-deps（CI 同样如此）。升 electron-vite 后可去掉。
+npm install --legacy-peer-deps
 npm run dev
 ```
+
+`npm run dev` 会先经 predev 钩子执行 `install-electron`。Electron 42 起不再通过
+postinstall 下载二进制，改为首次运行时按需下载，而 electron-vite 是直接读
+`node_modules/electron/path.txt` 的、不会触发下载——少了这一步会报
+"Electron uninstall"。装好后该钩子 0.5s 幂等返回。
 
 ### 构建 macOS DMG
 
