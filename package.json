@@ -8,7 +8,6 @@
     "build": "electron-vite build",
     "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
-    "rebuild": "electron-rebuild -f -w node-pty",
     "pack": "npm run build && electron-builder --mac --arm64",
     "pack:dmg": "npm run build && electron-builder --mac --arm64 --publish=never",
     "pack:win": "npm run build && electron-builder --win --x64 --publish=never",
@@ -28,7 +27,6 @@
   },
   "homepage": "https://github.com/lihaiyang/mir",
   "devDependencies": {
-    "@electron/rebuild": "^3.7.2",
     "@types/iconv-lite": "^0.0.1",
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",

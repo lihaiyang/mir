@@ -32,8 +32,15 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      # No electron-rebuild step: node-pty ships a pure Node-API (N-API) addon,
+      # whose ABI is stable across Node/Electron versions — the same pty.node
+      # loads under both Node 22 and Electron's bundled Node. electron-builder
+      # already has npmRebuild:false, so the native binary is used as-is.
       - name: Build & package
-        run: npm run rebuild && npm run build && npx electron-builder --mac --arm64 --publish=never
+        run: npm run build && npx electron-builder --mac --arm64 --publish=never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
