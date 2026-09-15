@@ -14,7 +14,7 @@
       v-for="s in allSplitters"
       :key="s.nodeId"
       class="splitter"
-      :class="s.direction === 'horizontal' ? 'splitter-h' : 'splitter-v'"
+      :class="[s.direction === 'horizontal' ? 'splitter-h' : 'splitter-v', { dragging: draggingNodeId === s.nodeId }]"
       :style="splitterStyle(s)"
       @mousedown="startResize(s, $event)"
       @dblclick="resetSplit(s.nodeId)"
@@ -110,6 +110,7 @@ import { useBrowserStore } from '../../stores/browser'
 import { useSettingsStore } from '../../stores/settings'
 import { useTabStore, type TabType, type TreeNode } from '../../stores/tabs'
 import { matchesShortcut } from '../../utils'
+import { startDragShield, endDragShield } from '../../utils/dragShield'
 import { getTabType } from '../../plugins/registries'
 import PaneGroup from './PaneGroup.vue'
 import BrowserTab from './BrowserTab.vue'
@@ -332,7 +333,10 @@ function splitterStyle(s: SplitterInfo) {
 
 // --- Resize ---
 
+// A pane split can run alongside a browser tab, so the same host-DOM drag
+// shield guards the gesture (see utils/dragShield.ts).
 let resizing: { nodeId: string; direction: 'horizontal' | 'vertical'; start: number; sizes: [number, number]; totalSize: number } | null = null
+const draggingNodeId = ref<string | null>(null)
 
 function startResize(s: SplitterInfo, e: MouseEvent) {
   if (!activeProject.value) return
@@ -350,8 +354,12 @@ function startResize(s: SplitterInfo, e: MouseEvent) {
     totalSize: s.direction === 'horizontal' ? rect.width : rect.height
   }
 
+  draggingNodeId.value = s.nodeId
   window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
+  startDragShield({
+    cursor: s.direction === 'horizontal' ? 'col-resize' : 'row-resize',
+    onEnd: stopResize
+  })
 }
 
 function getSplitSizes(tree: TreeNode | null, nodeId: string): [number, number] | null {
@@ -370,10 +378,11 @@ function onMouseMove(e: MouseEvent) {
   tabStore.resizeSplit(activeProject.value.id, resizing.nodeId, [s0, s1])
 }
 
-function onMouseUp() {
+function stopResize() {
+  if (!resizing) return
   resizing = null
+  draggingNodeId.value = null
   window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
 }
 
 function resetSplit(nodeId: string) {
@@ -453,7 +462,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKey)
   window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
+  endDragShield()
 })
 
 async function createTab(type: TabType) {
@@ -588,7 +597,8 @@ async function openFolder() {
   z-index: 10;
   transition: background var(--transition-fast) ease;
 }
-.splitter:hover {
+.splitter:hover,
+.splitter.dragging {
   background: rgba(76, 194, 255, 0.35);
 }
 .splitter-h { cursor: col-resize; }

@@ -9,7 +9,7 @@
       </div>
 
       <!-- Splitter L -->
-      <div class="splitter" @mousedown="startResize('left', $event)" />
+      <div class="splitter" :class="{ dragging: draggingSide === 'left' }" @mousedown="startResize('left', $event)" />
 
       <!-- Center pane -->
       <div class="center-pane" style="flex:1;min-width:0">
@@ -17,7 +17,7 @@
       </div>
 
       <!-- Splitter R -->
-      <div class="splitter" @mousedown="startResize('right', $event)" />
+      <div class="splitter" :class="{ dragging: draggingSide === 'right' }" @mousedown="startResize('right', $event)" />
 
       <!-- Right pane -->
       <div
@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, provide } from 'vue'
 import { matchesShortcut } from './utils'
+import { startDragShield, endDragShield } from './utils/dragShield'
 import { useI18n } from 'vue-i18n'
 import { useLayoutStore } from './stores/layout'
 import { useProjectStore } from './stores/projects'
@@ -150,17 +151,23 @@ onMounted(async () => {
   window.addEventListener('open-command-palette', onOpenCommandPalette)
 })
 
-// Splitter drag
+// Splitter drag.
+// A gesture that travels towards the centre pane passes over the browser
+// panes' <webview> guests, which would otherwise swallow the mousemove stream
+// (the splitter then only moved away from the browser, never towards it), so
+// the drag runs behind a host-DOM shield — see utils/dragShield.ts.
 let resizing: 'left' | 'right' | null = null
 let startX = 0
 let startVal = 0
+const draggingSide = ref<'left' | 'right' | null>(null)
 
 function startResize(side: 'left' | 'right', e: MouseEvent) {
   resizing = side
+  draggingSide.value = side
   startX = e.clientX
   startVal = side === 'left' ? layout.leftWidth : layout.rightWidth
   window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
+  startDragShield({ cursor: 'col-resize', onEnd: stopResize })
 }
 
 function onMouseMove(e: MouseEvent) {
@@ -173,10 +180,13 @@ function onMouseMove(e: MouseEvent) {
   }
 }
 
-function onMouseUp() {
+// Runs once per gesture, whether the release lands on the splitter, on pane
+// content, on a webview or outside the window entirely.
+function stopResize() {
+  if (!resizing) return
   resizing = null
+  draggingSide.value = null
   window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
   layout.persist()
 }
 
@@ -427,7 +437,7 @@ startGitStatusPolling()
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKey)
   window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
+  endDragShield()
   window.removeEventListener('open-command-palette', onOpenCommandPalette)
   window.removeEventListener('mir-notification', onMirNotification)
 })
@@ -483,6 +493,21 @@ onUnmounted(() => {
    receives `dragend`. That leaves the Chromium drag session stuck, after
    which NO new drag can start — breaking folder and webpage reordering alike. */
 body.mir-dragging webview {
+  pointer-events: none !important;
+}
+
+/* Splitter drags (left/right panes, title bar, pane splits) run behind a
+   transparent shield that lives in the host document above every pane. A
+   <webview> guest takes over hit-testing the moment the cursor enters it, so
+   without the shield the gesture died whenever it moved towards a browser
+   pane. `mir-resizing` keeps the guests click-through on top of that. */
+.mir-drag-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: transparent;
+}
+body.mir-resizing webview {
   pointer-events: none !important;
 }
 </style>

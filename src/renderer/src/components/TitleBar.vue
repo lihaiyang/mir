@@ -63,6 +63,7 @@
           <div
             v-if="i < firstRowPanes.length - 1"
             class="tl-pane-splitter"
+            :class="{ dragging: draggingNodeId === firstRowSplitters[i]?.nodeId }"
             @mousedown.stop="startResize(firstRowSplitters[i], $event)"
           />
         </div>
@@ -87,6 +88,7 @@ import { useTabStore } from '../stores/tabs'
 import { useWebPageStore, standaloneNavBus } from '../stores/webPages'
 import { useBrowserStore } from '../stores/browser'
 import { openSettings } from '../composables/useGlobalActions'
+import { startDragShield } from '../utils/dragShield'
 import TabBar from './center/TabBar.vue'
 import Icon from './ui/Icon.vue'
 
@@ -142,20 +144,25 @@ const firstRowSplitters = computed(() => {
 const leftWidthPx = computed(() => (layout.leftCollapsed ? 40 : layout.leftWidth) - 1 + 'px')
 const rightWidthPx = computed(() => (layout.rightCollapsed ? 32 : layout.rightWidth) - 1 + 'px')
 
-// Splitter drag
+// Splitter drag.
+// The gesture crosses the pane below the title bar, so it runs behind the
+// host-DOM drag shield — a browser pane's <webview> would otherwise swallow
+// the mousemove stream (see utils/dragShield.ts).
 let resizeNodeId: string | null = null
 let resizeStartX = 0
 let resizeStartSizes: [number, number] = [0.5, 0.5]
+const draggingNodeId = ref<string | null>(null)
 
 function startResize(splitter: { nodeId: string }, e: MouseEvent) {
   if (!activeProject.value) return
   resizeNodeId = splitter.nodeId
+  draggingNodeId.value = splitter.nodeId
   resizeStartX = e.clientX
   const tree = tabStore.getPaneTree(activeProject.value.id)
   const sizes = findSizes(tree, splitter.nodeId)
   if (sizes) resizeStartSizes = sizes
   window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
+  startDragShield({ cursor: 'col-resize', onEnd: stopResize })
 }
 
 function findSizes(node: import('../../stores/tabs').TreeNode | null, targetId: string): [number, number] | null {
@@ -176,10 +183,11 @@ function onMouseMove(e: MouseEvent) {
   tabStore.resizeSplit(activeProject.value.id, resizeNodeId, [s0, s1])
 }
 
-function onMouseUp() {
+function stopResize() {
+  if (!resizeNodeId) return
   resizeNodeId = null
+  draggingNodeId.value = null
   window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
 }
 </script>
 
@@ -216,7 +224,8 @@ function onMouseUp() {
   z-index: 10;
   -webkit-app-region: no-drag;
 }
-.tl-pane-splitter:hover { background: var(--text-accent); }
+.tl-pane-splitter:hover,
+.tl-pane-splitter.dragging { background: var(--text-accent); }
 .tl-center :deep(.tab-bar) {
   border-bottom: none;
   -webkit-app-region: drag;
