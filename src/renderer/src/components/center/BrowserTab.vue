@@ -11,7 +11,7 @@
         class="url-input"
         :placeholder="$t('browser.placeholder')"
         @keydown.enter="navigateTo"
-        @focus="$event.target.select()"
+        @focus="($event.target as HTMLInputElement).select()"
       />
       <button class="icon-btn" :class="{ bookmarked: isBookmarked }" @click="toggleBookmark" :title="$t('browser.bookmark')">
         <Icon :name="isBookmarked ? 'check' : 'plus'" :size="13" />
@@ -60,6 +60,7 @@ import { useSettingsStore } from '../../stores/settings'
 import { useContextMenu } from '../../composables/useContextMenu'
 import Icon from '../ui/Icon.vue'
 import type { Tab } from '../../stores/tabs'
+import type { WebviewTag } from 'electron'
 
 const { t } = useI18n()
 
@@ -74,7 +75,7 @@ const { show: showMenu } = useContextMenu()
 // Standalone = this tab is a left-panel webpage browser (tab IDs start with "standalone-browser-")
 const isStandalone = computed(() => props.tab.id.startsWith('standalone-browser-'))
 
-const wv = ref<Electron.WebviewTag | null>(null)
+const wv = ref<WebviewTag | null>(null)
 const urlBar = ref(props.tab.browserUrl || 'https://www.google.com')
 const initialUrl = ref(props.tab.browserUrl || 'https://www.google.com')
 const canGoBack = ref(false)

@@ -233,10 +233,17 @@ function initMonaco(fp: string, content: string) {
 
   // Verify what Monaco actually got
   const actualWW = editor.getOption(monaco.editor.EditorOption.wordWrap)
-  log('initMonaco: Monaco actual wordWrap option=' + actualWW + ' (0=off,1=on,2=wordWrapColumn,3=bounded)')
+  log('initMonaco: Monaco actual wordWrap option=' + actualWW + " ('off'|'on'|'wordWrapColumn'|'bounded')")
+
+  // TypeScript drops control-flow narrowing of the mutable `editor` / `model`
+  // bindings inside callbacks, so hold non-null aliases for the closures below.
+  // Neither binding is reassigned after this point within one initMonaco() run,
+  // so the aliases stay valid for the lifetime of these callbacks.
+  const ed = editor
+  const mdl = model
 
   editor.onDidChangeModelContent(() => {
-    const dirty = model.getValue() !== cleanContent
+    const dirty = mdl.getValue() !== cleanContent
     if (dirty !== modified.value) {
       modified.value = dirty
       tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: dirty })
@@ -280,41 +287,41 @@ function initMonaco(fp: string, content: string) {
 
   // Editor keyboard shortcuts
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyD, () => {
-    const sel = editor.getSelection()
+    const sel = ed.getSelection()
     if (sel && !sel.isEmpty()) {
-      editor.trigger('keyboard', 'editor.action.addSelectionToNextFindMatch', null)
+      ed.trigger('keyboard', 'editor.action.addSelectionToNextFindMatch', null)
     }
   })
 
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL, () => {
-    const sel = editor.getSelection()
+    const sel = ed.getSelection()
     if (sel && !sel.isEmpty()) {
-      editor.trigger('keyboard', 'editor.action.selectHighlights', null)
+      ed.trigger('keyboard', 'editor.action.selectHighlights', null)
     }
   })
 
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyK, () => {
-    editor.trigger('keyboard', 'editor.action.deleteLines', null)
+    ed.trigger('keyboard', 'editor.action.deleteLines', null)
   })
 
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
-    editor.trigger('keyboard', 'editor.action.commentLine', null)
+    ed.trigger('keyboard', 'editor.action.commentLine', null)
   })
 
   editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, () => {
-    editor.trigger('keyboard', 'editor.action.moveLinesUpAction', null)
+    ed.trigger('keyboard', 'editor.action.moveLinesUpAction', null)
   })
 
   editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, () => {
-    editor.trigger('keyboard', 'editor.action.moveLinesDownAction', null)
+    ed.trigger('keyboard', 'editor.action.moveLinesDownAction', null)
   })
 
   editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, () => {
-    editor.trigger('keyboard', 'editor.action.copyLinesUpAction', null)
+    ed.trigger('keyboard', 'editor.action.copyLinesUpAction', null)
   })
 
   editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, () => {
-    editor.trigger('keyboard', 'editor.action.copyLinesDownAction', null)
+    ed.trigger('keyboard', 'editor.action.copyLinesDownAction', null)
   })
 
   resizeObs = new ResizeObserver(() => editor?.layout())
@@ -447,8 +454,10 @@ function toggleWordWrap() {
     return
   }
   const current = editor.getOption(monaco.editor.EditorOption.wordWrap)
-  log('toggleWordWrap: current Monaco wordWrap=' + current + ' (0=off,1=on,2=col,3=bounded)')
-  const next = current === 0 ? 'on' : 'off'
+  log('toggleWordWrap: current Monaco wordWrap=' + current)
+  // wordWrap is a string enum ('off'|'on'|'wordWrapColumn'|'bounded'), NOT a
+  // number — comparing against 0 was always false, so this never wrapped back on.
+  const next = current === 'off' ? 'on' : 'off'
   log('toggleWordWrap: setting to ' + next)
   editor.updateOptions({ wordWrap: next })
   const after = editor.getOption(monaco.editor.EditorOption.wordWrap)

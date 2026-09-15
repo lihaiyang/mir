@@ -84,7 +84,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLayoutStore } from '../stores/layout'
 import { useProjectStore } from '../stores/projects'
-import { useTabStore } from '../stores/tabs'
+import { useTabStore, type TreeNode } from '../stores/tabs'
 import { useWebPageStore, standaloneNavBus } from '../stores/webPages'
 import { useBrowserStore } from '../stores/browser'
 import { openSettings } from '../composables/useGlobalActions'
@@ -165,9 +165,9 @@ function startResize(splitter: { nodeId: string }, e: MouseEvent) {
   startDragShield({ cursor: 'col-resize', onEnd: stopResize })
 }
 
-function findSizes(node: import('../../stores/tabs').TreeNode | null, targetId: string): [number, number] | null {
+function findSizes(node: TreeNode | null, targetId: string): [number, number] | null {
   if (!node || node.type === 'leaf') return null
-  if (node.id === targetId) return [...node.sizes]
+  if (node.id === targetId) return [node.sizes[0], node.sizes[1]]
   return findSizes(node.children[0], targetId) || findSizes(node.children[1], targetId)
 }
 

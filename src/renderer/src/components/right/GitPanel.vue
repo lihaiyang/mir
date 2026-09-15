@@ -144,7 +144,8 @@ import { useTabStore } from '../../stores/tabs'
 import { useContextMenu } from '../../composables/useContextMenu'
 import BranchSwitchConfirm from '../BranchSwitchConfirm.vue'
 import Icon from '../ui/Icon.vue'
-import type { GitStatus, GitCommit } from '../../../main/git'
+// GitStatus / GitCommit are ambient globals declared in src/renderer/env.d.ts —
+// the renderer must not import main-process source (separate TS project).
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
