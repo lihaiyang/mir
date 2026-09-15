@@ -386,6 +386,21 @@ git push origin dev-0.2.1
 
 已安装 MIR Dev 的用户会自动检测到新 dev 版并下载更新。
 
+> **⚠️ 分支合并的方向性陷阱**
+>
+> `package.json` 的 `build` 配置里有三处是**通道专属**的，两条分支的取值必须不同：
+>
+> | 字段 | dev 分支 | main 分支 |
+> |---|---|---|
+> | `appId` | `com.mir.ide.dev` | `com.mir.ide` |
+> | `productName` | `MIR Dev` | `MIR` |
+> | `artifactName` | `MIR-Dev-${version}-${arch}-mac.${ext}` | 不设置（默认 `MIR-…`） |
+>
+> `dev → main`（转正）时要把它们改成正式版；反过来 **`main → dev`（把正式版修复
+> 回合到 dev）时必须改回 dev 值**。忘了改的后果是 dev 包被打成 `MIR.app` +
+> `com.mir.ide`，安装时会**直接覆盖用户的正式版**，双通道隔离失效。
+> 打包前用 `npm run pack:dmg` 扫一眼产物名是不是 `MIR-Dev-*` 即可确认。
+
 #### Dev 转正（发布 Stable 版）
 
 dev 版测试 OK 后，将 dev 分支合并到 main，发布正式版：
