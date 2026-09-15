@@ -4,17 +4,19 @@
   "description": "Multi-pane IDE for AI agent management",
   "main": "out/main/index.js",
   "scripts": {
+    "predev": "install-electron",
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "build": "electron-vite build",
+    "prepreview": "install-electron",
     "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
-    "typecheck": "vue-tsc --noEmit",
-    "rebuild": "electron-rebuild -f -w node-pty",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
     "pack": "npm run build && electron-builder --mac --arm64",
     "pack:dmg": "npm run build && electron-builder --mac --arm64 --publish=never",
     "pack:win": "npm run build && electron-builder --win --x64 --publish=never",
     "pack:linux": "npm run build && electron-builder --linux",
     "build:plugins": "MIR_DEV=1 vite build --config plugins-src/com.mir.agent-manager/vite.config.ts",
-    "dev:quiet": "nohup env -u ELECTRON_RUN_AS_NODE electron-vite dev > /dev/null 2>&1 &"
+    "dev:quiet": "nohup env -u ELECTRON_RUN_AS_NODE electron-vite dev > /dev/null 2>&1 &",
+    "predev:quiet": "install-electron"
   },
   "keywords": [],
   "author": {
@@ -28,12 +30,11 @@
   },
   "homepage": "https://github.com/lihaiyang/mir",
   "devDependencies": {
-    "@electron/rebuild": "^3.7.2",
     "@types/iconv-lite": "^0.0.1",
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^5.2.4",
-    "electron": "^28.3.3",
+    "electron": "^44.3.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
     "jsonc-parser": "^3.3.1",

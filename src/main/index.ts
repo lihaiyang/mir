@@ -210,10 +210,16 @@ function createWindow(): void {
     }
   })
 
-  // Forward renderer console to terminal for debugging plugin loading
-  win.webContents.on('console-message', (_e, level, message) => {
-    const tag = ['LOG', 'WARN', 'ERROR'][level] ?? 'LOG'
-    console.log(`[renderer:${tag}] ${message}`)
+  // Forward renderer console to terminal for debugging plugin loading.
+  // Electron 35 deprecated the positional (level, message, line, sourceId)
+  // arguments in favour of the Event<WebContentsConsoleMessageEventParams>
+  // object passed as the first argument; they are slated for removal, so read
+  // the details object. `level` is now a string, not the old 0-3 index.
+  win.webContents.on('console-message', (details) => {
+    const tag = details.level === 'error' ? 'ERROR'
+      : details.level === 'warning' ? 'WARN'
+      : 'LOG'
+    console.log(`[renderer:${tag}] ${details.message}`)
   })
 
   // Inject the webview-specific preload so navigator.serviceWorker.register
@@ -253,7 +259,9 @@ app.on('web-contents-created', (_event, webContents) => {
 
 app.whenReady().then(async () => {
   if (process.platform === 'darwin' && existsSync(ICON_PATH)) {
-    app.dock.setIcon(nativeImage.createFromPath(ICON_PATH))
+    // Optional chaining: since Electron 44 `app.dock` is typed `Dock | undefined`
+    // (it only exists on macOS, which the platform check above already covers).
+    app.dock?.setIcon(nativeImage.createFromPath(ICON_PATH))
   }
 
   setupBrowserSession()

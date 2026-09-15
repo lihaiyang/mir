@@ -187,11 +187,12 @@ let rightCollapsedSnapshot = false
 const tabStore = useTabStore()
 const { show: showMenu } = useContextMenu()
 
-interface OrderedItem {
-  type: 'project' | 'webpage' | 'browser'
-  data: Project | WebPage | BrowserProject
-  orderKey: string
-}
+// Discriminated union: `type` determines what `data` is, so template guards
+// like `item.type === 'webpage'` correctly narrow `item.data` to WebPage.
+type OrderedItem =
+  | { type: 'project'; data: Project; orderKey: string }
+  | { type: 'webpage'; data: WebPage; orderKey: string }
+  | { type: 'browser'; data: BrowserProject; orderKey: string }
 
 const orderedItems = computed<OrderedItem[]>(() => {
   return projectStore.itemOrder.map(key => {

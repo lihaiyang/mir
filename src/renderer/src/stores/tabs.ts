@@ -44,6 +44,18 @@ export interface SplitNode {
 
 export type TreeNode = PaneNode | SplitNode
 
+/** A pane in the first row of the pane tree, with its width share of that row. */
+export interface FirstRowPane {
+  groupId: string
+  widthFraction: number
+}
+
+/** The horizontal split node separating two adjacent first-row panes. */
+export interface FirstRowSplitter {
+  nodeId: string       // id of the SplitNode to resize
+  index: number        // gap index between first-row panes (0 = between pane 0 and 1)
+}
+
 export interface TabGroup {
   id: string
   tabs: Tab[]
@@ -154,11 +166,6 @@ export const useTabStore = defineStore('tabs', () => {
     return getFirstRowPanes(projectId).map(p => p.groupId)
   }
 
-  interface FirstRowPane {
-    groupId: string
-    widthFraction: number
-  }
-
   function getFirstRowPanes(projectId: string): FirstRowPane[] {
     const tree = paneTrees.value[projectId]
     if (!tree) return []
@@ -175,11 +182,6 @@ export const useTabStore = defineStore('tabs', () => {
 
   // For each adjacent pair of first-row panes, returns the horizontal split node that separates them.
   // This allows the titlebar to render draggable splitters that control the correct pane split.
-  interface FirstRowSplitter {
-    nodeId: string       // id of the SplitNode to resize
-    index: number        // gap index between first-row panes (0 = between pane 0 and 1)
-  }
-
   function getFirstRowSplitters(projectId: string): FirstRowSplitter[] {
     const tree = paneTrees.value[projectId]
     if (!tree) return []

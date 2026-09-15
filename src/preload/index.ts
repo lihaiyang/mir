@@ -1,4 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { SearchMatch } from '../main/search'
+import type { UpdaterEvent } from '../main/updater'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Store

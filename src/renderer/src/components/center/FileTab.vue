@@ -176,8 +176,12 @@ function initEditor(content: string) {
     wordWrapColumn: resolveWordWrapColumn()
   })
 
+  // TypeScript drops control-flow narrowing of the mutable `model` binding
+  // inside callbacks, so hold a non-null alias for the closure below.
+  const mdl = model
+
   editor.onDidChangeModelContent(() => {
-    const dirty = model.getValue() !== cleanContent
+    const dirty = mdl.getValue() !== cleanContent
     if (dirty !== modified.value) {
       modified.value = dirty
       tabStore.updateTab(props.tab.projectId, props.tab.id, { modified: dirty })

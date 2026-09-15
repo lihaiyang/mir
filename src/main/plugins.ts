@@ -72,8 +72,22 @@ function getStore(): Store {
   return _store
 }
 
-function readPluginState(): Record<string, { enabled?: boolean; version?: string; installedAt?: string }> {
-  return (getStore().get('plugins') as Record<string, any>) ?? {}
+/** Where a plugin came from, recorded at install time for display/debugging. */
+interface PluginInstallSource {
+  type: 'git'
+  url: string
+  subPath: string
+}
+
+interface PluginStateRecord {
+  enabled?: boolean
+  version?: string
+  installedAt?: string
+  source?: PluginInstallSource
+}
+
+function readPluginState(): Record<string, PluginStateRecord> {
+  return (getStore().get('plugins') as Record<string, PluginStateRecord>) ?? {}
 }
 
 export function discoverPlugins(): PluginRecord[] {

@@ -42,19 +42,19 @@
         :class="{ hidden: tab.id !== activeTabId }"
       >
         <webview
-          :ref="(el) => setWebview(tab.id, el)"
+          :ref="(el: unknown) => setWebview(tab.id, el)"
           class="bp-webview"
           :src="getInitialSrc(tab.id)"
           allowpopups
           webpreferences="contextIsolation=yes"
           partition="persist:browser"
-          @will-navigate="(e) => onWillNavigate(tab.id, e)"
-          @did-redirect-navigation="(e) => onRedirectNavigation(tab.id, e)"
-          @did-navigate="(e) => onNavigated(tab.id, e)"
-          @did-navigate-in-page="(e) => onNavigatedInPage(tab.id, e)"
+          @will-navigate="(e: WillNavigateEvent) => onWillNavigate(tab.id, e)"
+          @did-redirect-navigation="(e: DidRedirectNavigationEvent) => onRedirectNavigation(tab.id, e)"
+          @did-navigate="(e: DidNavigateEvent) => onNavigated(tab.id, e)"
+          @did-navigate-in-page="(e: DidNavigateInPageEvent) => onNavigatedInPage(tab.id, e)"
           @did-start-loading="() => onStartLoading(tab.id)"
           @did-stop-loading="() => onStopLoading(tab.id)"
-          @page-title-updated="(e) => onTitleUpdated(tab.id, e)"
+          @page-title-updated="(e: PageTitleUpdatedEvent) => onTitleUpdated(tab.id, e)"
         />
       </div>
 
@@ -72,6 +72,14 @@ import { ref, computed, watch, reactive, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore, browserReloadBus, PINNED_BROWSER_PROJECT_ID } from '../../stores/browser'
 import { useSettingsStore } from '../../stores/settings'
+import type {
+  WebviewTag,
+  WillNavigateEvent,
+  DidRedirectNavigationEvent,
+  DidNavigateEvent,
+  DidNavigateInPageEvent,
+  PageTitleUpdatedEvent
+} from 'electron'
 import Icon from '../ui/Icon.vue'
 
 const props = withDefaults(defineProps<{ projectId?: string }>(), {
@@ -87,9 +95,9 @@ const activeTabId = computed(() => browserStore.getActiveTabId(props.projectId))
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null)
 
 // Webview registry: tabId → webview element
-const webviews = reactive<Record<string, Electron.WebviewTag | null>>({})
+const webviews = reactive<Record<string, WebviewTag | null>>({})
 function setWebview(id: string, el: unknown) {
-  if (el) webviews[id] = el as Electron.WebviewTag
+  if (el) webviews[id] = el as WebviewTag
   else delete webviews[id]
 }
 
@@ -173,17 +181,17 @@ function onStartLoading(id: string) { state(id).isLoading = true }
 function onStopLoading(id: string) { state(id).isLoading = false }
 
 // Link click / location.href change — this is the user-visible intended URL.
-function onWillNavigate(id: string, e: any) {
+function onWillNavigate(id: string, e: WillNavigateEvent) {
   const url = e?.url
   if (url) browserStore.updateTab(id, { url }, props.projectId)
 }
 
 // A server-side redirect happened; mark the tab so did-navigate keeps the URL.
-function onRedirectNavigation(id: string, e: any) {
+function onRedirectNavigation(id: string, e: DidRedirectNavigationEvent) {
   if (e?.isMainFrame) redirecting.add(id)
 }
 
-function onNavigated(id: string, e: any) {
+function onNavigated(id: string, e: DidNavigateEvent) {
   const url = e?.url
   if (url) {
     if (redirecting.has(id)) {
@@ -200,12 +208,12 @@ function onNavigated(id: string, e: any) {
 }
 
 // In-page navigation (hash change / history.pushState) — keep address bar in sync.
-function onNavigatedInPage(id: string, e: any) {
+function onNavigatedInPage(id: string, e: DidNavigateInPageEvent) {
   const url = e?.url
   if (url && e?.isMainFrame) browserStore.updateTab(id, { url }, props.projectId)
 }
 
-function onTitleUpdated(id: string, e: any) {
+function onTitleUpdated(id: string, e: PageTitleUpdatedEvent) {
   const title = e?.title
   if (title) browserStore.updateTab(id, { title }, props.projectId)
 }

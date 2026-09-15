@@ -59,6 +59,7 @@ interface ElectronAPI {
   gitStashPush: (cwd: string, message: string) => Promise<void>
   gitStashPop: (cwd: string) => Promise<void>
   gitCheckoutDiscard: (cwd: string) => Promise<void>
+  gitShowFile: (cwd: string, ref: string, file: string) => Promise<string>
   searchStart: (id: string, opts: unknown) => void
   searchCancel: (id: string) => void
   onSearchResults: (cb: (id: string, matches: SearchMatch[]) => void) => () => void
@@ -72,6 +73,36 @@ interface ElectronAPI {
   applyUpdate: () => Promise<void>
   setAutoUpdate: (enabled: boolean) => Promise<void>
   onUpdaterEvent: (cb: (event: UpdaterEvent) => void) => () => void
+
+  // Plugins
+  pluginSetSharedKeys: (moduleName: string, keys: string[]) => Promise<void>
+  pluginList: () => Promise<{ manifest: PluginManifest; enabled: boolean }[]>
+  pluginEnable: (id: string) => Promise<void>
+  pluginDisable: (id: string) => Promise<void>
+  pluginInstall: (srcDir: string) => Promise<PluginInstallResult>
+  pluginInstallGit: (gitUrl: string, subPath: string) => Promise<PluginInstallResult>
+  pluginUninstall: (id: string) => Promise<PluginInstallResult>
+  pluginPluginsDir: () => Promise<string>
+  pluginInvoke: (pluginId: string, channel: string, ...args: unknown[]) => Promise<unknown>
+  pluginSend: (pluginId: string, channel: string, ...args: unknown[]) => void
+  pluginOn: (pluginId: string, channel: string, cb: (...args: unknown[]) => void) => () => void
+}
+
+interface PluginManifest {
+  id: string
+  name: string
+  version: string
+  description?: string
+  author?: string
+  main?: string
+  mainMain?: string
+  engines?: { mir?: string }
+}
+
+interface PluginInstallResult {
+  success: boolean
+  error?: string
+  pluginId?: string
 }
 
 interface GitStatus {

@@ -65,7 +65,8 @@ import StatusBarPicker from './StatusBarPicker.vue'
 import BranchSwitchConfirm from './BranchSwitchConfirm.vue'
 import Icon from './ui/Icon.vue'
 import type { PickerItem } from './StatusBarPicker.vue'
-import type { GitStatus } from '../../main/git'
+// GitStatus is an ambient global declared in src/renderer/env.d.ts — the
+// renderer must not import main-process source (separate TS project).
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
