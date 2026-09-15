@@ -6,7 +6,7 @@ import { promisify } from 'util'
 import * as iconv from 'iconv-lite'
 import * as jschardet from 'jschardet'
 import Store from 'electron-store'
-import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess } from './pty'
+import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess, killAllPtyProcesses } from './pty'
 import { runGitCommand } from './git'
 import { startSearch, cancelSearch } from './search'
 import { checkForUpdateNow, applyUpdate, setAutoUpdate } from './updater'
@@ -147,8 +147,10 @@ export function setupIpcHandlers(): void {
   })
 
   // --- PTY / Terminal ---
-  ipcMain.handle('pty:create', async (_e, id: string, cwd: string, shell?: string) => {
-    return createPtyProcess(id, cwd, shell)
+  ipcMain.handle('pty:create', async (e, id: string, cwd: string, shell?: string) => {
+    // Pass the sender so the main process can tie the PTY's lifetime to the
+    // renderer that owns it (kill on renderer/window destruction).
+    return createPtyProcess(id, cwd, shell, e.sender)
   })
 
   ipcMain.on('pty:write', (_e, id: string, data: string) => {

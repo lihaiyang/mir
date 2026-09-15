@@ -77,6 +77,10 @@ export function startSearch(id: string, opts: SearchOptions, win: BrowserWindow)
   let filesProcessed = 0
 
   async function walk(dir: string): Promise<void> {
+    // The owning window may have been destroyed mid-search — stop walking the
+    // tree (and free the closure: ig, regex, rootPath) instead of scanning a
+    // large repo for an audience that no longer exists.
+    if (win.isDestroyed()) search.abort = true
     if (search.abort || totalMatches >= maxResults) return
     let entries: fs.Dirent[]
     try {

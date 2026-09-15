@@ -49,7 +49,7 @@ interface MainPluginContext {
   }
 }
 
-const loadedPlugins: Map<string, { deactivate?: () => void }> = new Map()
+const loadedPlugins: Map<string, { deactivate?: () => void; channels: string[] }> = new Map()
 
 // Shared module key lists, populated by the renderer via IPC before any plugin loads.
 // The renderer owns the actual Vue/Pinia/vue-i18n instances (globalThis.__MIR_SHARED__);
@@ -64,8 +64,12 @@ export function getPluginsDir(): string {
   return join(app.getPath('userData'), 'plugins')
 }
 
+// Lazy singleton (mirrors ipc.ts) — a `new Store` per call re-reads the JSON
+// file, builds a fresh object graph and races other instances' caches.
+let _store: Store | null = null
 function getStore(): Store {
-  return new Store({ name: 'mir-state' })
+  if (!_store) _store = new Store({ name: 'mir-state' })
+  return _store
 }
 
 function readPluginState(): Record<string, { enabled?: boolean; version?: string; installedAt?: string }> {
@@ -98,36 +102,80 @@ export function discoverPlugins(): PluginRecord[] {
   return records
 }
 
-function createMainContext(pluginId: string): MainPluginContext {
+function createMainContext(pluginId: string): { ctx: MainPluginContext; channels: string[] } {
   const store = getStore()
   const log = (...args: unknown[]) => console.log(`[plugin:${pluginId}]`, ...args)
+  // Track every ipcMain channel this plugin registers so disable/uninstall
+  // can remove them — otherwise the module's closures stay reachable through
+  // ipcMain's listener registry (and stay callable) for the process lifetime.
+  const channels: string[] = []
   return {
-    ipc: {
-      registerHandler(channel: string, fn: (...args: any[]) => any) {
-        ipcMain.handle(`plugin:${pluginId}:${channel}`, (_e, ...args) => fn(...args))
+    ctx: {
+      ipc: {
+        registerHandler(channel: string, fn: (...args: any[]) => any) {
+          const full = `plugin:${pluginId}:${channel}`
+          ipcMain.handle(full, (_e, ...args) => fn(...args))
+          channels.push(full)
+        },
+        registerOn(channel: string, fn: (...args: any[]) => void) {
+          const full = `plugin:${pluginId}:${channel}`
+          ipcMain.on(full, (_e, ...args) => fn(...args))
+          channels.push(full)
+        }
       },
-      registerOn(channel: string, fn: (...args: any[]) => void) {
-        ipcMain.on(`plugin:${pluginId}:${channel}`, (_e, ...args) => fn(...args))
+      store: {
+        get(key: string) { return store.get(`plugin:${pluginId}:${key}`) },
+        set(key: string, value: unknown) { store.set(`plugin:${pluginId}:${key}`, value) },
+        delete(key: string) { store.delete(`plugin:${pluginId}:${key}`) }
+      },
+      paths: {
+        userData: app.getPath('userData'),
+        home: app.getPath('home'),
+        pluginsDir: getPluginsDir()
+      },
+      app,
+      getWindow: () => BrowserWindow.getFocusedWindow(),
+      logger: {
+        info: log,
+        warn: (...args: unknown[]) => console.warn(`[plugin:${pluginId}]`, ...args),
+        error: (...args: unknown[]) => console.error(`[plugin:${pluginId}]`, ...args)
       }
     },
-    store: {
-      get(key: string) { return store.get(`plugin:${pluginId}:${key}`) },
-      set(key: string, value: unknown) { store.set(`plugin:${pluginId}:${key}`, value) },
-      delete(key: string) { store.delete(`plugin:${pluginId}:${key}`) }
-    },
-    paths: {
-      userData: app.getPath('userData'),
-      home: app.getPath('home'),
-      pluginsDir: getPluginsDir()
-    },
-    app,
-    getWindow: () => BrowserWindow.getFocusedWindow(),
-    logger: {
-      info: log,
-      warn: (...args: unknown[]) => console.warn(`[plugin:${pluginId}]`, ...args),
-      error: (...args: unknown[]) => console.error(`[plugin:${pluginId}]`, ...args)
-    }
+    channels
   }
+}
+
+// Tear down a loaded main-process plugin: run its deactivate hook, remove all
+// its IPC handlers/listeners and drop it from the registry.
+function teardownPlugin(pluginId: string): void {
+  const rec = loadedPlugins.get(pluginId)
+  if (!rec) return
+  try { rec.deactivate?.() } catch (e) {
+    console.error(`[plugins] deactivate() threw for ${pluginId}:`, e)
+  }
+  for (const ch of rec.channels) {
+    try { ipcMain.removeHandler(ch) } catch { /* not a handler */ }
+    try { ipcMain.removeAllListeners(ch) } catch { /* no listeners */ }
+  }
+  loadedPlugins.delete(pluginId)
+  console.log(`[plugins] Unloaded main entry: ${pluginId}`)
+}
+
+// Activate a plugin's main entry (used at startup and when re-enabling at
+// runtime without a restart). No-op if already loaded.
+async function activatePluginMain(record: PluginRecord): Promise<void> {
+  if (!record.manifest.mainMain || loadedPlugins.has(record.manifest.id)) return
+  const entryPath = join(record.dir, record.manifest.mainMain)
+  const entryUrl = pathToFileURL(entryPath).href
+  const mod = await import(entryUrl)
+  if (typeof mod.activate !== 'function') return
+  const { ctx, channels } = createMainContext(record.manifest.id)
+  await mod.activate(ctx)
+  loadedPlugins.set(record.manifest.id, {
+    deactivate: typeof mod.deactivate === 'function' ? () => mod.deactivate(ctx) : undefined,
+    channels
+  })
+  console.log(`[plugins] Loaded main entry: ${record.manifest.id}`)
 }
 
 export async function initMainPlugins(): Promise<void> {
@@ -136,17 +184,7 @@ export async function initMainPlugins(): Promise<void> {
     if (!record.enabled) continue
     if (!record.manifest.mainMain) continue
     try {
-      const entryPath = join(record.dir, record.manifest.mainMain)
-      const entryUrl = pathToFileURL(entryPath).href
-      const mod = await import(entryUrl)
-      if (typeof mod.activate === 'function') {
-        const ctx = createMainContext(record.manifest.id)
-        await mod.activate(ctx)
-        loadedPlugins.set(record.manifest.id, {
-          deactivate: typeof mod.deactivate === 'function' ? () => mod.deactivate(ctx) : undefined
-        })
-        console.log(`[plugins] Loaded main entry: ${record.manifest.id}`)
-      }
+      await activatePluginMain(record)
     } catch (e) {
       console.error(`[plugins] Failed to load ${record.manifest.id}:`, e)
     }
@@ -220,6 +258,20 @@ export function setPluginEnabled(pluginId: string, enabled: boolean): void {
   if (!state[pluginId]) state[pluginId] = {}
   state[pluginId].enabled = enabled
   getStore().set('plugins', state)
+  if (!enabled) {
+    // Unload the main-process side immediately so its IPC handlers and module
+    // closures don't stay resident (and callable) after disabling.
+    teardownPlugin(pluginId)
+  } else {
+    // Best-effort re-activation without a restart. Note the ESM module cache
+    // returns the already-imported module — fine for idempotent activate()s.
+    const record = discoverPlugins().find(r => r.manifest.id === pluginId)
+    if (record) {
+      activatePluginMain(record).catch(e => {
+        console.error(`[plugins] Failed to re-enable ${pluginId}:`, e)
+      })
+    }
+  }
 }
 
 export function installPluginFromDir(srcDir: string): { success: boolean; error?: string; pluginId?: string } {
@@ -235,8 +287,12 @@ export function installPluginFromDir(srcDir: string): { success: boolean; error?
     const pluginsDir = getPluginsDir()
     const destDir = join(pluginsDir, manifest.id)
 
-    // Remove existing installation if any
-    if (existsSync(destDir)) rmSync(destDir, { recursive: true, force: true })
+    // Remove existing installation if any (also tears down its IPC handlers
+    // so a later activate() won't hit "second handler" registration errors).
+    if (existsSync(destDir)) {
+      teardownPlugin(manifest.id)
+      rmSync(destDir, { recursive: true, force: true })
+    }
 
     // Copy entire directory
     cpSync(srcDir, destDir, { recursive: true })
@@ -261,6 +317,9 @@ export function uninstallPlugin(pluginId: string): { success: boolean; error?: s
   const records = discoverPlugins()
   const record = records.find(r => r.manifest.id === pluginId)
   if (!record) return { success: false, error: 'Plugin not found' }
+
+  // Tear down the main-process side BEFORE removing files.
+  teardownPlugin(pluginId)
 
   try {
     rmSync(record.dir, { recursive: true, force: true })
@@ -305,7 +364,10 @@ export async function installPluginFromGit(
     // Install: copy to plugins dir
     const pluginsDir = getPluginsDir()
     const destDir = join(pluginsDir, manifest.id)
-    if (existsSync(destDir)) rmSync(destDir, { recursive: true, force: true })
+    if (existsSync(destDir)) {
+      teardownPlugin(manifest.id)
+      rmSync(destDir, { recursive: true, force: true })
+    }
     cpSync(pluginSrcDir, destDir, { recursive: true })
 
     // Record state

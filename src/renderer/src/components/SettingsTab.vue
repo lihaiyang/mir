@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore, type Settings } from '../stores/settings'
 import PluginManager from './PluginManager.vue'
@@ -166,6 +166,16 @@ function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(doSave, 300)
 }
+
+// Flush or drop the pending save when the tab closes: without this the
+// 300ms timer fires after unmount and writes settings (retaining the
+// component closure) from a dead tab.
+onBeforeUnmount(() => {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+})
 
 async function doSave() {
   const prevAutoUpdate = settingsStore.settings.autoUpdate
