@@ -46,27 +46,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Both checks guard failures that are invisible until runtime, and that
-      # have already shipped once each:
-      #   * stable naming in a dev build would install over the user's MIR.app
-      #   * a non-executable spawn-helper breaks every terminal
+      # Guards failures that are invisible until runtime and have each shipped
+      # once: a channel mix-up (dev build packed as MIR.app would install over
+      # the user's stable app) and a non-executable node-pty spawn-helper
+      # (breaks every terminal). See scripts/verify-package.sh.
       - name: Verify package
-        run: |
-          set -euo pipefail
-          zip=$(ls release/MIR-Dev-*.zip)
-          echo "artifact: $zip"
-
-          helpers=$(unzip -Z "$zip" | grep 'node-pty.*spawn-helper' || true)
-          if [ -z "$helpers" ]; then
-            echo "::error::no node-pty spawn-helper in $zip"
-            exit 1
-          fi
-          echo "$helpers"
-          if echo "$helpers" | grep -qv '^-rwx'; then
-            echo "::error::spawn-helper is not executable inside the zip — every pty:create would fail with 'posix_spawnp failed'"
-            exit 1
-          fi
-          echo "package verified"
+        run: bash scripts/verify-package.sh release
 
       - name: Upload artifacts to release
         env:
