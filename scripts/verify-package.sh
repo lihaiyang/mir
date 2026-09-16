@@ -15,6 +15,12 @@
 #      terminal at all.
 #
 # Usage: bash scripts/verify-package.sh [releaseDir]
+#
+# NOTE: zip listings are written to temp files and grepped from there, never
+# piped into `grep -q`. Under `set -o pipefail`, `grep -q` exits on its first
+# match, the still-writing `unzip` dies of SIGPIPE, and the pipeline reports
+# failure even though the pattern matched — a false negative whose occurrence
+# depends on where in the listing the match happens to fall.
 
 set -euo pipefail
 
@@ -24,13 +30,11 @@ VERSION=$(node -p "require('./package.json').version")
 case "$VERSION" in
   *-dev.*)
     CHANNEL=dev
-    ZIP_PREFIX='MIR-Dev-'
     APP_NAME='MIR Dev.app'
     BUNDLE_ID='com.mir.ide.dev'
     ;;
   *)
     CHANNEL=stable
-    ZIP_PREFIX='MIR-'
     APP_NAME='MIR.app'
     BUNDLE_ID='com.mir.ide'
     ;;
@@ -38,7 +42,10 @@ esac
 
 echo "version : $VERSION"
 echo "channel : $CHANNEL"
-echo "expect  : ${ZIP_PREFIX}* -> ${APP_NAME} (${BUNDLE_ID})"
+echo "expect  : ${APP_NAME} (${BUNDLE_ID})"
+
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
 
 # --- exactly one mac zip -----------------------------------------------------
 shopt -s nullglob
@@ -49,10 +56,10 @@ if [ "${#zips[@]}" -ne 1 ]; then
   exit 1
 fi
 ZIP="${zips[0]}"
+BASE=$(basename "$ZIP")
 echo "artifact: $ZIP"
 
 # --- artifact name matches the channel --------------------------------------
-BASE=$(basename "$ZIP")
 if [ "$CHANNEL" = dev ]; then
   case "$BASE" in
     MIR-Dev-*) ;;
@@ -70,13 +77,15 @@ else
 fi
 
 # --- the .app bundle inside decides which install gets replaced --------------
-if ! unzip -l "$ZIP" | grep -qF " ${APP_NAME}/Contents/Info.plist"; then
-  echo "::error::$ZIP does not contain ${APP_NAME} at its root — applying this update would replace the wrong app"
+unzip -l "$ZIP" > "$WORK/list.txt"
+if ! grep -qF " ${APP_NAME}/Contents/Info.plist" "$WORK/list.txt"; then
+  echo "::error::$BASE does not contain ${APP_NAME} at its root — applying this update would replace the wrong app"
   exit 1
 fi
 
 if command -v plutil >/dev/null 2>&1; then
-  actual_id=$(unzip -p "$ZIP" "${APP_NAME}/Contents/Info.plist" | plutil -extract CFBundleIdentifier raw -o - - 2>/dev/null || echo '?')
+  unzip -p "$ZIP" "${APP_NAME}/Contents/Info.plist" > "$WORK/Info.plist"
+  actual_id=$(plutil -extract CFBundleIdentifier raw -o - "$WORK/Info.plist" 2>/dev/null || echo '?')
   if [ "$actual_id" != "$BUNDLE_ID" ]; then
     echo "::error::${APP_NAME} has CFBundleIdentifier '$actual_id', expected '$BUNDLE_ID'"
     exit 1
@@ -85,13 +94,14 @@ if command -v plutil >/dev/null 2>&1; then
 fi
 
 # --- node-pty spawn-helper keeps its exec bit --------------------------------
-helpers=$(unzip -Z "$ZIP" | grep 'node-pty.*spawn-helper' || true)
-if [ -z "$helpers" ]; then
-  echo "::error::no node-pty spawn-helper found in $ZIP"
+unzip -Z "$ZIP" > "$WORK/zipinfo.txt"
+grep 'node-pty.*spawn-helper' "$WORK/zipinfo.txt" > "$WORK/helpers.txt" || true
+if [ ! -s "$WORK/helpers.txt" ]; then
+  echo "::error::no node-pty spawn-helper found in $BASE"
   exit 1
 fi
-echo "$helpers"
-if echo "$helpers" | grep -qv '^-rwx'; then
+cat "$WORK/helpers.txt"
+if grep -qv '^-rwx' "$WORK/helpers.txt"; then
   echo "::error::spawn-helper is not executable inside the zip — every pty:create would fail with 'posix_spawnp failed'"
   exit 1
 fi
