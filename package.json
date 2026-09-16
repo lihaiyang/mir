@@ -1,13 +1,14 @@
 {
   "name": "mir",
-  "version": "0.2.9-dev.0",
+  "version": "0.2.9-dev.1",
   "description": "Multi-pane IDE for AI agent management",
   "main": "out/main/index.js",
   "scripts": {
-    "predev": "install-electron",
+    "postinstall": "node scripts/fix-node-pty-helper.js",
+    "predev": "install-electron && node scripts/fix-node-pty-helper.js",
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "build": "electron-vite build",
-    "prepreview": "install-electron",
+    "prepreview": "install-electron && node scripts/fix-node-pty-helper.js",
     "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
     "pack": "npm run build && electron-builder --mac --arm64",
@@ -16,7 +17,7 @@
     "pack:linux": "npm run build && electron-builder --linux",
     "build:plugins": "MIR_DEV=1 vite build --config plugins-src/com.mir.agent-manager/vite.config.ts",
     "dev:quiet": "nohup env -u ELECTRON_RUN_AS_NODE electron-vite dev > /dev/null 2>&1 &",
-    "predev:quiet": "install-electron"
+    "predev:quiet": "install-electron && node scripts/fix-node-pty-helper.js"
   },
   "keywords": [],
   "author": {
@@ -142,6 +143,6 @@
     "electronDownload": {
       "cache": ".electron-cache"
     },
-    "afterPack": "scripts/linux-after-pack.js"
+    "afterPack": "scripts/after-pack.js"
   }
 }
