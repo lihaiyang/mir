@@ -113,5 +113,9 @@ if (require.main === module) {
   const root = process.argv[2] || path.join(__dirname, '..')
   const { fixed, checked } = fixHelpers(root)
   for (const f of fixed) console.log(`[node-pty] +x ${path.relative(process.cwd(), f)}`)
-  if (!checked) console.warn(`[node-pty] no spawn-helper found under ${root}`)
+  // Windows has no spawn-helper (node-pty uses conpty there), so silence is
+  // correct on win32; anywhere else it means the packaging step lost node-pty.
+  if (!checked && process.platform !== 'win32') {
+    console.warn(`[node-pty] no spawn-helper found under ${root}`)
+  }
 }

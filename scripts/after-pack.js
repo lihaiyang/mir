@@ -36,22 +36,26 @@ exports.default = async function afterPack(context) {
   // it mode 0644, and without the rebuild step nothing compiles a corrected copy,
   // so every terminal would fail with "posix_spawnp failed" at runtime.
   const resources = resolveResourcesDir(context)
-  if (resources) {
-    const { fixed, checked } = fixHelpers(resources)
-    for (const f of fixed) {
-      console.log(`  • +x ${path.relative(appOutDir, f)}`)
-    }
-    if (!checked) {
+  if (!resources) {
+    throw new Error(`could not locate Resources dir under ${appOutDir}`)
+  }
+
+  // Only POSIX builds use spawn-helper; Windows goes through conpty instead, so
+  // an absent helper there is expected rather than a packaging failure.
+  const needsHelper = electronPlatformName === 'darwin' || electronPlatformName === 'linux'
+  const { fixed, checked } = fixHelpers(resources)
+  for (const f of fixed) {
+    console.log(`  • +x ${path.relative(appOutDir, f)}`)
+  }
+  if (checked === 0) {
+    if (needsHelper) {
       // Not fatal on its own, but it means no terminal will work in this build.
       throw new Error(
         `node-pty spawn-helper not found under ${resources} — the packaged app would fail every pty:create with "posix_spawnp failed"`
       )
     }
-    if (!fixed.length) {
-      console.log(`  • node-pty spawn-helper already executable (${checked} checked)`)
-    }
-  } else {
-    throw new Error(`could not locate Resources dir under ${appOutDir}`)
+  } else if (!fixed.length) {
+    console.log(`  • node-pty spawn-helper already executable (${checked} checked)`)
   }
 
   // Linux: remove chrome-sandbox to avoid SUID sandbox errors
