@@ -6,9 +6,11 @@ release/
 *.log
 .DS_Store
 .electron-cache/
-build/
+build/*
 !build/icon.icns
 !build/icon.png
+!build/icon-dev.icns
+!build/icon-dev.png
 data/
 doc/
 .opencode/

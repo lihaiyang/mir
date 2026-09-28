@@ -35,7 +35,15 @@ for (const stream of [process.stdout, process.stderr]) {
   stream.on('error', () => {})
 }
 
-const ICON_PATH = join(__dirname, '../../build/icon.png')
+// Dock / window icon. Packaged builds carry their channel's .icns inside the
+// bundle (build/icon.icns for stable, build/icon-dev.icns for dev), so this
+// path only has an effect on the unpackaged `npm run dev` app — where the dev
+// branch ships the black-on-white build/icon-dev.png. Stable and dev share the
+// same source file, hence the existence check instead of a branch check.
+const ICON_PATH = (() => {
+  const devIcon = join(__dirname, '../../build/icon-dev.png')
+  return !app.isPackaged && existsSync(devIcon) ? devIcon : join(__dirname, '../../build/icon.png')
+})()
 
 
 // Linux: Chrome sandbox requires user namespaces; disable for broader compatibility

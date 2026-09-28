@@ -5,11 +5,12 @@
 # Guards failures that are invisible until runtime, and that have each shipped
 # at least once:
 #
-#   1. Channel mix-up — package.json's `build` config carries three
-#      channel-specific fields (appId / productName / artifactName). Merging
-#      between the dev and stable branches without switching them produces a
-#      dev build packed as `MIR.app` + `com.mir.ide`, which on update replaces
-#      the user's *stable* install. Both directions are checked.
+#   1. Channel mix-up — package.json's `build` config carries four
+#      channel-specific fields (appId / productName / artifactName / icon).
+#      Merging between the dev and stable branches without switching them
+#      produces a dev build packed as `MIR.app` + `com.mir.ide`, which on
+#      update replaces the user's *stable* install. Both directions are
+#      checked, including the channel icon.
 #   2. Missing exec bit — node-pty's `spawn-helper` is published on npm as 0644.
 #      Without +x every `pty:create` fails with "posix_spawnp failed", i.e. no
 #      terminal at all.
@@ -32,11 +33,15 @@ case "$VERSION" in
     CHANNEL=dev
     APP_NAME='MIR Dev.app'
     BUNDLE_ID='com.mir.ide.dev'
+    ICON='build/icon-dev.icns'
+    OTHER_ICON='build/icon.icns'
     ;;
   *)
     CHANNEL=stable
     APP_NAME='MIR.app'
     BUNDLE_ID='com.mir.ide'
+    ICON='build/icon.icns'
+    OTHER_ICON='build/icon-dev.icns'
     ;;
 esac
 
@@ -91,6 +96,33 @@ if command -v plutil >/dev/null 2>&1; then
     exit 1
   fi
   echo "bundle  : $APP_NAME ($actual_id)"
+fi
+
+# --- the .app carries this channel's icon ------------------------------------
+# electron-builder copies the configured `mac.icon` into the bundle verbatim
+# (verified: byte-identical), so the hashes match. Packing the *other* channel's
+# icon is exactly what a forgotten branch switch looks like, and it is the one
+# case worth failing on. An unrelated icon only warns, so regenerating an asset
+# without committing it never blocks a release.
+if command -v shasum >/dev/null 2>&1; then
+  unzip -p "$ZIP" "${APP_NAME}/Contents/Resources/icon.icns" > "$WORK/icon.icns" 2>/dev/null || true
+  if [ ! -s "$WORK/icon.icns" ]; then
+    echo "::error::$APP_NAME has no Contents/Resources/icon.icns"
+    exit 1
+  fi
+  hash_of() { shasum -a 256 "$1" 2>/dev/null | awk '{print $1}' || true; }
+  actual_icon=$(hash_of "$WORK/icon.icns")
+  if [ -f "$OTHER_ICON" ] && [ "$actual_icon" = "$(hash_of "$OTHER_ICON")" ]; then
+    echo "::error::${APP_NAME} was packed with the other channel's icon ($OTHER_ICON) — the build config was not switched for this branch"
+    exit 1
+  fi
+  if [ ! -f "$ICON" ]; then
+    echo "::warning::cannot compare the bundle icon — $ICON is missing from the checkout"
+  elif [ "$actual_icon" = "$(hash_of "$ICON")" ]; then
+    echo "icon    : $ICON (matches bundle)"
+  else
+    echo "::warning::${APP_NAME}'s icon differs from $ICON — expected only for a not-yet-committed asset"
+  fi
 fi
 
 # --- node-pty spawn-helper keeps its exec bit --------------------------------

@@ -95,7 +95,7 @@
       ],
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": false,
-      "icon": "build/icon.icns"
+      "icon": "build/icon-dev.icns"
     },
     "win": {
       "target": [
@@ -106,7 +106,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon-dev.png"
     },
     "linux": {
       "target": [
@@ -133,7 +133,7 @@
         }
       ],
       "category": "Development",
-      "icon": "build/icon.icns",
+      "icon": "build/icon-dev.icns",
       "executableArgs": [
         "--no-sandbox"
       ],
