@@ -362,7 +362,7 @@ Linux 构建会自动添加 `--no-sandbox` 参数并执行 `after-pack` 脚本�
 | **资产名前缀** | `MIR-` | `MIR-Dev-` |
 | **App 名** | MIR | MIR Dev |
 | **appId** | com.mir.ide | com.mir.ide.dev |
-| **图标** | `build/icon.icns` / `icon.png`（彩色） | `build/icon-dev.icns` / `icon-dev.png`（白底黑图标） |
+| **图标** | `build/icon.icns` / `icon.png`（白底黑图标） | `build/icon-dev.icns` / `icon-dev.png`（彩色） |
 | **版本检查** | releases.atom 中 `v*` tag | releases.atom 中 `dev-*` tag |
 
 **关键规则**：dev 版的 tag `dev-X.Y.Z` 中的 `X.Y.Z` 必须与 package.json version 的 `X.Y.Z` 一致。例如 tag `dev-0.2.1` 对应 version `0.2.1-dev.0`。否则 updater 构造的资产名与实际文件不匹配会导致 404。
@@ -404,9 +404,10 @@ git push origin dev-0.2.1
 > 打包前用 `npm run pack:dmg` 扫一眼产物名是不是 `MIR-Dev-*` 即可确认。
 >
 > 图标只影响观感，忘了切不会破坏通道隔离，但两个通道的 Dock 图标会长得一样。
-> 两个图标资源都在仓库里（`build/icon*.{png,icns}`），不需要重新生成；本地
-> `npm run dev` 的 Dock 图标由 `src/main/index.ts` 按 `app.isPackaged` 选择，
-> 所以 dev 分支跑起来的也是黑图标。
+> 两个图标资源都在仓库里（`build/icon*.{png,icns}`，`icon*` 归正式版、`icon-dev*`
+> 归 dev 版），不需要重新生成；本地 `npm run dev` 的 Dock 图标由
+> `src/main/index.ts` 按 `app.isPackaged` 选择，未打包的实例一律算 dev 实例，
+> 所以跑起来是彩色图标。
 
 #### Dev 转正（发布 Stable 版）
 
