@@ -22,7 +22,7 @@ import {
   normalizeHarnessConfig,
   resolveHarnessModel
 } from '../shared/harness'
-import type { HarnessConfig } from '../shared/harness'
+import type { HarnessConfig, ResolvedHarnessModel } from '../shared/harness'
 
 /** 加载结果：读取失败时也一定带一份可用的配置（默认值 + 环境变量覆盖） */
 export interface LoadedHarnessConfig {
@@ -120,7 +120,7 @@ export function modelChoices(config: HarnessConfig): { value: string; name: stri
 export function resolveModelForSession(
   config: HarnessConfig,
   modelId: string
-): { id: string; label: string; apiBase: string; apiKey: string } {
+): ResolvedHarnessModel {
   const requested = modelId.trim()
   const target = requested && config.models.some((item) => item.id === requested) ? requested : config.model
   return resolveHarnessModel(config, target)

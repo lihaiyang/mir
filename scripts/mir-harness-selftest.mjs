@@ -449,10 +449,17 @@ async function main() {
         apiBase: `${fakeLlm.baseUrl}/v1`,
         apiKey: 'test-key',
         model: 'fake-model',
-        models: [{ id: 'fake-model', name: 'Fake Model' }],
+        models: [
+          {
+            id: 'fake-model',
+            name: 'Fake Model',
+            reasoningEffort: 'max',
+            supportsImages: true,
+            contextWindow: 1000000,
+            maxTokens: 256
+          }
+        ],
         systemPrompt: 'You are a test agent. Reply briefly.',
-        temperature: 0,
-        maxTokens: 256,
         maxTurns: 4
       },
       null,
@@ -521,10 +528,11 @@ async function main() {
 
     const thoughtOption = configOptions.find((option) => option.id === 'thought_level')
     check(
-      'configOptions.thought_level.currentValue ∈ off/low/medium/high',
-      ['off', 'low', 'medium', 'high'].includes(thoughtOption?.currentValue),
+      'configOptions.thought_level.currentValue ∈ high/max',
+      ['high', 'max'].includes(thoughtOption?.currentValue),
       `got ${JSON.stringify(thoughtOption?.currentValue)}`
     )
+    checkEqual('configOptions.thought_level 使用模型配置的 max', thoughtOption?.currentValue, 'max')
 
     const commandsArrived = await waitFor(() => agent.client.ofKind('available_commands_update').length > 0, 3000)
     check('session/new 后收到 available_commands_update', commandsArrived, '3s 内没有收到')

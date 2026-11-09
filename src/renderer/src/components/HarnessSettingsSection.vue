@@ -129,6 +129,43 @@
           >
             {{ t('common.remove') }}
           </button>
+          <div class="harness-model-grid">
+            <label class="harness-model-field">
+              <span>{{ t('harness.models.reasoningEffort') }}</span>
+              <select v-model="row.reasoningEffort" class="settings-select">
+                <option value="max">Max</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label class="harness-model-field">
+              <span>{{ t('harness.models.contextWindow') }}</span>
+              <input
+                v-model="row.contextWindow"
+                class="settings-input"
+                type="number"
+                min="1000"
+                max="10000000"
+                step="1000"
+                @blur="clampModelField(index, 'contextWindow')"
+              />
+            </label>
+            <label class="harness-model-field">
+              <span>{{ t('harness.models.maxTokens') }}</span>
+              <input
+                v-model="row.maxTokens"
+                class="settings-input"
+                type="number"
+                min="1"
+                max="1000000"
+                step="1"
+                @blur="clampModelField(index, 'maxTokens')"
+              />
+            </label>
+            <label class="harness-model-field harness-model-check">
+              <input v-model="row.supportsImages" type="checkbox" />
+              <span>{{ t('harness.models.supportsImages') }}</span>
+            </label>
+          </div>
           <input
             v-model="row.apiBase"
             class="settings-input harness-model-override"
@@ -146,37 +183,7 @@
         </div>
       </div>
 
-      <!-- Generation ---------------------------------------------------- -->
-      <div class="settings-group">
-        <label class="settings-label" for="harness-temperature">{{ t('harness.temperature') }}</label>
-        <input
-          id="harness-temperature"
-          v-model.number="draft.temperature"
-          class="settings-input harness-number"
-          type="number"
-          min="0"
-          max="2"
-          step="0.1"
-          @blur="clampField('temperature')"
-        />
-        <div class="acp-hint">{{ t('harness.temperatureHint') }}</div>
-      </div>
-
-      <div class="settings-group">
-        <label class="settings-label" for="harness-max-tokens">{{ t('harness.maxTokens') }}</label>
-        <input
-          id="harness-max-tokens"
-          v-model.number="draft.maxTokens"
-          class="settings-input harness-number"
-          type="number"
-          min="1"
-          max="200000"
-          step="1"
-          @blur="clampField('maxTokens')"
-        />
-        <div class="acp-hint">{{ t('harness.maxTokensHint') }}</div>
-      </div>
-
+      <!-- Behaviour ----------------------------------------------------- -->
       <div class="settings-group">
         <label class="settings-label" for="harness-max-turns">{{ t('harness.maxTurns') }}</label>
         <input
@@ -193,38 +200,12 @@
       </div>
 
       <div class="settings-group">
-        <label class="settings-label" for="harness-context-window">{{ t('harness.contextWindow') }}</label>
-        <input
-          id="harness-context-window"
-          v-model.number="draft.contextWindow"
-          class="settings-input harness-number"
-          type="number"
-          min="1000"
-          max="2000000"
-          step="1000"
-          @blur="clampField('contextWindow')"
-        />
-        <div class="acp-hint">{{ t('harness.contextWindowHint') }}</div>
-      </div>
-
-      <!-- Behaviour ----------------------------------------------------- -->
-      <div class="settings-group">
         <label class="settings-label" for="harness-approval-mode">{{ t('harness.approvalMode') }}</label>
         <select id="harness-approval-mode" v-model="draft.approvalMode" class="settings-select">
           <option value="ask">{{ t('harness.approvalAsk') }}</option>
           <option value="auto">{{ t('harness.approvalAuto') }}</option>
         </select>
         <div class="acp-hint">{{ t('harness.approvalModeHint') }}</div>
-      </div>
-
-      <div class="settings-group">
-        <div class="settings-group settings-group-row">
-          <label class="settings-label" style="flex: 1" for="harness-send-reasoning">
-            {{ t('harness.sendReasoningEffort') }}
-          </label>
-          <input id="harness-send-reasoning" v-model="draft.sendReasoningEffort" type="checkbox" />
-        </div>
-        <div class="acp-hint">{{ t('harness.sendReasoningEffortHint') }}</div>
       </div>
 
       <div class="settings-group">
@@ -245,18 +226,30 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DEFAULT_HARNESS_CONFIG } from '@shared/harness'
+import {
+  DEFAULT_HARNESS_CONFIG,
+  DEFAULT_HARNESS_REASONING_EFFORT,
+  DEFAULT_MODEL_CONTEXT_WINDOW,
+  DEFAULT_MODEL_MAX_TOKENS,
+  DEFAULT_MODEL_SUPPORTS_IMAGES
+} from '@shared/harness'
 import type {
   HarnessApprovalMode,
   HarnessConfig,
   HarnessConfigSnapshot,
-  HarnessModelConfig
+  HarnessModelConfig,
+  HarnessReasoningEffort
 } from '@shared/harness'
 import type { DiscoveredHarnessModel, HarnessModelFormat } from '@shared/harnessModels'
 
-type NumericKey = 'temperature' | 'maxTokens' | 'maxTurns' | 'contextWindow'
+type NumericKey = 'maxTurns'
 
-/** Draft row: every field is a plain string so empty inputs stay empty. */
+type ModelNumericKey = 'contextWindow' | 'maxTokens'
+
+/**
+ * Draft row: text-ish fields stay strings so empty inputs stay empty.
+ * Per-model reasoning effort / image support / context window / max output live here.
+ */
 interface ModelRowDraft {
   /** Last committed id; keeps the default-model select in sync while renaming. */
   previousId: string
@@ -264,6 +257,10 @@ interface ModelRowDraft {
   name: string
   apiBase: string
   apiKey: string
+  reasoningEffort: HarnessReasoningEffort
+  supportsImages: boolean
+  contextWindow: string
+  maxTokens: string
 }
 
 interface HarnessDraft {
@@ -271,22 +268,20 @@ interface HarnessDraft {
   apiKey: string
   model: string
   models: ModelRowDraft[]
-  temperature: number | null
-  maxTokens: number | null
   maxTurns: number | null
-  contextWindow: number | null
   systemPrompt: string
   approvalMode: HarnessApprovalMode
-  sendReasoningEffort: boolean
 }
 
-const NUMERIC_KEYS: NumericKey[] = ['temperature', 'maxTokens', 'maxTurns', 'contextWindow']
+const NUMERIC_KEYS: NumericKey[] = ['maxTurns']
 
 const NUMERIC_LIMITS: Record<NumericKey, { min: number; max: number; integer: boolean }> = {
-  temperature: { min: 0, max: 2, integer: false },
-  maxTokens: { min: 1, max: 200_000, integer: true },
-  maxTurns: { min: 1, max: 100, integer: true },
-  contextWindow: { min: 1_000, max: 2_000_000, integer: true }
+  maxTurns: { min: 1, max: 100, integer: true }
+}
+
+const MODEL_NUMERIC_LIMITS: Record<ModelNumericKey, { min: number; max: number; fallback: number }> = {
+  contextWindow: { min: 1_000, max: 10_000_000, fallback: DEFAULT_MODEL_CONTEXT_WINDOW },
+  maxTokens: { min: 1, max: 1_000_000, fallback: DEFAULT_MODEL_MAX_TOKENS }
 }
 
 const MODEL_FORMAT_LABEL_KEYS: Record<HarnessModelFormat, string> = {
@@ -329,7 +324,8 @@ const modelOptions = computed<Array<{ id: string; label: string }>>(() => {
     const id = row.id.trim()
     if (!id || seen.has(id)) continue
     seen.add(id)
-    options.push({ id, label: row.name.trim() || id })
+    const name = row.name.trim()
+    options.push({ id, label: name && name !== id ? `${name} — ${id}` : id })
   }
   // Keep the select usable even when the list is mid-edit.
   const selected = draft.value.model.trim()
@@ -354,15 +350,16 @@ function toDraft(config: HarnessConfig): HarnessDraft {
       id: model.id,
       name: model.name ?? '',
       apiBase: model.apiBase ?? '',
-      apiKey: model.apiKey ?? ''
+      apiKey: model.apiKey ?? '',
+      reasoningEffort: model.reasoningEffort ?? DEFAULT_HARNESS_REASONING_EFFORT,
+      supportsImages:
+        typeof model.supportsImages === 'boolean' ? model.supportsImages : DEFAULT_MODEL_SUPPORTS_IMAGES,
+      contextWindow: String(model.contextWindow ?? DEFAULT_MODEL_CONTEXT_WINDOW),
+      maxTokens: String(model.maxTokens ?? DEFAULT_MODEL_MAX_TOKENS)
     })),
-    temperature: config.temperature,
-    maxTokens: config.maxTokens,
     maxTurns: config.maxTurns,
-    contextWindow: config.contextWindow,
     systemPrompt: config.systemPrompt,
-    approvalMode: config.approvalMode,
-    sendReasoningEffort: config.sendReasoningEffort
+    approvalMode: config.approvalMode
   }
 }
 
@@ -373,7 +370,13 @@ function toConfig(source: HarnessDraft): HarnessConfig {
     const id = row.id.trim()
     if (!id || seen.has(id)) continue
     seen.add(id)
-    const model: HarnessModelConfig = { id }
+    const model: HarnessModelConfig = {
+      id,
+      reasoningEffort: row.reasoningEffort === 'high' ? 'high' : 'max',
+      supportsImages: row.supportsImages,
+      contextWindow: clampModelNumber('contextWindow', row.contextWindow),
+      maxTokens: clampModelNumber('maxTokens', row.maxTokens)
+    }
     const name = row.name.trim()
     if (name) model.name = name
     const apiBase = row.apiBase.trim()
@@ -399,13 +402,9 @@ function toConfig(source: HarnessDraft): HarnessConfig {
     apiKey: source.apiKey.trim(),
     model,
     models,
-    temperature: clampNumeric('temperature', source.temperature),
-    maxTokens: clampNumeric('maxTokens', source.maxTokens),
     maxTurns: clampNumeric('maxTurns', source.maxTurns),
-    contextWindow: clampNumeric('contextWindow', source.contextWindow),
     systemPrompt: source.systemPrompt,
-    approvalMode: source.approvalMode,
-    sendReasoningEffort: source.sendReasoningEffort
+    approvalMode: source.approvalMode
   }
 }
 
@@ -423,8 +422,26 @@ function clampField(key: NumericKey): void {
   draft.value[key] = clampNumeric(key, draft.value[key])
 }
 
+function clampModelNumber(key: ModelNumericKey, raw: unknown): number {
+  const limits = MODEL_NUMERIC_LIMITS[key]
+  const value = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : Number.NaN
+  if (!Number.isFinite(value)) return limits.fallback
+  return Math.round(Math.min(limits.max, Math.max(limits.min, value)))
+}
+
+/** 每个模型的数字项失焦时归一化（空值回落默认值） */
+function clampModelField(index: number, key: ModelNumericKey): void {
+  const row = draft.value.models[index]
+  if (!row) return
+  row[key] = String(clampModelNumber(key, row[key]))
+}
+
 function normalizeNumbers(): void {
   for (const key of NUMERIC_KEYS) draft.value[key] = clampNumeric(key, draft.value[key])
+  for (const row of draft.value.models) {
+    row.contextWindow = String(clampModelNumber('contextWindow', row.contextWindow))
+    row.maxTokens = String(clampModelNumber('maxTokens', row.maxTokens))
+  }
 }
 
 function flashSaved(): void {
@@ -485,8 +502,23 @@ async function reload(): Promise<void> {
 
 /* ------------------------------- model list ----------------------------- */
 
+function newModelRow(model: { id?: string; name?: string } = {}): ModelRowDraft {
+  const id = model.id ?? ''
+  return {
+    previousId: id,
+    id,
+    name: model.name ?? '',
+    apiBase: '',
+    apiKey: '',
+    reasoningEffort: DEFAULT_HARNESS_REASONING_EFFORT,
+    supportsImages: DEFAULT_MODEL_SUPPORTS_IMAGES,
+    contextWindow: String(DEFAULT_MODEL_CONTEXT_WINDOW),
+    maxTokens: String(DEFAULT_MODEL_MAX_TOKENS)
+  }
+}
+
 function addModel(): void {
-  draft.value.models.push({ previousId: '', id: '', name: '', apiBase: '', apiKey: '' })
+  draft.value.models.push(newModelRow())
 }
 
 function removeModel(index: number): void {
@@ -518,23 +550,25 @@ function currentModelSignature(): string {
 
 /** 模型列表还是默认那两条时，可以放心用接口结果整表替换。 */
 function rowsLookPristine(): boolean {
-  const rows = draft.value.models
-    .map((row) => ({
-      id: row.id.trim(),
-      name: row.name.trim(),
-      apiBase: row.apiBase.trim(),
-      apiKey: row.apiKey.trim()
-    }))
-    .filter((row) => row.id)
+  const rows = draft.value.models.filter((row) => row.id.trim())
   const base = defaults.value.models
   if (rows.length !== base.length) return false
-  return base.every(
-    (model, index) =>
-      rows[index]?.id === model.id &&
-      rows[index]?.name === (model.name ?? '') &&
-      !rows[index]?.apiBase &&
-      !rows[index]?.apiKey
-  )
+  return base.every((model, index) => {
+    const row = rows[index]
+    if (!row) return false
+    return (
+      row.id.trim() === model.id &&
+      row.name.trim() === (model.name ?? '') &&
+      !row.apiBase.trim() &&
+      !row.apiKey.trim() &&
+      row.reasoningEffort === (model.reasoningEffort ?? DEFAULT_HARNESS_REASONING_EFFORT) &&
+      row.supportsImages ===
+        (typeof model.supportsImages === 'boolean' ? model.supportsImages : DEFAULT_MODEL_SUPPORTS_IMAGES) &&
+      clampModelNumber('contextWindow', row.contextWindow) ===
+        (model.contextWindow ?? DEFAULT_MODEL_CONTEXT_WINDOW) &&
+      clampModelNumber('maxTokens', row.maxTokens) === (model.maxTokens ?? DEFAULT_MODEL_MAX_TOKENS)
+    )
+  })
 }
 
 /** 列表与上次自动拉取的结果一致时，换地址重拉可以直接替换。 */
@@ -548,25 +582,13 @@ function mergeFetchedModels(models: DiscoveredHarnessModel[]): void {
   const replace =
     rowsLookPristine() || rowsMatchLastFetch() || draft.value.models.every((row) => !row.id.trim())
   if (replace) {
-    draft.value.models = models.map((model) => ({
-      previousId: model.id,
-      id: model.id,
-      name: model.name ?? '',
-      apiBase: '',
-      apiKey: ''
-    }))
+    draft.value.models = models.map((model) => newModelRow({ id: model.id, name: model.name ?? '' }))
   } else {
     // 用户自己维护过列表：只补新出现的模型，不动已有条目（保留自定义名字 / 覆盖项）。
     const existing = new Set(draft.value.models.map((row) => row.id.trim()).filter(Boolean))
     for (const model of models) {
       if (existing.has(model.id)) continue
-      draft.value.models.push({
-        previousId: model.id,
-        id: model.id,
-        name: model.name ?? '',
-        apiBase: '',
-        apiKey: ''
-      })
+      draft.value.models.push(newModelRow({ id: model.id, name: model.name ?? '' }))
     }
   }
 
@@ -857,6 +879,27 @@ onBeforeUnmount(() => {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+}
+.harness-model-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
+  align-items: end;
+}
+.harness-model-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.harness-model-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 6px;
 }
 .harness-model-override {
   grid-column: 1 / -1;

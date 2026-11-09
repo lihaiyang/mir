@@ -8,7 +8,28 @@
  * 字段级覆盖：MIR_HARNESS_API_BASE / MIR_HARNESS_API_KEY / MIR_HARNESS_MODEL
  */
 
-/** 一个可选的模型；apiBase / apiKey 留空时回落到顶层配置 */
+/** 推理强度：只有 high / max 两档，默认 max */
+export type HarnessReasoningEffort = 'high' | 'max'
+
+export const HARNESS_REASONING_EFFORTS: readonly HarnessReasoningEffort[] = ['high', 'max']
+
+export const DEFAULT_HARNESS_REASONING_EFFORT: HarnessReasoningEffort = 'max'
+
+/** 单个模型的默认上下文窗口（tokens）：1M */
+export const DEFAULT_MODEL_CONTEXT_WINDOW = 1_000_000
+
+/** 单个模型的默认最大输出（tokens）：128K */
+export const DEFAULT_MODEL_MAX_TOKENS = 128_000
+
+/** 默认认为模型能接收图片 */
+export const DEFAULT_MODEL_SUPPORTS_IMAGES = true
+
+/**
+ * 一个可选的模型及其能力 / 采样参数。
+ *
+ * apiBase / apiKey 留空时回落到顶层配置；其余字段都有全局默认值，
+ * 解析时由 {@link resolveHarnessModel} 补齐，界面上可以逐模型覆盖。
+ */
 export interface HarnessModelConfig {
   /** 传给 OpenAI 兼容接口的 model 字段 */
   id: string
@@ -16,6 +37,14 @@ export interface HarnessModelConfig {
   name?: string
   apiBase?: string
   apiKey?: string
+  /** 推理强度（high / max），默认 max */
+  reasoningEffort?: HarnessReasoningEffort
+  /** 能否接收图片输入，默认 true */
+  supportsImages?: boolean
+  /** 上下文窗口（tokens），默认 1M；用于 usage / 状态展示 */
+  contextWindow?: number
+  /** 单次回复最大输出 tokens，默认 128K */
+  maxTokens?: number
 }
 
 export type HarnessApprovalMode = 'ask' | 'auto'
@@ -27,17 +56,11 @@ export interface HarnessConfig {
   /** 默认模型 id */
   model: string
   models: HarnessModelConfig[]
-  temperature: number
-  maxTokens: number
   /** 单轮对话中最多允许的「模型 → 工具」循环次数 */
   maxTurns: number
-  /** 估算上下文占用时使用的窗口大小（用于 usage_update 的 size） */
-  contextWindow: number
   systemPrompt: string
   /** ask：写文件/执行命令前询问；auto：工作区内自动批准 */
   approvalMode: HarnessApprovalMode
-  /** 是否把 thought_level 作为 reasoning_effort 传给接口（部分网关支持） */
-  sendReasoningEffort: boolean
 }
 
 /** 设置界面 / 主进程之间传递的配置快照 */
@@ -52,6 +75,20 @@ export interface HarnessConfigSnapshot {
   envOverrides: string[]
   /** 配置文件解析失败时的错误信息（此时 config 为默认值 + 环境变量） */
   error?: string
+}
+
+/** 某个模型实际生效的配置（会话 / 请求侧使用） */
+export interface ResolvedHarnessModel {
+  id: string
+  label: string
+  /** 模型 id 里 `provider/model` 的 provider 段；没有则用 apiBase 的 host */
+  provider: string
+  apiBase: string
+  apiKey: string
+  reasoningEffort: HarnessReasoningEffort
+  supportsImages: boolean
+  contextWindow: number
+  maxTokens: number
 }
 
 export const HARNESS_DIR_NAME = '.mir-harness'
@@ -74,16 +111,26 @@ export const DEFAULT_HARNESS_CONFIG: HarnessConfig = {
   apiKey: '',
   model: 'deepseek-chat',
   models: [
-    { id: 'deepseek-chat', name: 'DeepSeek Chat' },
-    { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' }
+    {
+      id: 'deepseek-chat',
+      name: 'DeepSeek Chat',
+      reasoningEffort: DEFAULT_HARNESS_REASONING_EFFORT,
+      supportsImages: DEFAULT_MODEL_SUPPORTS_IMAGES,
+      contextWindow: DEFAULT_MODEL_CONTEXT_WINDOW,
+      maxTokens: DEFAULT_MODEL_MAX_TOKENS
+    },
+    {
+      id: 'deepseek-reasoner',
+      name: 'DeepSeek Reasoner',
+      reasoningEffort: DEFAULT_HARNESS_REASONING_EFFORT,
+      supportsImages: DEFAULT_MODEL_SUPPORTS_IMAGES,
+      contextWindow: DEFAULT_MODEL_CONTEXT_WINDOW,
+      maxTokens: DEFAULT_MODEL_MAX_TOKENS
+    }
   ],
-  temperature: 0.2,
-  maxTokens: 8192,
   maxTurns: 24,
-  contextWindow: 128000,
   systemPrompt: DEFAULT_HARNESS_SYSTEM_PROMPT,
-  approvalMode: 'ask',
-  sendReasoningEffort: false
+  approvalMode: 'ask'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -101,6 +148,34 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   return Math.min(max, Math.max(min, value))
 }
 
+export function isHarnessReasoningEffort(value: unknown): value is HarnessReasoningEffort {
+  return value === 'high' || value === 'max'
+}
+
+function normalizeReasoningEffort(value: unknown): HarnessReasoningEffort {
+  return isHarnessReasoningEffort(value) ? value : DEFAULT_HARNESS_REASONING_EFFORT
+}
+
+function normalizeModelConfig(item: Record<string, unknown>, id: string): HarnessModelConfig {
+  const model: HarnessModelConfig = {
+    id,
+    reasoningEffort: normalizeReasoningEffort(item.reasoningEffort),
+    supportsImages:
+      typeof item.supportsImages === 'boolean' ? item.supportsImages : DEFAULT_MODEL_SUPPORTS_IMAGES,
+    contextWindow: Math.round(
+      clampNumber(item.contextWindow, 1_000, 10_000_000, DEFAULT_MODEL_CONTEXT_WINDOW)
+    ),
+    maxTokens: Math.round(clampNumber(item.maxTokens, 1, 1_000_000, DEFAULT_MODEL_MAX_TOKENS))
+  }
+  const name = asString(item.name)
+  if (name) model.name = name
+  const apiBase = asString(item.apiBase)
+  if (apiBase) model.apiBase = apiBase
+  const apiKey = asString(item.apiKey)
+  if (apiKey) model.apiKey = apiKey
+  return model
+}
+
 function normalizeModels(raw: unknown, fallback: HarnessModelConfig[]): HarnessModelConfig[] {
   const models: HarnessModelConfig[] = []
   const seen = new Set<string>()
@@ -109,18 +184,13 @@ function normalizeModels(raw: unknown, fallback: HarnessModelConfig[]): HarnessM
       if (!isRecord(item)) continue
       const id = asString(item.id)
       if (!id || seen.has(id)) continue
-      const model: HarnessModelConfig = { id }
-      const name = asString(item.name)
-      if (name) model.name = name
-      const apiBase = asString(item.apiBase)
-      if (apiBase) model.apiBase = apiBase
-      const apiKey = asString(item.apiKey)
-      if (apiKey) model.apiKey = apiKey
-      models.push(model)
+      models.push(normalizeModelConfig(item, id))
       seen.add(id)
     }
   }
-  if (models.length === 0) return fallback.map((model) => ({ ...model }))
+  if (models.length === 0) {
+    return fallback.map((model) => normalizeModelConfig({ ...model } as Record<string, unknown>, model.id))
+  }
   return models
 }
 
@@ -140,42 +210,62 @@ export function normalizeHarnessConfig(
     apiKey: typeof source.apiKey === 'string' ? source.apiKey : fallback.apiKey,
     model,
     models,
-    temperature: clampNumber(source.temperature, 0, 2, fallback.temperature),
-    maxTokens: Math.round(clampNumber(source.maxTokens, 1, 200_000, fallback.maxTokens)),
     maxTurns: Math.round(clampNumber(source.maxTurns, 1, 100, fallback.maxTurns)),
-    contextWindow: Math.round(clampNumber(source.contextWindow, 1_000, 2_000_000, fallback.contextWindow)),
     systemPrompt:
       typeof source.systemPrompt === 'string' && source.systemPrompt.trim()
         ? source.systemPrompt
         : fallback.systemPrompt,
-    approvalMode: source.approvalMode === 'auto' ? 'auto' : source.approvalMode === 'ask' ? 'ask' : fallback.approvalMode,
-    sendReasoningEffort:
-      typeof source.sendReasoningEffort === 'boolean' ? source.sendReasoningEffort : fallback.sendReasoningEffort
+    approvalMode: source.approvalMode === 'auto' ? 'auto' : source.approvalMode === 'ask' ? 'ask' : fallback.approvalMode
   }
 
   // 选中的模型必须在列表里，否则补进去，避免界面显示一个不存在的选项
   if (!config.models.some((item) => item.id === config.model)) {
-    config.models = [{ id: config.model, name: config.model }, ...config.models]
+    config.models = [normalizeModelConfig({}, config.model), ...config.models]
   }
 
   return config
 }
 
-/** 模型下拉用的展示名 */
+/**
+ * 模型下拉用的展示名：有展示名时把 id 一并带上，方便区分同名模型与提供商
+ * （例如 `DeepSeek V4.1 Flash (mccodex-mc/deepseek-v4.1-flash)`）。
+ */
 export function harnessModelLabel(model: HarnessModelConfig): string {
-  return model.name?.trim() || model.id
+  const name = model.name?.trim()
+  if (name && name !== model.id) return `${name} (${model.id})`
+  return model.id
 }
 
-/** 解析某个模型实际要用的接口地址与密钥（模型级配置优先） */
-export function resolveHarnessModel(
-  config: HarnessConfig,
-  modelId: string
-): { id: string; label: string; apiBase: string; apiKey: string } {
+/** 模型提供商：优先取 id 的 `provider/model` 前缀，其次取 apiBase 的 host */
+export function harnessModelProvider(model: HarnessModelConfig): string {
+  const slash = model.id.indexOf('/')
+  if (slash > 0) return model.id.slice(0, slash)
+  if (model.apiBase) {
+    try {
+      return new URL(model.apiBase).host
+    } catch {
+      return ''
+    }
+  }
+  return ''
+}
+
+/** 解析某个模型实际要用的地址、密钥与采样参数（模型级配置优先，缺省用默认值） */
+export function resolveHarnessModel(config: HarnessConfig, modelId: string): ResolvedHarnessModel {
   const target = config.models.find((item) => item.id === modelId) ?? config.models[0]
+  const id = target?.id ?? modelId
   return {
-    id: target?.id ?? modelId,
+    id,
     label: target ? harnessModelLabel(target) : modelId,
+    provider: target ? harnessModelProvider(target) : '',
     apiBase: target?.apiBase ?? config.apiBase,
-    apiKey: target?.apiKey ?? config.apiKey
+    apiKey: target?.apiKey ?? config.apiKey,
+    reasoningEffort: normalizeReasoningEffort(target?.reasoningEffort),
+    supportsImages:
+      typeof target?.supportsImages === 'boolean' ? target.supportsImages : DEFAULT_MODEL_SUPPORTS_IMAGES,
+    contextWindow: Math.round(
+      clampNumber(target?.contextWindow, 1_000, 10_000_000, DEFAULT_MODEL_CONTEXT_WINDOW)
+    ),
+    maxTokens: Math.round(clampNumber(target?.maxTokens, 1, 1_000_000, DEFAULT_MODEL_MAX_TOKENS))
   }
 }

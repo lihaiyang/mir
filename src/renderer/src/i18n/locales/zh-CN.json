@@ -532,7 +532,7 @@
     "models": {
       "title": "模型列表",
       "add": "添加模型",
-      "hint": "会话里可选的模型。模型级接口地址和密钥会覆盖上面的全局配置。",
+      "hint": "会话模型下拉里可选的模型；推理强度、是否支持图片、上下文窗口、最大输出都按模型单独设置。",
       "idPlaceholder": "模型 id（必填）",
       "namePlaceholder": "显示名",
       "apiBasePlaceholder": "接口地址覆盖（可选）",
@@ -551,22 +551,18 @@
         "google": "Google Gemini 接口",
         "ollama": "Ollama",
         "generic": "通用 JSON 接口"
-      }
+      },
+      "reasoningEffort": "推理强度",
+      "contextWindow": "上下文窗口",
+      "maxTokens": "最大输出",
+      "supportsImages": "支持图片"
     },
-    "temperature": "温度",
-    "temperatureHint": "0 最确定，2 最发散，作为采样温度传给接口。",
-    "maxTokens": "最大输出 token",
-    "maxTokensHint": "单次模型回复的 token 上限。",
     "maxTurns": "单轮工具循环上限",
     "maxTurnsHint": "一次请求里最多允许的「模型 → 工具」循环次数。",
-    "contextWindow": "上下文窗口",
-    "contextWindowHint": "用于在会话里展示上下文占用，不会截断请求。",
     "approvalMode": "批准模式",
     "approvalAsk": "每次询问",
     "approvalAuto": "工作区内自动批准",
     "approvalModeHint": "Agent 写文件或执行命令前的处理方式。",
-    "sendReasoningEffort": "发送推理强度",
-    "sendReasoningEffortHint": "把 thought_level 作为 reasoning_effort 传给接口，部分网关支持。",
     "systemPrompt": "系统提示词",
     "systemPromptHint": "会拼在每次对话最前面；留空则使用内置提示词。"
   }

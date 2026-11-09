@@ -81,22 +81,28 @@ build: {
 {
   "apiBase": "https://api.deepseek.com/v1",
   "apiKey": "sk-...",
-  "model": "deepseek-chat",
+  "model": "deepseek-chat",            // 新会话默认使用的模型（必须是 models 里的 id）
   "models": [
-    { "id": "deepseek-chat", "name": "DeepSeek Chat" },
+    {
+      "id": "deepseek-chat",
+      "name": "DeepSeek Chat",        // 可选；会话模型下拉里显示为「名字 (id)」
+      "reasoningEffort": "max",       // high | max，默认 max
+      "supportsImages": true,         // 是否接受图片输入，默认 true
+      "contextWindow": 1000000,       // 默认 1,000,000（仅用于 usage_update 的大小展示）
+      "maxTokens": 128000             // 单次回复上限，默认 128,000
+    },
     { "id": "deepseek-reasoner", "name": "DeepSeek Reasoner" },
     // 单个模型可以覆盖接口地址 / 密钥（用于聚合网关）
     { "id": "workbuddy/deepseek-v4.1-flash", "name": "DeepSeek V4.1 Flash", "apiBase": "http://127.0.0.1:3425/v1", "apiKey": "magpie" }
   ],
-  "temperature": 0.2,
-  "maxTokens": 8192,
-  "maxTurns": 24,              // 单轮最多「模型 → 工具」循环次数
-  "contextWindow": 128000,     // 仅用于 usage_update 的 size 展示
+  "maxTurns": 24,                      // 单轮最多「模型 → 工具」循环次数
   "systemPrompt": "...",
-  "approvalMode": "ask",       // ask | auto（工作区内自动批准写文件与命令）
-  "sendReasoningEffort": false // 是否把 thought_level 作为 reasoning_effort 传给接口
+  "approvalMode": "ask"                // ask | auto（工作区内自动批准写文件与命令）
 }
 ```
+
+模型级字段全部可选，缺省回落到默认值：推理强度 `max`、支持图片 `true`、上下文窗口 `1,000,000`、
+最大输出 `128,000`。没有全局温度参数——MIR Harness 始终使用接口默认采样参数。
 
 读写规则：
 
@@ -107,10 +113,23 @@ build: {
 ### 3.2 设置界面
 
 `设置 → ACP 智能体 → MIR Harness`（`src/renderer/src/components/HarnessSettingsSection.vue`）：
-接口地址、密钥（密码框）、模型列表（每项可覆盖 Base/Key）、温度、max tokens、轮数上限、上下文窗口、
-系统提示词、审批模式、`sendReasoningEffort`；显示配置文件路径、环境变量覆盖提示、解析错误。
+接口地址、密钥（密码框）、默认模型、模型列表（每个模型一行：id / 名字 / 推理强度 / 上下文窗口 /
+最大输出 / 是否支持图片 / 可覆盖 Base 与 Key）、轮数上限、系统提示词、审批模式；
+显示配置文件路径、环境变量覆盖提示、解析错误。
 
-### 3.3 自动拉取模型
+### 3.3 模型级参数
+
+| 字段 | 默认 | 说明 |
+| --- | --- | --- |
+| `reasoningEffort` | `max` | `high` / `max` 两档，作为 `reasoning_effort` 传给 OpenAI 兼容接口 |
+| `supportsImages` | `true` | 关闭后 MIR 侧图片会被忽略并在文本里注明 |
+| `contextWindow` | `1000000` | 只影响 `usage_update` 的 size 与 `/status` 展示 |
+| `maxTokens` | `128000` | 单次回复的 `max_tokens` |
+
+会话切到某个模型时，推理强度会自动重置为该模型配置的档位（MIR 侧只记住「模型」与「模式」，
+不记住推理强度——它属于模型配置）。
+
+### 3.4 自动拉取模型
 
 设置界面里的「从接口拉取模型」按钮会按接口地址请求模型列表，不必手抄模型 id：
 
@@ -141,7 +160,7 @@ build: {
   "protocolVersion": 1,
   "agentCapabilities": {
     "loadSession": true,
-    "promptCapabilities": { "image": false, "audio": false, "embeddedContext": true },
+    "promptCapabilities": { "image": true, "audio": false, "embeddedContext": true },
     "sessionCapabilities": { "list": {}, "resume": {}, "close": {} }
   },
   "authMethods": [{
@@ -160,14 +179,14 @@ build: {
 
 | id | category | type | 值 |
 | --- | --- | --- | --- |
-| `model` | `model` | select | `config.models` 里的模型 id |
-| `thought_level` | `thought_level` | select | `off` / `low` / `medium` / `high` |
+| `model` | `model` | select | `config.models` 里的模型（显示「名字 (id)」，便于区分提供商前缀） |
+| `thought_level` | `thought_level` | select | `high` / `max`，默认取当前模型配置的档位 |
 
 变更通过 `session/set_config_option` 落库到会话内存并回 `config_option_update` 通知；
 `session/set_mode` 切换 `ask` / `code` 并回 `current_mode_update`。
 
-> MIR 侧已有「记住上次选择」逻辑（`src/main/acp/sessionPrefs.ts`），按 `category` 记录，
-> 所以 MIR Harness 的模型 / 推理强度也会被记住并在新会话创建时自动套用。
+> MIR 侧已有「记住上次选择」逻辑（`src/main/acp/sessionPrefs.ts`），按 `category` 记录 `mode` / `model`；
+> 推理强度不记忆，它跟随模型配置，切换模型时由 Agent 重置为对应档位。
 
 ### 4.3 斜杠命令
 
@@ -187,7 +206,8 @@ build: {
 
 ### 5.1 一轮 prompt
 
-1. 解析 `ContentBlock[]`（`text` / `resource_link`），空提示词报错；
+1. 解析 `ContentBlock[]`（`text` / `image` / `resource_link`）：图片转成 `data:` URL 走 OpenAI
+   content parts；模型 `supportsImages: false` 时忽略图片并在文本末尾注明；空提示词报错；
 2. 处理斜杠命令；
 3. 用户消息入库（首条消息生成会话标题）；
 4. 最多 `maxTurns` 轮：
@@ -231,7 +251,8 @@ build: {
 
 ## 7. 已知限制（v1）
 
-- 不支持图片 / 音频输入（`promptCapabilities` 声明为 false）；
+- 图片协议层已支持（`promptCapabilities.image: true`，按模型 `supportsImages` 决定是否真正发送），
+  但 MIR 聊天输入框目前只能贴文本 / 文件引用，图片入口留给后续版本；音频不支持；
 - 不支持 MCP server（`session/new` 的 `mcpServers` 参数被忽略）；
 - 工具集刻意保持小：没有编辑 diff、多文件批量写、后台任务；
 - 单会话单轮串行：一轮未结束时再次 `prompt` 会被 MIR 侧禁用（composer 在处理中禁用发送）；
@@ -245,17 +266,17 @@ build: {
 
 | 文件 | 行数 | 职责 |
 | --- | --- | --- |
-| `src/shared/harness.ts` | 268 | 配置 DTO、默认值、`normalizeHarnessConfig()`、模型标签与解析（主进程 / 渲染器 / agent 共用） |
-| `src/agent/types.ts` | 260 | 内核类型（`LlmEvent`、`ToolDefinition`、`PersistedSession`…）与 `describeError()` |
+| `src/shared/harness.ts` | 271 | 配置 DTO、每模型默认值、`normalizeHarnessConfig()`、模型标签 / 提供商与解析（主进程 / 渲染器 / agent 共用） |
+| `src/agent/types.ts` | 234 | 内核类型（`LlmEvent`、`ChatImage`、`ToolDefinition`、`PersistedSession`…）与 `describeError()` |
 | `src/agent/config.ts` | 127 | 读取 `~/.mir-harness/config.json` + 环境变量覆盖 |
-| `src/agent/llm.ts` | 381 | OpenAI 兼容流式客户端（手写 SSE 解析） |
-| `src/agent/sessions.ts` | 278 | 会话落盘（原子写、UUID 白名单、损坏文件跳过） |
+| `src/agent/llm.ts` | 407 | OpenAI 兼容流式客户端（手写 SSE 解析、图片 content parts、`reasoning_effort` 重试） |
+| `src/agent/sessions.ts` | 293 | 会话落盘（原子写、UUID 白名单、损坏文件跳过、图片字段归一） |
 | `src/agent/tools.ts` | 872 | 5 个工具 + 权限 / 超时 / 输出截断 |
-| `src/agent/agent.ts` | 1295 | `HarnessAgent implements Agent`，prompt 循环、权限桥、文件桥、回放 |
+| `src/agent/agent.ts` | 1322 | `HarnessAgent implements Agent`，prompt 循环（含图片解析）、权限桥、文件桥、回放 |
 | `src/agent/index.ts` | 99 | 进程入口：`ndJsonStream` + `AgentSideConnection`，日志全走 stderr |
 | `src/main/acp/harnessConfig.ts` | 92 | 主进程读写配置文件（供设置界面） |
-| `src/renderer/src/components/HarnessSettingsSection.vue` | 874 | 设置界面（表单、模型列表、从接口拉取、保存 / 重新加载） |
-| `scripts/mir-harness-selftest.mjs` | 747 | 假 OpenAI SSE 服务 + 真 ACP 客户端，49 条断言 |
+| `src/renderer/src/components/HarnessSettingsSection.vue` | 917 | 设置界面（表单、每模型参数、从接口拉取、保存 / 重新加载） |
+| `scripts/mir-harness-selftest.mjs` | 755 | 假 OpenAI SSE 服务 + 真 ACP 客户端，50 条断言 |
 | `src/shared/harnessModels.ts` | 363 | 模型列表发现：端点推断、五种格式解析、错误汇总 |
 | `scripts/harness-models-test.mjs` | 371 | 本地假接口覆盖五种格式与 401 / 非 JSON / 超时 / 非法地址，12 条断言 |
 
@@ -273,12 +294,15 @@ build: {
 | `npm run typecheck` | exit 0（node + web） |
 | `npm run build` | exit 0，`out/main/agent/index.js` 生成 |
 | `npm run acp:selftest` | ALL PASS — 43 checks |
-| `npm run harness:selftest` | ALL PASS — 49 checks（9 组：initialize / newSession / 流式 / 工具两轮 / 取消 / 配置与模式 / list+load / 无密钥 / 401） |
-| 真实网关端到端（`/tmp/mir-harness-e2e`，magpie `workbuddy/deepseek-v4.1-flash`） | ALL PASS — 29/29，含真实流式（26 个 chunk / 3.5s）、`read_file` 工具往返、取消 2ms 返回 `cancelled`、`session/list` + `session/load` 回放 |
+| `npm run harness:selftest` | ALL PASS — 50 checks（9 组：initialize / newSession / 流式 / 工具两轮 / 取消 / 配置与模式 / list+load / 无密钥 / 401） |
+| 真实网关端到端（`/tmp/mir-harness-e2e`，magpie `workbuddy/deepseek-v4.1-flash`） | ALL PASS — 29/29，含真实流式（26 个 chunk / 1.9s）、默认 `thought_level=max`、`read_file` 工具往返、取消 2ms 返回 `cancelled`、`session/list` + `session/load` 回放 |
 | MIR 真机（CDP 驱动） | 新建会话 → 流式渲染（33→278 字符渐进）、权限卡片 → 允许一次 → 文件写入成功、取消 → 「已取消本轮」、模型 / 推理强度记忆跨会话生效、历史恢复 10 条消息且无残留「输出中」状态 |
 | `npm run harness:models-test` | ALL PASS — 12 checks（OpenAI / 已带 `/v1` / Gemini / Anthropic / Ollama / 通用数组 / 解析直测 / 候选直测 / 401 / 非 JSON / 超时 / 非法地址） |
 | 真实网关模型发现 | magpie `GET http://127.0.0.1:3425/v1/models` → `format=openai`、12 个模型，端点推断与打码正常 |
 | MIR 真机「从接口拉取模型」 | 列表从 2 条变 12 条 + 绿色状态「已从OpenAI 兼容接口拉取 12 个模型」；手改的自定义行在再次拉取后被保留（13 行）；重载页面后自动拉取生效；保存写回 12 条；新建会话的 `model` configOptions 为 12 项 |
+| 每模型配置（MIR 真机） | 设置页两个模型行分别显示「推理强度 Max/High、上下文窗口 1000000、最大输出 128000、支持图片 ✓」；默认模型下拉显示「DeepSeek v4.1 Flash — workbuddy/deepseek-v4.1-flash」 |
+| 每模型配置（会话头 / 端到端） | 新会话 `configOptions.thought_level.currentValue=max`、options 只有 `Max` / `High`；`configOptions.model` 选项名为 `DeepSeek v4.1 Flash (workbuddy/deepseek-v4.1-flash)`；默认模型下拉宽度加大 + 悬停显示全称 |
+| `reasoning_effort` 真实链路 | curl 网关 `reasoning_effort:"max"` / `"high"` 均 HTTP 200；会话发 prompt 正常流式返回并渲染 |
 
 ### 8.4 实现中发现的问题（已修）
 

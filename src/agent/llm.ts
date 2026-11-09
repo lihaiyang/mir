@@ -65,9 +65,14 @@ interface OpenAiToolCall {
   function: { name: string; arguments: string }
 }
 
+type OpenAiContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
 interface OpenAiMessage {
   role: string
-  content: string
+  /** 纯文本消息用字符串；带图片的用户消息用 content parts 数组 */
+  content: string | OpenAiContentPart[]
   tool_calls?: OpenAiToolCall[]
   tool_call_id?: string
 }
@@ -77,6 +82,7 @@ interface OpenAiMessage {
  *
  * - assistant 带 toolCalls 时输出 tool_calls，content 保留（可以是空字符串）；
  * - role === 'tool' 时用 tool_call_id 关联回对应的调用；
+ * - user 带图片时转成 content parts（text + image_url data URL）；
  * - reasoning 只用于回放 / 展示，不回传给模型（多数接口会直接 400）。
  */
 function toOpenAiMessages(messages: ChatMessage[]): OpenAiMessage[] {
@@ -101,6 +107,17 @@ function toOpenAiMessages(messages: ChatMessage[]): OpenAiMessage[] {
       }
     }
 
+    if (message.role === 'user' && message.images && message.images.length > 0) {
+      const parts: OpenAiContentPart[] = []
+      if (message.content.trim()) parts.push({ type: 'text', text: message.content })
+      for (const image of message.images) {
+        if (!image || !image.data) continue
+        const mimeType = image.mimeType || 'image/png'
+        parts.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${image.data}` } })
+      }
+      if (parts.length > 0) return { role: 'user', content: parts }
+    }
+
     return { role: message.role, content: message.content }
   })
 }
@@ -112,17 +129,18 @@ function chatCompletionsUrl(apiBase: string): string {
 interface RequestBodyOptions {
   /** 是否带 stream_options.include_usage（部分网关不认，需要重试去掉） */
   includeUsage: boolean
+  /** 是否带 reasoning_effort（部分网关不认，需要重试去掉） */
+  includeReasoning: boolean
 }
 
 function buildRequestBody(request: LlmRequest, options: RequestBodyOptions): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: request.model,
     messages: toOpenAiMessages(request.messages),
-    stream: true,
-    temperature: request.temperature
+    stream: true
   }
 
-  if (Number.isFinite(request.maxTokens)) body.max_tokens = request.maxTokens
+  if (Number.isFinite(request.maxTokens) && request.maxTokens > 0) body.max_tokens = request.maxTokens
 
   const tools: ToolSpec[] = request.tools ?? []
   if (tools.length > 0) {
@@ -136,10 +154,8 @@ function buildRequestBody(request: LlmRequest, options: RequestBodyOptions): Rec
     }))
   }
 
-  // 只有显式打开且不是 off 时才传，避免不认这个字段的网关直接 400
-  if (request.sendReasoningEffort === true && request.thoughtLevel !== 'off') {
-    body.reasoning_effort = request.thoughtLevel
-  }
+  // high / max 两档都直接传；不认这个字段的网关会 400，由 openStream 去掉重试
+  if (options.includeReasoning) body.reasoning_effort = request.reasoningEffort
 
   if (options.includeUsage) body.stream_options = { include_usage: true }
 
@@ -166,22 +182,32 @@ async function postChatCompletions(
   }
 }
 
+/** 400 时依次去掉可选字段重试：先去掉 stream_options，再去掉 reasoning_effort */
+const RETRY_ATTEMPTS: RequestBodyOptions[] = [
+  { includeUsage: true, includeReasoning: true },
+  { includeUsage: false, includeReasoning: true },
+  { includeUsage: true, includeReasoning: false }
+]
+
 /**
  * 发起流式请求，返回响应交给调用方判断状态码。
  *
- * 个别网关不认 stream_options.include_usage 会直接回 400，这时去掉该字段
- * 重试一次（只重试一次，避免把真正的参数错误变成两次请求）。
+ * 个别网关不认 stream_options.include_usage 或 reasoning_effort 会直接回 400，
+ * 这时逐个去掉可选字段重试；都不是 400 就原样返回（错误正文交给上层）。
  */
 async function openStream(request: LlmRequest): Promise<Response> {
-  const first = await postChatCompletions(request, buildRequestBody(request, { includeUsage: true }))
-  if (first.status !== 400) return first
-
-  try {
-    await first.body?.cancel()
-  } catch {
-    // 取消失败无所谓：下面本来就要重发请求
+  let last: Response | null = null
+  for (const attempt of RETRY_ATTEMPTS) {
+    const response = await postChatCompletions(request, buildRequestBody(request, attempt))
+    if (response.status !== 400) return response
+    last = response
+    try {
+      await response.body?.cancel()
+    } catch {
+      // 取消失败无所谓：下面本来就要重发请求
+    }
   }
-  return postChatCompletions(request, buildRequestBody(request, { includeUsage: false }))
+  return last as Response
 }
 
 async function readErrorBody(response: Response): Promise<string> {

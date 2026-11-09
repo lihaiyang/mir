@@ -15,6 +15,7 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { HARNESS_DIR_NAME } from '../shared/harness'
 import type {
+  ChatImage,
   ChatMessage,
   ChatRole,
   ChatToolCall,
@@ -35,7 +36,7 @@ const SESSIONS_DIR_MODE = 0o700
 const SESSION_FILE_MODE = 0o600
 
 const CHAT_ROLES: readonly ChatRole[] = ['system', 'user', 'assistant', 'tool']
-const THOUGHT_LEVELS: readonly ThoughtLevel[] = ['off', 'low', 'medium', 'high']
+const THOUGHT_LEVELS: readonly ThoughtLevel[] = ['high', 'max']
 
 /* --------------------------------- 路径 --------------------------------- */
 
@@ -79,6 +80,18 @@ function isThoughtLevel(value: unknown): value is ThoughtLevel {
   return typeof value === 'string' && (THOUGHT_LEVELS as readonly string[]).includes(value)
 }
 
+function normalizeImages(raw: unknown): ChatImage[] {
+  if (!Array.isArray(raw)) return []
+  const images: ChatImage[] = []
+  for (const item of raw) {
+    if (!isRecord(item)) continue
+    if (typeof item.mimeType !== 'string' || typeof item.data !== 'string') continue
+    if (!item.data) continue
+    images.push({ mimeType: item.mimeType, data: item.data })
+  }
+  return images
+}
+
 function normalizeToolCalls(raw: unknown): ChatToolCall[] {
   if (!Array.isArray(raw)) return []
   const calls: ChatToolCall[] = []
@@ -98,6 +111,8 @@ function normalizeMessage(raw: unknown): ChatMessage | null {
   if (typeof raw.content !== 'string') return null
 
   const message: ChatMessage = { role: raw.role, content: raw.content }
+  const images = normalizeImages(raw.images)
+  if (images.length > 0) message.images = images
   const toolCalls = normalizeToolCalls(raw.toolCalls)
   if (toolCalls.length > 0) message.toolCalls = toolCalls
   if (typeof raw.toolCallId === 'string') message.toolCallId = raw.toolCallId
@@ -114,7 +129,7 @@ function normalizeConfig(raw: unknown): SessionConfigValues | null {
   if (!isRecord(raw)) return null
   const model = typeof raw.model === 'string' ? raw.model.trim() : ''
   if (!model) return null
-  const thoughtLevel: ThoughtLevel = isThoughtLevel(raw.thoughtLevel) ? raw.thoughtLevel : 'off'
+  const thoughtLevel: ThoughtLevel = isThoughtLevel(raw.thoughtLevel) ? raw.thoughtLevel : 'max'
   const mode: HarnessMode = raw.mode === 'code' ? 'code' : 'ask'
   return { model, thoughtLevel, mode }
 }

@@ -317,6 +317,21 @@ function rankOf(option: SessionConfigOption): number {
 }
 
 /**
+ * 推理强度属于「模型配置」的 Agent：它的 effort 由每个模型的配置决定，
+ * 切换模型时 Agent 自己会重置，所以不套用也不记录用户上次的选择。
+ * （其它 Agent 没有模型级配置，仍按旧行为记住 thought_level。）
+ */
+const PER_MODEL_EFFORT_AGENTS = new Set(['mir-harness'])
+
+function skipsRememberedOption(
+  agentId: string,
+  option: { id: string; category?: string | null }
+): boolean {
+  const isEffort = option.id === 'thought_level' || option.category === 'thought_level'
+  return isEffort && PER_MODEL_EFFORT_AGENTS.has(agentId)
+}
+
+/**
  * 把上次会话里用户选过的 model / mode / thought_level 套用到新会话。
  * 只处理「Agent 仍然提供、且值仍然合法」的项，失败静默跳过。
  */
@@ -335,7 +350,7 @@ async function applyRememberedConfig(
    */
   const order = (options: SessionConfigOption[]): string[] =>
     options
-      .filter((option) => isRememberedOption(option))
+      .filter((option) => isRememberedOption(option) && !skipsRememberedOption(runtime.agentId, option))
       .sort((a, b) => rankOf(a) - rankOf(b))
       .map((option) => option.id)
 
@@ -890,7 +905,7 @@ export async function setConfigOption(
   const option = session.detail.configOptions?.find((item) => item.id === configId)
   session.detail.configOptions = response.configOptions
   emitConfigUpdate(sessionId, response.configOptions)
-  if (option && isRememberedOption(option)) {
+  if (option && isRememberedOption(option) && !skipsRememberedOption(session.agentId, option)) {
     rememberConfigValue(session.agentId, configId, value)
   }
   return response.configOptions

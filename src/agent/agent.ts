@@ -69,6 +69,7 @@ import {
   workingDirectoryNote
 } from './types'
 import type {
+  ChatImage,
   ChatMessage,
   ChatToolCall,
   HarnessMode,
@@ -107,14 +108,13 @@ const AVAILABLE_COMMANDS: AvailableCommand[] = [
   { name: 'status', description: '查看当前模型、推理强度、模式与历史条数' }
 ]
 
-const THOUGHT_LEVELS: readonly ThoughtLevel[] = ['off', 'low', 'medium', 'high']
+/** 推理强度只有 high / max 两档（默认值来自模型配置，缺省 max） */
+const THOUGHT_LEVELS: readonly ThoughtLevel[] = ['high', 'max']
 const THOUGHT_LEVEL_OPTIONS: { value: string; name: string }[] = [
-  { value: 'off', name: 'Off' },
-  { value: 'low', name: 'Low' },
-  { value: 'medium', name: 'Medium' },
+  { value: 'max', name: 'Max' },
   { value: 'high', name: 'High' }
 ]
-const THOUGHT_LEVEL_DEFAULT: ThoughtLevel = 'medium'
+const THOUGHT_LEVEL_DEFAULT: ThoughtLevel = 'max'
 
 const MODE_DEFINITIONS = [
   { id: 'ask', name: 'Ask', description: '写文件 / 执行命令前先询问' },
@@ -244,8 +244,10 @@ function requireWorkingDirectory(cwd: string): string {
   return absolute
 }
 
-function promptToText(blocks: ContentBlock[] | null | undefined): string {
+/** 把 ACP 的 prompt blocks 拆成文本与图片（图片为 base64 + mimeType） */
+function parsePrompt(blocks: ContentBlock[] | null | undefined): { text: string; images: ChatImage[] } {
   const parts: string[] = []
+  const images: ChatImage[] = []
   for (const block of blocks ?? []) {
     if (!block || typeof block !== 'object') continue
     if (block.type === 'text') {
@@ -253,9 +255,13 @@ function promptToText(blocks: ContentBlock[] | null | undefined): string {
     } else if (block.type === 'resource_link') {
       // 不把资源内容读进来（不一定是文本），只给模型一个可引用的位置
       parts.push(`[资源] ${block.uri}`)
+    } else if (block.type === 'image') {
+      if (typeof block.data === 'string' && block.data) {
+        images.push({ mimeType: block.mimeType || 'image/png', data: block.data })
+      }
     }
   }
-  return parts.join('\n').trim()
+  return { text: parts.join('\n').trim(), images }
 }
 
 function slashCommandOf(text: string): SlashCommand | undefined {
@@ -408,7 +414,7 @@ export class HarnessAgent implements Agent {
       protocolVersion: PROTOCOL_VERSION,
       agentCapabilities: {
         loadSession: true,
-        promptCapabilities: { image: false, audio: false, embeddedContext: true },
+        promptCapabilities: { image: true, audio: false, embeddedContext: true },
         sessionCapabilities: { list: {}, resume: {}, close: {} }
       },
       authMethods: AUTH_METHODS,
@@ -435,6 +441,7 @@ export class HarnessAgent implements Agent {
     // 每次新建会话都重新读配置：MIR 设置里改完，下一次新建就生效
     this.requireApiKey(config)
 
+    const resolved = resolveModelForSession(config, config.model)
     const now = Date.now()
     const session: HarnessSession = {
       sessionId: newSessionId(),
@@ -444,7 +451,7 @@ export class HarnessAgent implements Agent {
       messages: [],
       config: {
         model: config.model,
-        thoughtLevel: THOUGHT_LEVEL_DEFAULT,
+        thoughtLevel: resolved.reasoningEffort,
         mode: defaultMode(config)
       },
       allowances: new Set<string>(),
@@ -549,14 +556,16 @@ export class HarnessAgent implements Agent {
         throw new RequestError(INVALID_PARAMS_CODE, `未知的模型：${String(params.value)}`)
       }
       if (value !== session.config.model) {
-        session.config = { ...session.config, model: value }
+        // 切换模型时把推理强度重置成该模型自己的配置
+        const resolved = resolveModelForSession(config, value)
+        session.config = { ...session.config, model: value, thoughtLevel: resolved.reasoningEffort }
         session.updatedAt = Date.now()
         await this.persist(session)
         log(`session/set_config_option ${session.sessionId} model=${value}`)
       }
     } else if (params.configId === 'thought_level') {
       if (!value || !THOUGHT_LEVELS.includes(value as ThoughtLevel)) {
-        throw new RequestError(INVALID_PARAMS_CODE, '推理强度只能是 off / low / medium / high')
+        throw new RequestError(INVALID_PARAMS_CODE, '推理强度只能是 high / max')
       }
       if (value !== session.config.thoughtLevel) {
         session.config = { ...session.config, thoughtLevel: value as ThoughtLevel }
@@ -595,26 +604,42 @@ export class HarnessAgent implements Agent {
     const session = this.requireSession(params.sessionId)
     if (session.abort) throw new RequestError(INVALID_PARAMS_CODE, '当前会话正在处理上一轮对话')
 
-    const promptText = promptToText(params.prompt)
-    if (!promptText) throw new RequestError(INVALID_PARAMS_CODE, '提示词为空')
+    const parsedPrompt = parsePrompt(params.prompt)
+    let promptText = parsedPrompt.text
+    if (!promptText && parsedPrompt.images.length === 0) {
+      throw new RequestError(INVALID_PARAMS_CODE, '提示词为空')
+    }
 
-    const command = slashCommandOf(promptText)
+    const command = promptText ? slashCommandOf(promptText) : undefined
     if (command === 'clear') return this.clearContext(session)
     if (command === 'status') return this.reportStatus(session)
 
-    session.messages.push({ role: 'user', content: promptText })
+    // 每轮都重新读配置：设置里刚改的 API Key / 模型地址立刻生效
+    const config = this.loadConfig('session/prompt')
+    this.requireApiKey(config)
+    const resolved = resolveModelForSession(config, session.config.model)
+
+    // 模型不支持图片时降级成一句说明，避免把图片塞给会 400 的接口
+    let userImages: ChatImage[] = []
+    if (parsedPrompt.images.length > 0) {
+      if (resolved.supportsImages) {
+        userImages = parsedPrompt.images
+      } else {
+        const note = `（注：当前模型不支持图片输入，已忽略 ${parsedPrompt.images.length} 张图片）`
+        promptText = promptText ? `${promptText}\n\n${note}` : note
+      }
+    }
+
+    const userMessage: ChatMessage = { role: 'user', content: promptText }
+    if (userImages.length > 0) userMessage.images = userImages
+    session.messages.push(userMessage)
     if (!session.title) {
       const title = deriveTitle(session.messages)
       if (title) session.title = title
     }
     session.updatedAt = Date.now()
     await this.persist(session)
-    debug(`session/prompt ${session.sessionId} messages=${session.messages.length}`)
-
-    // 每轮都重新读配置：设置里刚改的 API Key / 模型地址立刻生效
-    const config = this.loadConfig('session/prompt')
-    this.requireApiKey(config)
-    const resolved = resolveModelForSession(config, session.config.model)
+    debug(`session/prompt ${session.sessionId} messages=${session.messages.length} images=${userImages.length}`)
 
     const controller = new AbortController()
     session.abort = controller
@@ -637,10 +662,8 @@ export class HarnessAgent implements Agent {
           model: resolved.id,
           apiBase: resolved.apiBase,
           apiKey: resolved.apiKey,
-          temperature: config.temperature,
-          maxTokens: config.maxTokens,
-          thoughtLevel: session.config.thoughtLevel,
-          sendReasoningEffort: config.sendReasoningEffort,
+          maxTokens: resolved.maxTokens,
+          reasoningEffort: session.config.thoughtLevel,
           signal
         }
 
@@ -816,7 +839,8 @@ export class HarnessAgent implements Agent {
       `- 推理强度：${session.config.thoughtLevel}`,
       `- 模式：${session.config.mode}`,
       `- 历史消息：${session.messages.length} 条`,
-      `- 上下文占用：${used} / ${config?.contextWindow ?? 0} tokens`,
+      `- 上下文占用：${used} / ${resolved?.contextWindow ?? 0} tokens`,
+      `- 最大输出：${resolved?.maxTokens ?? 0} tokens`,
       `- 工作目录：${session.cwd}`,
       `- 配置文件：${configPath || '(未知)'}`
     ]
@@ -1061,7 +1085,8 @@ export class HarnessAgent implements Agent {
 
   private async emitUsage(session: HarnessSession, config: HarnessConfig): Promise<void> {
     const used = Math.max(0, Math.round(session.usage.inputTokens + session.usage.outputTokens))
-    const size = Math.max(1, Math.round(config.contextWindow || 1))
+    const resolved = resolveModelForSession(config, session.config.model)
+    const size = Math.max(1, Math.round(resolved.contextWindow || 1))
     await this.emitQuiet(session, { sessionUpdate: 'usage_update', used, size })
   }
 
@@ -1169,11 +1194,13 @@ export class HarnessAgent implements Agent {
       if (!message || typeof message !== 'object') continue
       try {
         if (message.role === 'user') {
+          const imageCount = Array.isArray(message.images) ? message.images.length : 0
           const text = replayText(message.content)
-          if (text) {
+          const replayTextValue = imageCount > 0 ? `${text}${text ? ' ' : ''}[图片 ×${imageCount}]` : text
+          if (replayTextValue) {
             await this.emit(session, {
               sessionUpdate: 'user_message_chunk',
-              content: { type: 'text', text }
+              content: { type: 'text', text: replayTextValue }
             })
           }
         } else if (message.role === 'assistant') {

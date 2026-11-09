@@ -50,7 +50,12 @@
 
       <label v-if="modelOption" class="control">
         <span class="control-label">{{ t('acp.header.model', 'Model') }}</span>
-        <select class="control-select" :value="modelOption.currentValue" @change="onConfigSelect(modelOption.id, $event)">
+        <select
+          class="control-select control-select--model"
+          :value="modelOption.currentValue"
+          :title="modelTitle"
+          @change="onConfigSelect(modelOption.id, $event)"
+        >
           <option v-for="choice in modelChoices" :key="choice.value" :value="choice.value">
             {{ choice.name }}
           </option>
@@ -198,6 +203,11 @@ const modelOption = computed<SelectOption | undefined>(() =>
   selectOptions.value.find((option) => option.category === 'model')
 )
 const modelChoices = computed<SelectChoice[]>(() => (modelOption.value ? choicesOf(modelOption.value) : []))
+/** 完整模型名（含 id / 提供商）——下拉宽度有限，悬停时用 title 显示全称 */
+const modelTitle = computed(() => {
+  const current = modelOption.value?.currentValue
+  return modelChoices.value.find((choice) => choice.value === current)?.name ?? current ?? ''
+})
 
 const thoughtOptions = computed<SelectOption[]>(() =>
   selectOptions.value.filter((option) => option.category === 'thought_level')
@@ -377,6 +387,10 @@ function openAgentsPanel(): void {
   color: var(--text-secondary);
   font-size: var(--text-xs);
 }
+.control-select--model {
+  max-width: 340px;
+}
+
 .control-select:hover { border-color: var(--border-strong); }
 
 .more-wrap { position: relative; }

@@ -4,11 +4,13 @@
  * 这一层只描述「模型客户端 / 工具 / 会话持久化」之间怎么互相调用，
  * 具体的 ACP 协议实现放在 agent.ts，进程入口放 index.ts。
  */
-import type { HarnessConfig } from '../shared/harness'
+import { harnessModelLabel } from '../shared/harness'
+import type { HarnessConfig, HarnessReasoningEffort } from '../shared/harness'
 
 export type HarnessMode = 'ask' | 'code'
 
-export type ThoughtLevel = 'off' | 'low' | 'medium' | 'high'
+/** 推理强度（high / max），由模型配置决定，会话内可以覆盖 */
+export type ThoughtLevel = HarnessReasoningEffort
 
 /** 会话级可变配置：可通过 ACP session/set_config_option、session/set_mode 修改 */
 export interface SessionConfigValues {
@@ -27,9 +29,17 @@ export interface ChatToolCall {
 
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool'
 
+/** 用户消息里附带的图片（base64，不含 data: 前缀） */
+export interface ChatImage {
+  mimeType: string
+  data: string
+}
+
 export interface ChatMessage {
   role: ChatRole
   content: string
+  /** user 消息附带的图片（仅当模型支持图片时写入） */
+  images?: ChatImage[]
   /** assistant 消息附带的工具调用 */
   toolCalls?: ChatToolCall[]
   /** role === 'tool' 时对应 assistant 调用的 id */
@@ -58,10 +68,8 @@ export interface LlmRequest {
   model: string
   apiBase: string
   apiKey: string
-  temperature: number
   maxTokens: number
-  thoughtLevel: ThoughtLevel
-  sendReasoningEffort: boolean
+  reasoningEffort: ThoughtLevel
   signal: AbortSignal
 }
 
@@ -221,5 +229,6 @@ export function readNumberArg(args: Record<string, unknown>, key: string): numbe
 
 /** 会话配置 → 展示用文案（mocks / 日志） */
 export function describeSessionConfig(config: SessionConfigValues, harness: HarnessConfig): string {
-  return `${harness.models.find((item) => item.id === config.model)?.name ?? config.model} · thinking:${config.thoughtLevel} · mode:${config.mode}`
+  const model = harness.models.find((item) => item.id === config.model)
+  return `${model ? harnessModelLabel(model) : config.model} · thinking:${config.thoughtLevel} · mode:${config.mode}`
 }

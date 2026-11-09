@@ -436,7 +436,7 @@ Reducer 规则（对齐 ACP 语义）：
 | `src/main/acp/connection.ts` | 264 | `ndJsonStream`、双向报文 tap（200 条环形）、`initialize` 30s 超时、能力映射 |
 | `src/main/acp/client.ts` | 106 | `Client` 实现（fs / terminal 可选方法委托给 handlers） |
 | `src/main/acp/events.ts` | 24 | 事件 sink，打破 `index.ts` ↔ `sessionManager.ts` 循环依赖 |
-| `src/main/acp/sessionPrefs.ts` | 114 | 按 Agent 记住上次选过的 model / mode / thought_level（electron-store `acp-last-session-config`） |
+| `src/main/acp/sessionPrefs.ts` | 120 | 按 Agent 记住上次选过的 model / mode / thought_level（electron-store `acp-last-session-config`；`mir-harness` 不记 thought_level，见 §15.7） |
 | `src/main/acp/sessionManager.ts` | ~1105 | Agent/会话状态、prompt 生命周期、配置项、load/resume、崩溃处理、新建会话套用记忆 |
 | `src/main/acp/handlers/fs.ts` | 35 | 读（支持 `line`/`limit`）、写（建父目录）+ `file-written` 事件 |
 | `src/main/acp/handlers/permission.ts` | 111 | 挂起表、60s 超时、各关闭路径取消、`allowAll` 自动批准 |
@@ -623,7 +623,11 @@ composable 增加 `animateFirst` 选项，挂载时若「已开启 + 文本 ≥ 
    - `optionAcceptsValue()` 会展开 select 的分组选项（DSH 的 model 是 `[{group,name,options}]` 结构），
      记住的值不在当前可选列表里（模型下线、Agent 升级）就静默跳过，保持 Agent 默认；
    - 布尔选项用 `{ type: 'boolean', value }` 判别参数，select 用 `{ value }`。
-5. 清理：删除 electron-store 里的 `acp-last-session-config` 键即可恢复“永远用 Agent 默认值”。
+5. 例外：`mir-harness`（MIR Harness）不记 `thought_level`——它的推理强度是**每个模型**的配置项
+   （默认 `max`），切换模型时 Agent 会重置成该模型的档位，记住用户上次的档位反而会覆盖模型配置。
+   `sessionManager` 里用 `PER_MODEL_EFFORT_AGENTS = new Set(['mir-harness'])` +
+   `skipsRememberedOption()` 同时跳过「套用」和「记录」。其它 Agent 行为不变。
+6. 清理：删除 electron-store 里的 `acp-last-session-config` 键即可恢复“永远用 Agent 默认值”。
 
 **验证**（`npm run typecheck` / `npm run build` 通过后的真机记录）：
 

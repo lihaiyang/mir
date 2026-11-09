@@ -1,9 +1,12 @@
 /**
- * 记住每个 Agent 上一次会话里选择的模型 / 模式 / 推理强度。
+ * 记住每个 Agent 上一次会话里选择的模型 / 模式。
  *
  * 背景：ACP 的 `session/new` 总是返回 Agent 自己的默认配置，用户每次新建会话都得
- * 重新挑一次模型。这里把用户切换过的「会话级配置」（model / mode / thought_level）
- * 按 agentId 记在本地，创建新会话后自动套用；Agent 不再提供的值会被安全跳过。
+ * 重新挑一次模型。这里把用户切换过的「会话级配置」（model / mode）按 agentId 记在
+ * 本地，创建新会话后自动套用；Agent 不再提供的值会被安全跳过。
+ *
+ * 推理强度（thought_level）不在这里记：MIR Harness 的推理强度属于模型配置，
+ * 每个模型各自设置，切模型时由 Agent 自己按模型配置重置。
  *
  * 存储在 electron-store 的 `acp-last-session-config` 键下，与用户配置（`acp`）分开，
  * 避免把「记忆」混进设置界面。

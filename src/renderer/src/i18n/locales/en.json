@@ -532,7 +532,7 @@
     "models": {
       "title": "Models",
       "add": "Add model",
-      "hint": "Models offered in the session model picker. A per-model endpoint or key overrides the global one.",
+      "hint": "Models offered in the session model picker. Reasoning effort, image support, context window and max output are per model.",
       "idPlaceholder": "model id (required)",
       "namePlaceholder": "display name",
       "apiBasePlaceholder": "apiBase override (optional)",
@@ -551,22 +551,18 @@
         "google": "Google Gemini interface",
         "ollama": "Ollama",
         "generic": "generic JSON interface"
-      }
+      },
+      "reasoningEffort": "Reasoning effort",
+      "contextWindow": "Context window",
+      "maxTokens": "Max output tokens",
+      "supportsImages": "Accepts images"
     },
-    "temperature": "Temperature",
-    "temperatureHint": "0 is the most deterministic, 2 the most creative. Sent as the sampling temperature.",
-    "maxTokens": "Max output tokens",
-    "maxTokensHint": "Upper bound for a single model reply.",
     "maxTurns": "Max tool turns per request",
     "maxTurnsHint": "How many model and tool round trips a single request may take.",
-    "contextWindow": "Context window",
-    "contextWindowHint": "Used to show context usage in the chat; it does not truncate requests.",
     "approvalMode": "Approval mode",
     "approvalAsk": "Ask every time",
     "approvalAuto": "Auto-approve inside the workspace",
     "approvalModeHint": "What happens before the agent writes files or runs commands.",
-    "sendReasoningEffort": "Send reasoning effort",
-    "sendReasoningEffortHint": "Pass thought_level as reasoning_effort; only some gateways support it.",
     "systemPrompt": "System prompt",
     "systemPromptHint": "Prepended to every conversation. Leave empty to use the built-in prompt."
   }
