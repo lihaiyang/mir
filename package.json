@@ -13,6 +13,7 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
     "acp:selftest": "node scripts/acp-selftest.mjs",
     "harness:selftest": "node scripts/mir-harness-selftest.mjs",
+    "harness:models-test": "node scripts/harness-models-test.mjs",
     "pack": "npm run build && electron-builder --mac --arm64",
     "pack:dmg": "npm run build && electron-builder --mac --arm64 --publish=never",
     "pack:win": "npm run build && electron-builder --win --x64 --publish=never",

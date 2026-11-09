@@ -223,6 +223,9 @@ interface LiveSession {
 | --- | --- | --- |
 | `acpGetConfig()` | `acp:get-config` | 读配置 |
 | `acpSetConfig(patch)` | `acp:set-config` | 写配置，返回新配置 |
+| `acpGetHarnessConfig()` | `acp:get-harness-config` | 读 MIR Harness 配置文件快照（含默认值 / 环境变量覆盖 / 解析错误） |
+| `acpSetHarnessConfig(config)` | `acp:set-harness-config` | 原子写 MIR Harness 配置 |
+| `acpDiscoverHarnessModels({apiBase,apiKey})` | `acp:discover-harness-models` | 从接口拉取模型列表（OpenAI / Anthropic / Gemini / Ollama / 通用 JSON） |
 | `acpGetState()` | `acp:get-state` | 重载后恢复：运行中的 Agent + 会话 |
 | `acpGetAgents()` | `acp:get-agents` | Agent 运行时状态列表 |
 | `acpGetRegistry()` | `acp:get-registry` | 官方 Registry |
@@ -426,7 +429,7 @@ Reducer 规则（对齐 ACP 语义）：
 | --- | --- | --- |
 | `src/shared/acp.ts` | ~300 | 协议类型 re-export、DTO、`AcpEvent` 事件联合、`DEFAULT_ACP_AGENTS` / `DEFAULT_ACP_CONFIG` |
 | `src/main/store.ts` | 13 | 懒创建的 electron-store（`getStore()`），供 ipc 与 acp 共用 |
-| `src/main/acp/index.ts` | 226 | 22 个 IPC handler、事件广播、`shutdownAcp()` |
+| `src/main/acp/index.ts` | 250 | 25 个 IPC handler、事件广播、`shutdownAcp()` |
 | `src/main/acp/config.ts` | ~195 | 配置归一化与持久化、首次运行 seed 默认 Agent、`ACP_CONFIG_VERSION` 迁移 |
 | `src/main/acp/history.ts` | 161 | 本地会话摘要（每 Agent 50 条）、`reconcile()` |
 | `src/main/acp/agentProcess.ts` | 165 | 登录 shell 解析、参数转义、`{{APP_PATH}}` 展开、stderr 尾部、SIGTERM→SIGKILL |
@@ -439,7 +442,7 @@ Reducer 规则（对齐 ACP 语义）：
 | `src/main/acp/handlers/permission.ts` | 111 | 挂起表、60s 超时、各关闭路径取消、`allowAll` 自动批准 |
 | `src/main/acp/handlers/terminal.ts` | 173 | 输出上限/截断、kill 宽限 2s、`disposeAllTerminals()` |
 | `src/main/acp/registry.ts` | 193 | CDN registry、5 分钟缓存、10s 超时、失败降级 |
-| `src/preload/index.ts` | +58 | 22 个 `acp:*` invoke 方法 + `onAcpEvent()` 订阅 |
+| `src/preload/index.ts` | +63 | 25 个 `acp:*` invoke 方法 + `onAcpEvent()` 订阅 |
 | `src/renderer/src/stores/acp.ts` | ~560 | 事件 reducer、会话/对话/权限/Tab 同步 |
 | `src/renderer/src/components/center/AcpChatTab.vue` | 543 | 聊天 Tab（滚动锚定、空态、横幅、重连） |
 | `src/renderer/src/components/center/acp/*` | 2028 | `ChatMessage` / `ToolCallCard` / `PlanCard` / `PermissionCard` / `ChatComposer` / `SessionHeader` |
@@ -476,7 +479,7 @@ Reducer 规则（对齐 ACP 语义）：
 | 协议自测 | `npm run acp:selftest` | `ALL PASS — 43 checks in 6.3s`（连跑 6 次稳定） |
 | 主进程 e2e | 临时 harness（esbuild + electron 打桩 + 真实 IPC 通道） | 30/30：握手/能力、建/载/续/关会话、prompt 流、权限（选中/取消/挂起/allowAll）、并发 prompt 拒绝、cancel、mode/model/config-option、list+reconcile、forget、崩溃→interrupted→重连、fs/terminal handler、shutdown 幂等 |
 | 真实 UI 冒烟 | `electron . --remote-debugging-port=9333` + CDP 驱动，mock Agent | 面板列出 Agent → 新建会话（pid/状态 ready）→ 流式思考/工具卡/计划/usage/代码块渲染 → 权限卡（Allow/Always allow/Reject）→ 取消提示“已取消本轮” → 断开 → 历史恢复回放 → 设置页 ACP 分区；控制台 0 异常 |
-| IPC 一致性 | 脚本对比 preload 与主进程注册 | 22 个 `acp:*` invoke ↔ 22 个 handler，`acp:event` 单向推送 |
+| IPC 一致性 | 脚本对比 preload 与主进程注册 | 25 个 `acp:*` invoke ↔ 25 个 handler，`acp:event` 单向推送 |
 
 ### 15.4 已知限制与后续
 

@@ -537,7 +537,21 @@
       "namePlaceholder": "display name",
       "apiBasePlaceholder": "apiBase override (optional)",
       "apiKeyPlaceholder": "apiKey override (optional)",
-      "keepOne": "Keep at least one model"
+      "keepOne": "Keep at least one model",
+      "fetch": "Fetch from API",
+      "fetching": "Fetching…",
+      "fetchHint": "Read the available model list from the API base (OpenAI-compatible, Anthropic, Gemini or Ollama).",
+      "fetchSuccess": "Fetched {count} models from {format}",
+      "fetchFailed": "Could not fetch models: {error}",
+      "fetchEmpty": "The endpoint returned no usable models",
+      "fetchNoBase": "Fill in the API base first",
+      "format": {
+        "openai": "OpenAI-compatible interface",
+        "anthropic": "Anthropic interface",
+        "google": "Google Gemini interface",
+        "ollama": "Ollama",
+        "generic": "generic JSON interface"
+      }
     },
     "temperature": "Temperature",
     "temperatureHint": "0 is the most deterministic, 2 the most creative. Sent as the sampling temperature.",

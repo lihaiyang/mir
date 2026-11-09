@@ -18,6 +18,7 @@ import type {
   SessionConfigOption
 } from '@shared/acp'
 import type { HarnessConfig, HarnessConfigSnapshot } from '@shared/harness'
+import type { HarnessModelDiscoveryResult } from '@shared/harnessModels'
 
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -177,6 +178,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   acpGetHarnessConfig: (): Promise<HarnessConfigSnapshot> => ipcRenderer.invoke('acp:get-harness-config'),
   acpSetHarnessConfig: (config: HarnessConfig): Promise<HarnessConfigSnapshot> =>
     ipcRenderer.invoke('acp:set-harness-config', config),
+  acpDiscoverHarnessModels: (params: {
+    apiBase: string
+    apiKey?: string
+  }): Promise<HarnessModelDiscoveryResult> => ipcRenderer.invoke('acp:discover-harness-models', params),
   acpGetTraffic: (): Promise<AcpTrafficEntry[]> => ipcRenderer.invoke('acp:get-traffic'),
   acpGetPermissions: (): Promise<AcpPermissionRequest[]> => ipcRenderer.invoke('acp:get-permissions'),
   onAcpEvent: (cb: (event: AcpEvent) => void) => {

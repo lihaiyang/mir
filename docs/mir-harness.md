@@ -110,6 +110,28 @@ build: {
 接口地址、密钥（密码框）、模型列表（每项可覆盖 Base/Key）、温度、max tokens、轮数上限、上下文窗口、
 系统提示词、审批模式、`sendReasoningEffort`；显示配置文件路径、环境变量覆盖提示、解析错误。
 
+### 3.3 自动拉取模型
+
+设置界面里的「从接口拉取模型」按钮会按接口地址请求模型列表，不必手抄模型 id：
+
+| 接口类型 | 请求 | 认证方式 |
+| --- | --- | --- |
+| OpenAI 兼容（默认） | `{apiBase}/models` | `Authorization: Bearer <key>` |
+| Anthropic | `{apiBase}/models` | `x-api-key` + `anthropic-version: 2023-06-01` |
+| Google Gemini | `{apiBase}/models?key=<key>`（`models/` 前缀自动去掉） | query 参数 |
+| Ollama | `{origin}/api/tags` | 无（本地） |
+| 通用 JSON | `{apiBase}/models` 或 `{origin}/api/tags` | 可选 Bearer |
+
+- 端点按地址启发式判断（`generativelanguage.googleapis.com` / `googleapis.com` / anthropic / ollama / `:11434`），
+  最多依次尝试 4 个候选，第一个返回可用模型的候选生效；全部失败时给出汇总原因（401/403、非 JSON、超时、空列表）；
+- 地址没写版本段时自动补 `/v1`，已带 `/v1`（或 `/v1beta`）则不重复拼接；
+- 地址或密钥失焦时会**自动拉取一次**（仅当模型列表还是默认值、或与上次拉取结果一致时，避免覆盖手改内容）；
+- 合并策略：列表仍是默认值 / 与上次拉取一致 / 为空 → 整表替换；用户手工加过条目 → 只追加新模型，保留自定义
+  `name`、`apiBase`、`apiKey` 覆盖项。
+
+实现位置：`src/shared/harnessModels.ts`（纯函数，便于单测）、`src/main/acp/index.ts` 的
+`acp:discover-harness-models` IPC、`HarnessSettingsSection.vue` 的 `fetchModels()` / `mergeFetchedModels()`。
+
 ## 4. ACP 能力
 
 ### 4.1 initialize
@@ -203,6 +225,7 @@ build: {
   未配置密钥时的 `-32000`；
 - 真实模型联调：本机 magpie 网关（`http://127.0.0.1:3425/v1`，OpenAI 兼容、真流式）验证流式输出与工具调用；
 - MIR 真机：设置界面保存配置 → 右栏新建 MIR Harness 会话 → 对话 / 权限卡片 / 取消 / 恢复历史。
+- 模型发现：`npm run harness:models-test` 用本地假接口覆盖五种接口格式与失败路径，另对真实 magpie 网关验证一次。
 
 验证记录见文末。
 
@@ -231,8 +254,10 @@ build: {
 | `src/agent/agent.ts` | 1295 | `HarnessAgent implements Agent`，prompt 循环、权限桥、文件桥、回放 |
 | `src/agent/index.ts` | 99 | 进程入口：`ndJsonStream` + `AgentSideConnection`，日志全走 stderr |
 | `src/main/acp/harnessConfig.ts` | 92 | 主进程读写配置文件（供设置界面） |
-| `src/renderer/src/components/HarnessSettingsSection.vue` | 723 | 设置界面（表单、模型列表、保存 / 重新加载） |
+| `src/renderer/src/components/HarnessSettingsSection.vue` | 874 | 设置界面（表单、模型列表、从接口拉取、保存 / 重新加载） |
 | `scripts/mir-harness-selftest.mjs` | 747 | 假 OpenAI SSE 服务 + 真 ACP 客户端，49 条断言 |
+| `src/shared/harnessModels.ts` | 363 | 模型列表发现：端点推断、五种格式解析、错误汇总 |
+| `scripts/harness-models-test.mjs` | 371 | 本地假接口覆盖五种格式与 401 / 非 JSON / 超时 / 非法地址，12 条断言 |
 
 构建接线：`electron.vite.config.ts` 的 `main.build.rollupOptions.input` 增加 `agent/index`，产物 `out/main/agent/index.js`（约 83 KB，SDK 已内联，可 `node` 直接运行）。
 
@@ -251,6 +276,9 @@ build: {
 | `npm run harness:selftest` | ALL PASS — 49 checks（9 组：initialize / newSession / 流式 / 工具两轮 / 取消 / 配置与模式 / list+load / 无密钥 / 401） |
 | 真实网关端到端（`/tmp/mir-harness-e2e`，magpie `workbuddy/deepseek-v4.1-flash`） | ALL PASS — 29/29，含真实流式（26 个 chunk / 3.5s）、`read_file` 工具往返、取消 2ms 返回 `cancelled`、`session/list` + `session/load` 回放 |
 | MIR 真机（CDP 驱动） | 新建会话 → 流式渲染（33→278 字符渐进）、权限卡片 → 允许一次 → 文件写入成功、取消 → 「已取消本轮」、模型 / 推理强度记忆跨会话生效、历史恢复 10 条消息且无残留「输出中」状态 |
+| `npm run harness:models-test` | ALL PASS — 12 checks（OpenAI / 已带 `/v1` / Gemini / Anthropic / Ollama / 通用数组 / 解析直测 / 候选直测 / 401 / 非 JSON / 超时 / 非法地址） |
+| 真实网关模型发现 | magpie `GET http://127.0.0.1:3425/v1/models` → `format=openai`、12 个模型，端点推断与打码正常 |
+| MIR 真机「从接口拉取模型」 | 列表从 2 条变 12 条 + 绿色状态「已从OpenAI 兼容接口拉取 12 个模型」；手改的自定义行在再次拉取后被保留（13 行）；重载页面后自动拉取生效；保存写回 12 条；新建会话的 `model` configOptions 为 12 项 |
 
 ### 8.4 实现中发现的问题（已修）
 

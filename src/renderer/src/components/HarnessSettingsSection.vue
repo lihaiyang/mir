@@ -49,6 +49,7 @@
           type="text"
           spellcheck="false"
           placeholder="https://api.deepseek.com/v1"
+          @blur="onEndpointBlur"
         />
         <div class="acp-hint">{{ t('harness.apiBaseHint') }}</div>
       </div>
@@ -64,6 +65,7 @@
             autocomplete="off"
             spellcheck="false"
             :placeholder="t('harness.apiKeyPlaceholder')"
+            @blur="onEndpointBlur"
           />
           <button class="acp-btn" type="button" @click="showApiKey = !showApiKey">
             {{ showApiKey ? t('harness.apiKeyHide') : t('harness.apiKeyShow') }}
@@ -87,10 +89,21 @@
         <div class="acp-block-head">
           <span class="acp-block-title">{{ t('harness.models.title') }}</span>
           <div class="acp-block-actions">
+            <button
+              class="acp-btn"
+              type="button"
+              :disabled="fetchingModels || loading || saving || !draft.apiBase.trim()"
+              :title="t('harness.models.fetchHint')"
+              @click="fetchModels()"
+            >
+              {{ fetchingModels ? t('harness.models.fetching') : t('harness.models.fetch') }}
+            </button>
             <button class="acp-btn" type="button" @click="addModel">{{ t('harness.models.add') }}</button>
           </div>
         </div>
         <div class="acp-hint">{{ t('harness.models.hint') }}</div>
+        <div v-if="fetchMessage" class="acp-hint harness-fetch-status">{{ fetchMessage }}</div>
+        <div v-if="fetchError" class="acp-error">{{ fetchError }}</div>
 
         <div v-for="(row, index) in draft.models" :key="index" class="harness-model-row">
           <input
@@ -239,6 +252,7 @@ import type {
   HarnessConfigSnapshot,
   HarnessModelConfig
 } from '@shared/harness'
+import type { DiscoveredHarnessModel, HarnessModelFormat } from '@shared/harnessModels'
 
 type NumericKey = 'temperature' | 'maxTokens' | 'maxTurns' | 'contextWindow'
 
@@ -275,6 +289,14 @@ const NUMERIC_LIMITS: Record<NumericKey, { min: number; max: number; integer: bo
   contextWindow: { min: 1_000, max: 2_000_000, integer: true }
 }
 
+const MODEL_FORMAT_LABEL_KEYS: Record<HarnessModelFormat, string> = {
+  openai: 'harness.models.format.openai',
+  anthropic: 'harness.models.format.anthropic',
+  google: 'harness.models.format.google',
+  ollama: 'harness.models.format.ollama',
+  generic: 'harness.models.format.generic'
+}
+
 const { t } = useI18n()
 
 const snapshot = ref<HarnessConfigSnapshot | null>(null)
@@ -285,6 +307,13 @@ const saved = ref(false)
 const loadError = ref('')
 const saveError = ref('')
 const showApiKey = ref(false)
+const fetchingModels = ref(false)
+const fetchMessage = ref('')
+const fetchError = ref('')
+/** 上一次成功拉取时的 apiBase + apiKey，避免同一配置重复请求。 */
+let lastFetchSignature = ''
+/** 上一次拉取写入的模型 id，用于判断「列表是不是自动拉出来的」。 */
+let lastFetchedIds: string[] = []
 
 let savedTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -481,8 +510,126 @@ function onModelIdChange(index: number): void {
   row.previousId = next
 }
 
+/* ------------------------- 从接口拉取模型列表 -------------------------- */
+
+function currentModelSignature(): string {
+  return `${draft.value.apiBase.trim()}\u0000${draft.value.apiKey.trim()}`
+}
+
+/** 模型列表还是默认那两条时，可以放心用接口结果整表替换。 */
+function rowsLookPristine(): boolean {
+  const rows = draft.value.models
+    .map((row) => ({
+      id: row.id.trim(),
+      name: row.name.trim(),
+      apiBase: row.apiBase.trim(),
+      apiKey: row.apiKey.trim()
+    }))
+    .filter((row) => row.id)
+  const base = defaults.value.models
+  if (rows.length !== base.length) return false
+  return base.every(
+    (model, index) =>
+      rows[index]?.id === model.id &&
+      rows[index]?.name === (model.name ?? '') &&
+      !rows[index]?.apiBase &&
+      !rows[index]?.apiKey
+  )
+}
+
+/** 列表与上次自动拉取的结果一致时，换地址重拉可以直接替换。 */
+function rowsMatchLastFetch(): boolean {
+  if (lastFetchedIds.length === 0) return false
+  const ids = draft.value.models.map((row) => row.id.trim()).filter(Boolean)
+  return ids.length === lastFetchedIds.length && ids.every((id, index) => id === lastFetchedIds[index])
+}
+
+function mergeFetchedModels(models: DiscoveredHarnessModel[]): void {
+  const replace =
+    rowsLookPristine() || rowsMatchLastFetch() || draft.value.models.every((row) => !row.id.trim())
+  if (replace) {
+    draft.value.models = models.map((model) => ({
+      previousId: model.id,
+      id: model.id,
+      name: model.name ?? '',
+      apiBase: '',
+      apiKey: ''
+    }))
+  } else {
+    // 用户自己维护过列表：只补新出现的模型，不动已有条目（保留自定义名字 / 覆盖项）。
+    const existing = new Set(draft.value.models.map((row) => row.id.trim()).filter(Boolean))
+    for (const model of models) {
+      if (existing.has(model.id)) continue
+      draft.value.models.push({
+        previousId: model.id,
+        id: model.id,
+        name: model.name ?? '',
+        apiBase: '',
+        apiKey: ''
+      })
+    }
+  }
+
+  lastFetchedIds = draft.value.models.map((row) => row.id.trim()).filter(Boolean)
+  const selected = draft.value.model.trim()
+  if (!selected || !draft.value.models.some((row) => row.id.trim() === selected)) {
+    draft.value.model = draft.value.models[0]?.id.trim() ?? ''
+  }
+}
+
+async function fetchModels(options: { auto?: boolean } = {}): Promise<void> {
+  if (fetchingModels.value) return
+  const apiBase = draft.value.apiBase.trim()
+  if (!apiBase) {
+    if (!options.auto) fetchError.value = t('harness.models.fetchNoBase')
+    return
+  }
+
+  fetchingModels.value = true
+  fetchError.value = ''
+  fetchMessage.value = ''
+  try {
+    const result = await window.electronAPI.acpDiscoverHarnessModels({
+      apiBase,
+      apiKey: draft.value.apiKey.trim() || undefined
+    })
+    if (!result.ok || result.models.length === 0) {
+      fetchError.value = t('harness.models.fetchFailed', {
+        error: result.error || t('harness.models.fetchEmpty')
+      })
+      return
+    }
+    mergeFetchedModels(result.models)
+    lastFetchSignature = currentModelSignature()
+    const formatKey = MODEL_FORMAT_LABEL_KEYS[result.format ?? 'generic'] ?? MODEL_FORMAT_LABEL_KEYS.generic
+    fetchMessage.value = t('harness.models.fetchSuccess', {
+      count: result.models.length,
+      format: t(formatKey)
+    })
+  } catch (e) {
+    fetchError.value = t('harness.models.fetchFailed', { error: errorText(e) })
+  } finally {
+    fetchingModels.value = false
+  }
+}
+
+/** 地址 / 密钥失焦时自动拉一次；用户手改过模型列表后不再自动覆盖。 */
+function onEndpointBlur(): void {
+  const apiBase = draft.value.apiBase.trim()
+  if (!apiBase) return
+  if (currentModelSignature() === lastFetchSignature) return
+  if (!rowsLookPristine() && !rowsMatchLastFetch() && draft.value.models.some((row) => row.id.trim())) return
+  void fetchModels({ auto: true })
+}
+
 onMounted(() => {
-  void load()
+  void (async () => {
+    await load()
+    // 首次打开设置（模型列表还是默认值）时自动拉一次，省掉手动点按钮。
+    if (snapshot.value && draft.value.apiBase.trim() && rowsLookPristine()) {
+      void fetchModels({ auto: true })
+    }
+  })()
 })
 
 onBeforeUnmount(() => {
@@ -623,6 +770,10 @@ onBeforeUnmount(() => {
   font-size: var(--text-xs);
   color: var(--text-faint);
   line-height: 1.5;
+}
+
+.harness-fetch-status {
+  color: var(--text-success);
 }
 
 .acp-btn {

@@ -537,7 +537,21 @@
       "namePlaceholder": "显示名",
       "apiBasePlaceholder": "接口地址覆盖（可选）",
       "apiKeyPlaceholder": "密钥覆盖（可选）",
-      "keepOne": "至少保留一个模型"
+      "keepOne": "至少保留一个模型",
+      "fetch": "从接口拉取模型",
+      "fetching": "正在拉取…",
+      "fetchHint": "从接口地址读取可用模型列表（支持 OpenAI 兼容、Anthropic、Gemini、Ollama 等格式）。",
+      "fetchSuccess": "已从{format}拉取 {count} 个模型",
+      "fetchFailed": "拉取模型失败：{error}",
+      "fetchEmpty": "接口没有返回可用的模型",
+      "fetchNoBase": "请先填写接口地址",
+      "format": {
+        "openai": "OpenAI 兼容接口",
+        "anthropic": "Anthropic 接口",
+        "google": "Google Gemini 接口",
+        "ollama": "Ollama",
+        "generic": "通用 JSON 接口"
+      }
     },
     "temperature": "温度",
     "temperatureHint": "0 最确定，2 最发散，作为采样温度传给接口。",

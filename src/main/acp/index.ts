@@ -21,6 +21,8 @@ import type {
   SessionConfigOption
 } from '../../shared/acp'
 import type { HarnessConfigSnapshot } from '../../shared/harness'
+import type { HarnessModelDiscoveryResult } from '../../shared/harnessModels'
+import { discoverHarnessModels } from '../../shared/harnessModels'
 import { getAcpConfig, setAcpConfig } from './config'
 import { readHarnessConfig, saveHarnessConfig } from './harnessConfig'
 import { getTraffic } from './connection'
@@ -92,6 +94,18 @@ export function registerAcpIpc(): void {
   ipcMain.handle(
     'acp:set-harness-config',
     (_event, raw: unknown): HarnessConfigSnapshot => saveHarnessConfig(raw)
+  )
+  // 设置界面填完接口地址后「从接口拉取模型」：主进程发请求，渲染器只负责合并列表。
+  ipcMain.handle(
+    'acp:discover-harness-models',
+    async (
+      _event,
+      params: { apiBase?: unknown; apiKey?: unknown } | undefined
+    ): Promise<HarnessModelDiscoveryResult> => {
+      const apiBase = typeof params?.apiBase === 'string' ? params.apiBase : ''
+      const apiKey = typeof params?.apiKey === 'string' && params.apiKey.trim() ? params.apiKey.trim() : undefined
+      return discoverHarnessModels({ apiBase, apiKey })
+    }
   )
 
   /* ---------------------------- 会话生命周期 ---------------------------- */

@@ -112,6 +112,10 @@ interface ElectronAPI {
   acpSetHarnessConfig: (
     config: import('@shared/harness').HarnessConfig
   ) => Promise<import('@shared/harness').HarnessConfigSnapshot>
+  acpDiscoverHarnessModels: (params: {
+    apiBase: string
+    apiKey?: string
+  }) => Promise<import('@shared/harnessModels').HarnessModelDiscoveryResult>
   acpGetTraffic: () => Promise<import('@shared/acp').AcpTrafficEntry[]>
   acpGetPermissions: () => Promise<import('@shared/acp').AcpPermissionRequest[]>
   onAcpEvent: (cb: (event: import('@shared/acp').AcpEvent) => void) => () => void
