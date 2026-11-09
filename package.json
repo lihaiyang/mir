@@ -11,6 +11,7 @@
     "prepreview": "install-electron && node scripts/fix-node-pty-helper.js",
     "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
+    "acp:selftest": "node scripts/acp-selftest.mjs",
     "pack": "npm run build && electron-builder --mac --arm64",
     "pack:dmg": "npm run build && electron-builder --mac --arm64 --publish=never",
     "pack:win": "npm run build && electron-builder --win --x64 --publish=never",
@@ -31,6 +32,7 @@
   },
   "homepage": "https://github.com/lihaiyang/mir",
   "devDependencies": {
+    "@agentclientprotocol/sdk": "^0.21.1",
     "@types/iconv-lite": "^0.0.1",
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",
@@ -41,7 +43,8 @@
     "jsonc-parser": "^3.3.1",
     "typescript": "^5.7.3",
     "vite": "^6.0.0",
-    "vue-tsc": "^2.2.10"
+    "vue-tsc": "^2.2.10",
+    "zod": "^3.25.76"
   },
   "dependencies": {
     "@types/markdown-it": "^14.1.2",

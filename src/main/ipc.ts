@@ -5,23 +5,15 @@ import { exec, execFile } from 'child_process'
 import { promisify } from 'util'
 import * as iconv from 'iconv-lite'
 import * as jschardet from 'jschardet'
-import Store from 'electron-store'
 import { createPtyProcess, closePtyProcess, writePtyProcess, resizePtyProcess, killAllPtyProcesses } from './pty'
 import { runGitCommand } from './git'
 import { startSearch, cancelSearch } from './search'
 import { checkForUpdateNow, applyUpdate, setAutoUpdate } from './updater'
+import { getStore } from './store'
+import { registerAcpIpc } from './acp'
 import { listPluginsForRenderer, setPluginEnabled, setSharedModuleKeys, installPluginFromDir, uninstallPlugin, getPluginsDirForRenderer, installPluginFromGit } from './plugins'
 
 const execAsync = promisify(exec)
-
-// Lazy-instantiated so the userData path (set by main/index.ts for dev) is
-// already correct when the Store is first created. A module-level `new Store`
-// would read app.getPath('userData') at import time, before setPath runs.
-let _store: Store | null = null
-function getStore(): Store {
-  if (!_store) _store = new Store({ name: 'mir-state' })
-  return _store
-}
 
 export function setupIpcHandlers(): void {
   // --- Store ---
@@ -232,4 +224,7 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('plugin:install-git', async (_e, gitUrl: string, subPath: string) => {
     return installPluginFromGit(gitUrl, subPath)
   })
+
+  // --- ACP (Agent Client Protocol) ---
+  registerAcpIpc()
 }

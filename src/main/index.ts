@@ -24,6 +24,7 @@ if (process.env.ELECTRON_RENDERER_URL || app.getVersion().includes('-dev')) {
 
 import { setupIpcHandlers } from './ipc'
 import { killAllPtyProcesses } from './pty'
+import { shutdownAcp } from './acp'
 import { initUpdater, checkForUpdateNow, setUpdaterStateListener, performPendingUpdate, hasPendingUpdate, openReleasesPage, UpdaterEvent } from './updater'
 import { registerPluginScheme, registerPluginProtocol, initMainPlugins } from './plugins'
 
@@ -301,6 +302,7 @@ let isApplyingUpdate = false
 app.on('before-quit', (event) => {
   // Kill every PTY child process so no shells outlive the app.
   killAllPtyProcesses()
+  shutdownAcp()
   if (isApplyingUpdate) return
   if (process.platform !== 'darwin') return
   if (!hasPendingUpdate()) return

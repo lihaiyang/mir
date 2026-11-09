@@ -9,6 +9,8 @@ import PluginManager from '../components/PluginManager.vue'
 import FileTreeRight from '../components/right/FileTreeRight.vue'
 import GitPanel from '../components/right/GitPanel.vue'
 import SearchPanel from '../components/right/SearchPanel.vue'
+import AcpChatTab from '../components/center/AcpChatTab.vue'
+import AcpAgentsPanel from '../components/right/AcpAgentsPanel.vue'
 import { registerTabType, registerRightPanel } from './registries'
 
 let registered = false
@@ -64,6 +66,13 @@ export function registerBuiltin(): void {
     icon: 'plugin',
     defaultTitle: () => t('plugins.title')
   })
+  registerTabType({
+    type: 'acp-chat',
+    component: AcpChatTab,
+    icon: 'robot',
+    defaultTitle: () => t('acp.chatTab'),
+    showInToolbar: true
+  })
 
   registerRightPanel({
     id: 'files',
@@ -82,5 +91,11 @@ export function registerBuiltin(): void {
     label: () => t('rightPane.search'),
     icon: 'search',
     component: SearchPanel
+  })
+  registerRightPanel({
+    id: 'acp-agents',
+    label: () => t('rightPane.acpAgents'),
+    icon: 'robot',
+    component: AcpAgentsPanel
   })
 }

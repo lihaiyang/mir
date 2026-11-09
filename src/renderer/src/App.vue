@@ -56,6 +56,7 @@ import { useTerminalStore } from './stores/terminal'
 import { useWorkspaceStore } from './stores/workspaces'
 import { useRecentStore } from './stores/recent'
 import { useFileMetaStore } from './stores/fileMeta'
+import { useAcpStore } from './stores/acp'
 
 import TitleBar from './components/TitleBar.vue'
 import LeftPane from './components/left/LeftPane.vue'
@@ -85,6 +86,7 @@ const terminalStore = useTerminalStore()
 const workspaceStore = useWorkspaceStore()
 const recentStore = useRecentStore()
 const fileMetaStore = useFileMetaStore()
+const acpStore = useAcpStore()
 
 const showPalette = ref(false)
 const showQuickOpen = ref(false)
@@ -126,6 +128,11 @@ onMounted(async () => {
   setupShortcuts()
   registerBuiltinCommands()
   await initRendererPlugins()
+
+  // ACP agents/sessions: subscribes to main-process events and restores the
+  // live state. Runs after the tab store loaded because session title updates
+  // are mirrored onto the matching chat tab.
+  void acpStore.init()
 
   // All stores loaded: notify status bar to initialize from current active tab
   window.dispatchEvent(new CustomEvent('statusbar-init'))

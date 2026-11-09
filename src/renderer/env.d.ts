@@ -86,6 +86,31 @@ interface ElectronAPI {
   pluginInvoke: (pluginId: string, channel: string, ...args: unknown[]) => Promise<unknown>
   pluginSend: (pluginId: string, channel: string, ...args: unknown[]) => void
   pluginOn: (pluginId: string, channel: string, cb: (...args: unknown[]) => void) => () => void
+
+  // ACP (Agent Client Protocol) — see src/shared/acp.ts
+  acpGetConfig: () => Promise<import('@shared/acp').AcpConfig>
+  acpSetConfig: (patch: Partial<import('@shared/acp').AcpConfig>) => Promise<import('@shared/acp').AcpConfig>
+  acpGetState: () => Promise<import('@shared/acp').AcpStateSnapshot>
+  acpGetAgents: () => Promise<import('@shared/acp').AcpAgentRuntimeInfo[]>
+  acpGetRegistry: () => Promise<import('@shared/acp').AcpRegistryAgent[]>
+  acpCreateSession: (agentId: string, cwd?: string) => Promise<import('@shared/acp').AcpSessionDetail>
+  acpLoadSession: (agentId: string, sessionId: string, cwd?: string) => Promise<import('@shared/acp').AcpSessionDetail>
+  acpResumeSession: (agentId: string, sessionId: string, cwd?: string) => Promise<import('@shared/acp').AcpSessionDetail>
+  acpCloseSession: (sessionId: string) => Promise<void>
+  acpDisconnectAgent: (agentId: string) => Promise<void>
+  acpSendPrompt: (sessionId: string, blocks: import('@shared/acp').AcpPromptBlock[]) => Promise<{ stopReason: string }>
+  acpCancelPrompt: (sessionId: string) => Promise<void>
+  acpSetConfigOption: (sessionId: string, configId: string, value: string | boolean) => Promise<import('@shared/acp').SessionConfigOption[]>
+  acpSetMode: (sessionId: string, modeId: string) => Promise<void>
+  acpSetModel: (sessionId: string, modelId: string) => Promise<void>
+  acpListSessions: (agentId: string, cwd?: string) => Promise<import('@shared/acp').AcpRemoteSession[]>
+  acpListHistory: () => Promise<import('@shared/acp').AcpHistoryEntry[]>
+  acpForgetSession: (agentId: string, sessionId: string) => Promise<void>
+  acpAuthenticate: (agentId: string, methodId: string) => Promise<import('@shared/acp').AcpAuthMethod[]>
+  acpRespondPermission: (requestId: string, optionId: string | null) => Promise<void>
+  acpGetTraffic: () => Promise<import('@shared/acp').AcpTrafficEntry[]>
+  acpGetPermissions: () => Promise<import('@shared/acp').AcpPermissionRequest[]>
+  onAcpEvent: (cb: (event: import('@shared/acp').AcpEvent) => void) => () => void
 }
 
 interface PluginManifest {

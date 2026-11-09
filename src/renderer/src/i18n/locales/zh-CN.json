@@ -92,12 +92,14 @@
     "duplicate": "复制",
     "rename": "重命名",
     "noTabs": "暂无打开的标签",
-    "newTab": "+ 新建标签"
+    "newTab": "+ 新建标签",
+    "acpChat": "ACP"
   },
   "rightPane": {
     "files": "文件",
     "git": "Git",
-    "search": "搜索"
+    "search": "搜索",
+    "acpAgents": "智能体"
   },
   "settings": {
     "title": "设置",
@@ -131,7 +133,8 @@
     "wordWrapBounded": "视口边界",
     "autoUpdate": "自动更新",
     "showPanelIcons": "显示面板图标",
-    "markdownPreview": "Markdown 预览"
+    "markdownPreview": "Markdown 预览",
+    "acp": "ACP 智能体"
   },
   "git": {
     "noProject": "没有选中的项目",
@@ -236,44 +239,44 @@
     "hidePreview": "隐藏预览"
   },
   "commandPalette": {
-     "placeholder": "输入命令...",
-     "noResults": "没有匹配的命令",
-     "navigate": "导航",
-     "select": "选择",
-     "close": "关闭",
-     "openSettings": "打开设置",
-     "toggleWordWrap": "切换编辑器自动换行",
-     "quickOpen": "打开文件...",
-     "search": "在项目中搜索",
-     "toggleRightPanel": "切换右侧面板",
-     "reopenClosedTab": "重新打开关闭的标签",
-     "newTerminal": "新建终端",
-     "toggleFiles": "显示文件树",
-      "toggleGit": "显示 Git 面板",
-      "togglePanelIcons": "切换面板图标"
-   },
-   "quickOpen": {
-     "placeholder": "按文件名搜索...",
-     "noResults": "没有匹配的文件",
-     "recent": "最近"
-   },
-    "status": {
-      "branch": "Git 分支",
-      "lineColumn": "行:列",
-      "language": "语言",
-      "encoding": "编码",
-      "lineEnding": "换行符",
-      "selectLanguage": "选择语言",
-      "selectEncoding": "选择编码",
-      "selectLineEnding": "选择换行符",
-      "switchBranch": "切换分支",
-      "newBranchName": "新分支名称",
-      "createAndSwitch": "创建并切换",
-      "uncommittedChanges": "存在未提交更改",
-      "uncommittedChangesMessage": "当前有未提交的修改，切换到 {branch} 前如何处理？",
-      "stashAndSwitch": "Stash 后切换",
-      "discardAndSwitch": "放弃修改并切换"
-    },
+    "placeholder": "输入命令...",
+    "noResults": "没有匹配的命令",
+    "navigate": "导航",
+    "select": "选择",
+    "close": "关闭",
+    "openSettings": "打开设置",
+    "toggleWordWrap": "切换编辑器自动换行",
+    "quickOpen": "打开文件...",
+    "search": "在项目中搜索",
+    "toggleRightPanel": "切换右侧面板",
+    "reopenClosedTab": "重新打开关闭的标签",
+    "newTerminal": "新建终端",
+    "toggleFiles": "显示文件树",
+    "toggleGit": "显示 Git 面板",
+    "togglePanelIcons": "切换面板图标"
+  },
+  "quickOpen": {
+    "placeholder": "按文件名搜索...",
+    "noResults": "没有匹配的文件",
+    "recent": "最近"
+  },
+  "status": {
+    "branch": "Git 分支",
+    "lineColumn": "行:列",
+    "language": "语言",
+    "encoding": "编码",
+    "lineEnding": "换行符",
+    "selectLanguage": "选择语言",
+    "selectEncoding": "选择编码",
+    "selectLineEnding": "选择换行符",
+    "switchBranch": "切换分支",
+    "newBranchName": "新分支名称",
+    "createAndSwitch": "创建并切换",
+    "uncommittedChanges": "存在未提交更改",
+    "uncommittedChangesMessage": "当前有未提交的修改，切换到 {branch} 前如何处理？",
+    "stashAndSwitch": "Stash 后切换",
+    "discardAndSwitch": "放弃修改并切换"
+  },
   "updater": {
     "ready": "新版本 {version} 已就绪。点击立即重启生效，或退出时自动更新。",
     "restartNow": "立即重启",
@@ -300,5 +303,206 @@
     "restartHint": "更改需重启应用后生效。",
     "installed": "已安装：{id}。重启后生效。",
     "manage": "插件：管理"
+  },
+  "acp": {
+    "chatTab": "ACP 对话",
+    "agents": "智能体",
+    "sessions": "会话",
+    "history": "历史会话",
+    "noSession": "会话未连接",
+    "noSessionHint": "该标签页对应的会话已不可用，请新建一个会话。",
+    "newSession": "新建会话",
+    "startSession": "开始会话",
+    "emptyChat": "发送一条消息开始对话。",
+    "emptyChatHint": "智能体可以读取并修改工作目录中的文件。",
+    "placeholder": "向智能体提问…（Enter 发送，Shift+Enter 换行）",
+    "send": "发送",
+    "stop": "停止",
+    "cancel": "取消",
+    "retry": "重试",
+    "close": "关闭",
+    "copy": "复制",
+    "remove": "移除",
+    "add": "添加",
+    "refresh": "刷新",
+    "jumpToLatest": "回到最新",
+    "loadingSession": "正在恢复会话…",
+    "disconnect": "断开连接",
+    "reconnect": "重新连接",
+    "restart": "重启",
+    "authenticate": "登录",
+    "openSettings": "ACP 设置",
+    "settingsLink": "ACP 设置",
+    "browseRegistry": "浏览注册表",
+    "loadFromAgent": "从智能体加载会话",
+    "thinking": "思考中",
+    "plan": {
+      "title": "计划",
+      "priority": {
+        "high": "高",
+        "low": "低",
+        "medium": "中"
+      }
+    },
+    "usage": "{used} / {size} tokens",
+    "usageShort": "{used} tokens",
+    "status": {
+      "idle": "空闲",
+      "starting": "启动中",
+      "ready": "就绪",
+      "error": "错误",
+      "closed": "已关闭"
+    },
+    "permission": {
+      "title": "需要授权",
+      "allow": "允许",
+      "allowAlways": "总是允许",
+      "reject": "拒绝",
+      "rejectAlways": "总是拒绝",
+      "dismiss": "忽略",
+      "allowOnce": "允许一次",
+      "cancel": "取消请求",
+      "kind": "工具：{kind}",
+      "rejectOnce": "拒绝"
+    },
+    "tool": {
+      "pending": "等待中",
+      "running": "执行中",
+      "completed": "已完成",
+      "failed": "失败",
+      "showDetails": "展开详情",
+      "hideDetails": "收起详情",
+      "input": "输入",
+      "output": "输出",
+      "locations": "文件位置",
+      "terminal": "终端",
+      "diffTruncated": "差异已截断（前 {count} 行）",
+      "noDetails": "此工具调用没有更多细节",
+      "openFile": "打开文件",
+      "raw": "原始数据",
+      "rawInput": "输入",
+      "rawOutput": "输出",
+      "status": {
+        "completed": "已完成",
+        "failed": "失败",
+        "inProgress": "运行中",
+        "pending": "等待中"
+      },
+      "truncated": "已截断",
+      "unsupportedContent": "不支持的内容：{type}",
+      "untitled": "工具调用"
+    },
+    "notice": {
+      "cancelled": "本轮已取消",
+      "authRequired": "{agent} 需要登录。",
+      "loadFailed": "恢复会话失败：{error}",
+      "sendFailed": "发送失败：{error}"
+    },
+    "sessionsSection": {
+      "live": "当前会话",
+      "empty": "暂无会话",
+      "forget": "忘记",
+      "remote": "来自智能体",
+      "unnamed": "未命名会话",
+      "lastActive": "最近活动 {time}"
+    },
+    "registry": {
+      "title": "智能体注册表",
+      "search": "搜索智能体",
+      "empty": "注册表暂不可用",
+      "add": "添加",
+      "added": "已添加",
+      "unavailable": "当前平台不可用",
+      "loading": "正在加载注册表…",
+      "repository": "仓库："
+    },
+    "auth": {
+      "title": "身份认证",
+      "login": "登录",
+      "hint": "该智能体需要先登录才能创建会话。"
+    },
+    "config": {
+      "mode": "模式",
+      "model": "模型",
+      "thoughtLevel": "思考强度",
+      "more": "更多选项"
+    },
+    "settings": {
+      "title": "ACP 智能体",
+      "description": "通过 Agent Client Protocol 连接各类编码智能体。",
+      "permissionMode": "授权方式",
+      "permissionAsk": "每次询问",
+      "permissionAllowAll": "全部允许",
+      "logTraffic": "记录 JSON-RPC 报文",
+      "defaultCwd": "默认工作目录",
+      "defaultCwdHint": "留空则使用当前项目目录",
+      "agents": "已配置的智能体",
+      "addAgent": "添加智能体",
+      "agentName": "名称",
+      "command": "命令",
+      "args": "参数（每行一个）",
+      "env": "环境变量（每行 KEY=VALUE）",
+      "descriptionLabel": "描述",
+      "saveAgents": "保存智能体",
+      "saved": "已保存",
+      "removeConfirm": "确认删除？",
+      "runtime": "运行状态",
+      "noAgents": "还没有配置任何智能体。",
+      "enabled": "启用",
+      "browse": "浏览",
+      "sessionCount": "{count} 个会话",
+      "smoothStreaming": "整段回复渐进显示",
+      "smoothStreamingHint": "当 Agent 一次性下发整段消息时（如 DeepSeek Harness），按打字机效果逐步展开。仅影响显示，协议本身仍没有 token 增量。"
+    },
+    "load": "加载",
+    "restore": "恢复会话",
+    "capability": {
+      "load": "恢复",
+      "list": "列表",
+      "resume": "续接",
+      "terminal": "终端"
+    },
+    "chat": {
+      "closed": "会话已关闭 —— 重新连接 agent 后可继续",
+      "commandsTitle": "斜杠命令",
+      "creating": "正在启动…",
+      "emptyHint": "发送消息开始对话",
+      "interrupted": "会话已中断 —— 发送消息可继续",
+      "jumpLatest": "跳到最新",
+      "noAgents": "还没有配置 agent —— 请在 Agent 面板中添加。",
+      "noSessionHint": "此标签页尚未连接到 agent 会话，请新建会话后继续。",
+      "noSessionTitle": "未连接会话",
+      "openAgents": "Agent 面板",
+      "replaying": "正在加载会话历史…",
+      "showFull": "显示完整消息",
+      "startSession": "开始会话",
+      "thinking": "思考中",
+      "thinkingChars": "{count} 字符",
+      "truncated": "消息过长，已截断显示"
+    },
+    "composer": {
+      "busyHint": "Agent 正在工作…",
+      "hint": "Enter 发送 · Shift+Enter 换行",
+      "placeholder": "向 agent 提问…",
+      "send": "发送",
+      "stop": "停止"
+    },
+    "header": {
+      "disconnect": "断开 agent",
+      "mode": "模式",
+      "model": "模型",
+      "more": "更多选项",
+      "openPanel": "打开 Agent 面板",
+      "status": {
+        "closed": "已断开",
+        "error": "错误",
+        "idle": "空闲",
+        "ready": "已连接",
+        "starting": "启动中"
+      },
+      "stop": "停止",
+      "unknownAgent": "Agent",
+      "usageTitle": "{used} / {size} tokens"
+    }
   }
 }

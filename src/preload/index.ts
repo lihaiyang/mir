@@ -1,6 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { SearchMatch } from '../main/search'
 import type { UpdaterEvent } from '../main/updater'
+import type {
+  AcpConfig,
+  AcpEvent,
+  AcpHistoryEntry,
+  AcpPermissionRequest,
+  AcpPromptBlock,
+  AcpRemoteSession,
+  AcpRegistryAgent,
+  AcpSessionDetail,
+  AcpSessionSummary,
+  AcpStateSnapshot,
+  AcpTrafficEntry,
+  AcpAgentRuntimeInfo,
+  AcpAuthMethod,
+  SessionConfigOption
+} from '@shared/acp'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Store
@@ -120,5 +136,47 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_e: Electron.IpcRendererEvent, ...args: unknown[]) => cb(...args)
     ipcRenderer.on(fullChannel, listener)
     return () => ipcRenderer.removeListener(fullChannel, listener)
+  },
+
+  // -------------------------------------------------------------------------
+  // ACP (Agent Client Protocol)
+  // -------------------------------------------------------------------------
+  acpGetConfig: (): Promise<AcpConfig> => ipcRenderer.invoke('acp:get-config'),
+  acpSetConfig: (patch: Partial<AcpConfig>): Promise<AcpConfig> => ipcRenderer.invoke('acp:set-config', patch),
+  acpGetState: (): Promise<AcpStateSnapshot> => ipcRenderer.invoke('acp:get-state'),
+  acpGetAgents: (): Promise<AcpAgentRuntimeInfo[]> => ipcRenderer.invoke('acp:get-agents'),
+  acpGetRegistry: (): Promise<AcpRegistryAgent[]> => ipcRenderer.invoke('acp:get-registry'),
+  acpCreateSession: (agentId: string, cwd?: string): Promise<AcpSessionDetail> =>
+    ipcRenderer.invoke('acp:create-session', { agentId, cwd }),
+  acpLoadSession: (agentId: string, sessionId: string, cwd?: string): Promise<AcpSessionDetail> =>
+    ipcRenderer.invoke('acp:load-session', { agentId, sessionId, cwd }),
+  acpResumeSession: (agentId: string, sessionId: string, cwd?: string): Promise<AcpSessionDetail> =>
+    ipcRenderer.invoke('acp:resume-session', { agentId, sessionId, cwd }),
+  acpCloseSession: (sessionId: string): Promise<void> => ipcRenderer.invoke('acp:close-session', sessionId),
+  acpDisconnectAgent: (agentId: string): Promise<void> => ipcRenderer.invoke('acp:disconnect-agent', agentId),
+  acpSendPrompt: (sessionId: string, blocks: AcpPromptBlock[]): Promise<{ stopReason: string }> =>
+    ipcRenderer.invoke('acp:send-prompt', { sessionId, blocks }),
+  acpCancelPrompt: (sessionId: string): Promise<void> => ipcRenderer.invoke('acp:cancel-prompt', sessionId),
+  acpSetConfigOption: (sessionId: string, configId: string, value: string | boolean): Promise<SessionConfigOption[]> =>
+    ipcRenderer.invoke('acp:set-config-option', { sessionId, configId, value }),
+  acpSetMode: (sessionId: string, modeId: string): Promise<void> =>
+    ipcRenderer.invoke('acp:set-mode', { sessionId, modeId }),
+  acpSetModel: (sessionId: string, modelId: string): Promise<void> =>
+    ipcRenderer.invoke('acp:set-model', { sessionId, modelId }),
+  acpListSessions: (agentId: string, cwd?: string): Promise<AcpRemoteSession[]> =>
+    ipcRenderer.invoke('acp:list-sessions', { agentId, cwd }),
+  acpListHistory: (): Promise<AcpHistoryEntry[]> => ipcRenderer.invoke('acp:list-history'),
+  acpForgetSession: (agentId: string, sessionId: string): Promise<void> =>
+    ipcRenderer.invoke('acp:forget-session', { agentId, sessionId }),
+  acpAuthenticate: (agentId: string, methodId: string): Promise<AcpAuthMethod[]> =>
+    ipcRenderer.invoke('acp:authenticate', { agentId, methodId }),
+  acpRespondPermission: (requestId: string, optionId: string | null): Promise<void> =>
+    ipcRenderer.invoke('acp:respond-permission', { requestId, optionId }),
+  acpGetTraffic: (): Promise<AcpTrafficEntry[]> => ipcRenderer.invoke('acp:get-traffic'),
+  acpGetPermissions: (): Promise<AcpPermissionRequest[]> => ipcRenderer.invoke('acp:get-permissions'),
+  onAcpEvent: (cb: (event: AcpEvent) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, event: AcpEvent) => cb(event)
+    ipcRenderer.on('acp:event', listener)
+    return () => ipcRenderer.removeListener('acp:event', listener)
   }
 })

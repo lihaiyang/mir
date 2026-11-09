@@ -92,12 +92,14 @@
     "duplicate": "Duplicate",
     "rename": "Rename",
     "noTabs": "No tabs open",
-    "newTab": "+ New Tab"
+    "newTab": "+ New Tab",
+    "acpChat": "ACP"
   },
   "rightPane": {
     "files": "Files",
     "git": "Git",
-    "search": "Search"
+    "search": "Search",
+    "acpAgents": "Agents"
   },
   "settings": {
     "title": "Settings",
@@ -131,7 +133,8 @@
     "wordWrapBounded": "Bounded",
     "autoUpdate": "Auto Update",
     "showPanelIcons": "Show Panel Icons",
-    "markdownPreview": "Markdown Preview"
+    "markdownPreview": "Markdown Preview",
+    "acp": "ACP Agents"
   },
   "git": {
     "noProject": "No project selected",
@@ -236,44 +239,44 @@
     "hidePreview": "Hide Preview"
   },
   "commandPalette": {
-     "placeholder": "Type a command...",
-     "noResults": "No matching commands",
-     "navigate": "Navigate",
-     "select": "Select",
-     "close": "Close",
-     "openSettings": "Open Settings",
-     "toggleWordWrap": "Toggle Editor Word Wrap",
-     "quickOpen": "Go to File...",
-     "search": "Search in Project",
-     "toggleRightPanel": "Toggle Right Panel",
-     "reopenClosedTab": "Reopen Closed Tab",
-     "newTerminal": "New Terminal",
-     "toggleFiles": "Show File Tree",
-      "toggleGit": "Show Git Panel",
-      "togglePanelIcons": "Toggle Panel Icons"
-   },
-   "quickOpen": {
-     "placeholder": "Search files by name...",
-     "noResults": "No matching files",
-     "recent": "Recent"
-   },
-    "status": {
-      "branch": "Git branch",
-      "lineColumn": "Line:Column",
-      "language": "Language",
-      "encoding": "Encoding",
-      "lineEnding": "Line Ending",
-      "selectLanguage": "Select Language",
-      "selectEncoding": "Select Encoding",
-      "selectLineEnding": "Select Line Ending",
-      "switchBranch": "Switch Branch",
-      "newBranchName": "New branch name",
-      "createAndSwitch": "Create & Switch",
-      "uncommittedChanges": "Uncommitted Changes",
-      "uncommittedChangesMessage": "You have uncommitted changes. What would you like to do before switching to {branch}?",
-      "stashAndSwitch": "Stash and switch",
-      "discardAndSwitch": "Discard changes and switch"
-    },
+    "placeholder": "Type a command...",
+    "noResults": "No matching commands",
+    "navigate": "Navigate",
+    "select": "Select",
+    "close": "Close",
+    "openSettings": "Open Settings",
+    "toggleWordWrap": "Toggle Editor Word Wrap",
+    "quickOpen": "Go to File...",
+    "search": "Search in Project",
+    "toggleRightPanel": "Toggle Right Panel",
+    "reopenClosedTab": "Reopen Closed Tab",
+    "newTerminal": "New Terminal",
+    "toggleFiles": "Show File Tree",
+    "toggleGit": "Show Git Panel",
+    "togglePanelIcons": "Toggle Panel Icons"
+  },
+  "quickOpen": {
+    "placeholder": "Search files by name...",
+    "noResults": "No matching files",
+    "recent": "Recent"
+  },
+  "status": {
+    "branch": "Git branch",
+    "lineColumn": "Line:Column",
+    "language": "Language",
+    "encoding": "Encoding",
+    "lineEnding": "Line Ending",
+    "selectLanguage": "Select Language",
+    "selectEncoding": "Select Encoding",
+    "selectLineEnding": "Select Line Ending",
+    "switchBranch": "Switch Branch",
+    "newBranchName": "New branch name",
+    "createAndSwitch": "Create & Switch",
+    "uncommittedChanges": "Uncommitted Changes",
+    "uncommittedChangesMessage": "You have uncommitted changes. What would you like to do before switching to {branch}?",
+    "stashAndSwitch": "Stash and switch",
+    "discardAndSwitch": "Discard changes and switch"
+  },
   "updater": {
     "ready": "Version {version} is ready. Restart to apply, or it will update automatically when you quit.",
     "restartNow": "Restart now",
@@ -300,5 +303,206 @@
     "restartHint": "Changes take effect after restarting the app.",
     "installed": "Installed: {id}. Restart to activate.",
     "manage": "Plugins: Manage"
+  },
+  "acp": {
+    "chatTab": "ACP Chat",
+    "agents": "Agents",
+    "sessions": "Sessions",
+    "history": "History",
+    "noSession": "Session not attached",
+    "noSessionHint": "This tab's session is no longer available. Start a new one.",
+    "newSession": "New session",
+    "startSession": "Start session",
+    "emptyChat": "Send a message to start the conversation.",
+    "emptyChatHint": "The agent can read and edit files in the working directory.",
+    "placeholder": "Ask the agent…  (Enter to send, Shift+Enter for a new line)",
+    "send": "Send",
+    "stop": "Stop",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "close": "Close",
+    "copy": "Copy",
+    "remove": "Remove",
+    "add": "Add",
+    "refresh": "Refresh",
+    "jumpToLatest": "Jump to latest",
+    "loadingSession": "Loading session…",
+    "disconnect": "Disconnect",
+    "reconnect": "Reconnect",
+    "restart": "Restart",
+    "authenticate": "Authenticate",
+    "openSettings": "ACP settings",
+    "settingsLink": "ACP settings",
+    "browseRegistry": "Browse registry",
+    "loadFromAgent": "Load sessions from agent",
+    "thinking": "Thinking",
+    "plan": {
+      "title": "Plan",
+      "priority": {
+        "high": "High",
+        "low": "Low",
+        "medium": "Medium"
+      }
+    },
+    "usage": "{used} / {size} tokens",
+    "usageShort": "{used} tokens",
+    "status": {
+      "idle": "Idle",
+      "starting": "Starting",
+      "ready": "Ready",
+      "error": "Error",
+      "closed": "Closed"
+    },
+    "permission": {
+      "title": "Permission required",
+      "allow": "Allow",
+      "allowAlways": "Always allow",
+      "reject": "Reject",
+      "rejectAlways": "Always reject",
+      "dismiss": "Dismiss",
+      "allowOnce": "Allow once",
+      "cancel": "Cancel request",
+      "kind": "Tool: {kind}",
+      "rejectOnce": "Reject"
+    },
+    "tool": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "input": "Input",
+      "output": "Output",
+      "locations": "Locations",
+      "terminal": "Terminal",
+      "diffTruncated": "Diff truncated (first {count} lines)",
+      "noDetails": "No details available for this tool call",
+      "openFile": "Open file",
+      "raw": "Raw payload",
+      "rawInput": "Input",
+      "rawOutput": "Output",
+      "status": {
+        "completed": "Done",
+        "failed": "Failed",
+        "inProgress": "Running",
+        "pending": "Pending"
+      },
+      "truncated": "truncated",
+      "unsupportedContent": "Unsupported content: {type}",
+      "untitled": "Tool call"
+    },
+    "notice": {
+      "cancelled": "Turn cancelled",
+      "authRequired": "{agent} requires authentication.",
+      "loadFailed": "Failed to load session: {error}",
+      "sendFailed": "Failed to send: {error}"
+    },
+    "sessionsSection": {
+      "live": "Live",
+      "empty": "No sessions yet",
+      "forget": "Forget",
+      "remote": "From agent",
+      "unnamed": "Untitled session",
+      "lastActive": "Last active {time}"
+    },
+    "registry": {
+      "title": "Agent registry",
+      "search": "Search agents",
+      "empty": "Registry unavailable",
+      "add": "Add",
+      "added": "Added",
+      "unavailable": "Not available on this platform",
+      "loading": "Loading registry…",
+      "repository": "Repository:"
+    },
+    "auth": {
+      "title": "Authentication",
+      "login": "Log in",
+      "hint": "This agent needs you to log in before it can start a session."
+    },
+    "config": {
+      "mode": "Mode",
+      "model": "Model",
+      "thoughtLevel": "Thinking",
+      "more": "More options"
+    },
+    "settings": {
+      "title": "ACP agents",
+      "description": "Connect coding agents over the Agent Client Protocol.",
+      "permissionMode": "Permissions",
+      "permissionAsk": "Ask every time",
+      "permissionAllowAll": "Allow everything",
+      "logTraffic": "Log JSON-RPC traffic",
+      "defaultCwd": "Default working directory",
+      "defaultCwdHint": "Empty uses the active project folder",
+      "agents": "Configured agents",
+      "addAgent": "Add agent",
+      "agentName": "Name",
+      "command": "Command",
+      "args": "Arguments (one per line)",
+      "env": "Environment (KEY=VALUE per line)",
+      "descriptionLabel": "Description",
+      "saveAgents": "Save agents",
+      "saved": "Saved",
+      "removeConfirm": "Confirm?",
+      "runtime": "Runtime",
+      "noAgents": "No agents configured yet.",
+      "enabled": "Enabled",
+      "browse": "Browse",
+      "sessionCount": "{count} sessions",
+      "smoothStreaming": "Smooth reveal for batched replies",
+      "smoothStreamingHint": "Typewriter-style reveal when an agent delivers a whole message at once (e.g. DeepSeek Harness). Presentation only: the wire still carries no token deltas."
+    },
+    "load": "Load",
+    "restore": "Restore session",
+    "capability": {
+      "load": "load",
+      "list": "list",
+      "resume": "resume",
+      "terminal": "terminal"
+    },
+    "chat": {
+      "closed": "Session closed — reconnect the agent to continue",
+      "commandsTitle": "Slash commands",
+      "creating": "Starting…",
+      "emptyHint": "Send a message to start the conversation",
+      "interrupted": "Session interrupted — send a message to continue",
+      "jumpLatest": "Jump to latest",
+      "noAgents": "No agents configured yet — add one in the agent panel.",
+      "noSessionHint": "This tab is not connected to an agent session. Start a new session to continue.",
+      "noSessionTitle": "Session not attached",
+      "openAgents": "Agent panel",
+      "replaying": "Loading session history…",
+      "showFull": "Show full message",
+      "startSession": "Start session",
+      "thinking": "Thinking",
+      "thinkingChars": "{count} chars",
+      "truncated": "Message truncated for display"
+    },
+    "composer": {
+      "busyHint": "Agent is working…",
+      "hint": "Enter to send · Shift+Enter for newline",
+      "placeholder": "Ask the agent…",
+      "send": "Send",
+      "stop": "Stop"
+    },
+    "header": {
+      "disconnect": "Disconnect agent",
+      "mode": "Mode",
+      "model": "Model",
+      "more": "More options",
+      "openPanel": "Open agent panel",
+      "status": {
+        "closed": "Disconnected",
+        "error": "Error",
+        "idle": "Idle",
+        "ready": "Connected",
+        "starting": "Starting"
+      },
+      "stop": "Stop",
+      "unknownAgent": "Agent",
+      "usageTitle": "{used} / {size} tokens"
+    }
   }
 }

@@ -122,6 +122,11 @@
           </div>
         </template>
 
+        <!-- ACP agents -->
+        <template v-if="activeSection === 'acp'">
+          <AcpSettingsSection />
+        </template>
+
         <!-- Plugins -->
         <template v-if="activeSection === 'plugins'">
           <PluginManager class="settings-plugin-manager" />
@@ -135,6 +140,7 @@
 import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore, type Settings } from '../stores/settings'
+import AcpSettingsSection from './AcpSettingsSection.vue'
 import PluginManager from './PluginManager.vue'
 
 const { t } = useI18n()
@@ -150,6 +156,7 @@ const sections = computed(() => [
   { id: 'editor', label: t('settings.editor') },
   { id: 'git', label: t('settings.git') },
   { id: 'browser', label: t('settings.browser') },
+  { id: 'acp', label: t('settings.acp') },
   { id: 'shortcuts', label: t('settings.shortcuts') },
   { id: 'plugins', label: t('plugins.title') }
 ])

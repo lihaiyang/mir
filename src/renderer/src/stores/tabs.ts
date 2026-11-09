@@ -5,7 +5,14 @@ import { toPlainObject } from '../utils'
 import { resolveTabTitle } from '../plugins/registries'
 import { useRecentStore } from './recent'
 
-export type BuiltinTabType = 'terminal' | 'editor' | 'browser' | 'file' | 'diff' | 'settings'
+export type BuiltinTabType =
+  | 'terminal'
+  | 'editor'
+  | 'browser'
+  | 'file'
+  | 'diff'
+  | 'settings'
+  | 'acp-chat'
 export type TabType = BuiltinTabType | (string & {})
 
 export interface Tab {
@@ -25,6 +32,8 @@ export interface Tab {
   languageOverride?: string
   encoding?: string
   lineEnding?: 'lf' | 'crlf'
+  /** ACP chat tab: the session this tab renders. */
+  acpSessionId?: string
 }
 
 // --- Split pane tree types ---
