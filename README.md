@@ -64,6 +64,16 @@ MIR 是一个本地桌面 IDE，专为人类开发者和 AI 代理协同工作�
 
 浏览器支持书签栏、前进后退、刷新、开发者工具打开。
 
+### 内置智能体（ACP / MIR Harness）
+
+通过 [Agent Client Protocol](https://agentclientprotocol.com/) 连接编码智能体：右栏「智能体」面板提供会话管理、运行日志与会话历史，聊天以标签页形式打开，和编辑器、终端并排使用。
+
+- **MIR Harness**：MIR 内置的 Agent，接任意 OpenAI 兼容接口（填接口地址 + API Key 即可用），支持流式输出、思考过程、工具调用（读/写文件、列目录、搜索、执行命令）、Ask/Code 双模式、模型与推理强度切换、会话持久化与恢复；配置在「设置 → ACP 智能体 → MIR Harness」，写在 `~/.mir-harness/config.json`。
+- **外部 Agent**：内置 Pi Coding Agent（`pi-acp`）与 DeepSeek Harness（`dsh --profile acp`），也可在设置里自定义命令或从 ACP 注册表添加 Claude Code、Gemini CLI、Codex 等。
+- 统一能力：权限卡片（允许一次/本会话总是允许/拒绝）、停止本轮、`/clear` `/status` 命令、按 Agent 记住上次选的模型与推理强度。
+
+详见 [MIR Harness 上手](./docs/mir-harness-guide.md) 与 [MIR Harness 设计文档](./docs/mir-harness.md)、[ACP 客户端设计](./docs/acp-client.md)。
+
 ### 命令面板
 
 按 `Ctrl+Shift+P` 打开命令面板，支持模糊搜索。当前内置命令包括打开设置面板，后续可扩展。

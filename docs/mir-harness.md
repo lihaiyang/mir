@@ -1,6 +1,8 @@
 # MIR Harness：MIR 内置 Agent
 
-> 状态：实现中（v1 内核）。本文记录设计、契约与验证方式；实现完成后的验证记录追加在文末。
+> 状态：已实现（v1 内核），随 `0.2.12-dev.0` 发布。本文记录设计、契约与验证方式；验证记录见 §8。
+>
+> 只想上手使用？看 [MIR Harness 上手](mir-harness-guide.md)。
 >
 > 相关文档：[ACP 客户端](acp-client.md)。MIR Harness 是一个 **ACP agent**，由 MIR 的 ACP 客户端驱动，
 > 与 pi / DeepSeek Harness 等外部 Agent 走完全相同的协议路径——区别只是它的进程和内核由 MIR 自己提供。
