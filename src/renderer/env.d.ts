@@ -108,6 +108,10 @@ interface ElectronAPI {
   acpForgetSession: (agentId: string, sessionId: string) => Promise<void>
   acpAuthenticate: (agentId: string, methodId: string) => Promise<import('@shared/acp').AcpAuthMethod[]>
   acpRespondPermission: (requestId: string, optionId: string | null) => Promise<void>
+  acpGetHarnessConfig: () => Promise<import('@shared/harness').HarnessConfigSnapshot>
+  acpSetHarnessConfig: (
+    config: import('@shared/harness').HarnessConfig
+  ) => Promise<import('@shared/harness').HarnessConfigSnapshot>
   acpGetTraffic: () => Promise<import('@shared/acp').AcpTrafficEntry[]>
   acpGetPermissions: () => Promise<import('@shared/acp').AcpPermissionRequest[]>
   onAcpEvent: (cb: (event: import('@shared/acp').AcpEvent) => void) => () => void

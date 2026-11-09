@@ -12,6 +12,16 @@ export default defineConfig({
         '@main': resolve('src/main'),
         '@shared': resolve('src/shared')
       }
+    },
+    build: {
+      rollupOptions: {
+        // 第二个入口：MIR Harness 的 agent 进程（内置 Agent，由主进程 spawn）。
+        // 产物 out/main/agent/index.js 会被打进 asar，启动时用 ELECTRON_RUN_AS_NODE + process.execPath 运行。
+        input: {
+          index: resolve('src/main/index.ts'),
+          'agent/index': resolve('src/agent/index.ts')
+        }
+      }
     }
   },
   preload: {

@@ -17,6 +17,8 @@ import type {
   AcpAuthMethod,
   SessionConfigOption
 } from '@shared/acp'
+import type { HarnessConfig, HarnessConfigSnapshot } from '@shared/harness'
+
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Store
@@ -172,6 +174,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('acp:authenticate', { agentId, methodId }),
   acpRespondPermission: (requestId: string, optionId: string | null): Promise<void> =>
     ipcRenderer.invoke('acp:respond-permission', { requestId, optionId }),
+  acpGetHarnessConfig: (): Promise<HarnessConfigSnapshot> => ipcRenderer.invoke('acp:get-harness-config'),
+  acpSetHarnessConfig: (config: HarnessConfig): Promise<HarnessConfigSnapshot> =>
+    ipcRenderer.invoke('acp:set-harness-config', config),
   acpGetTraffic: (): Promise<AcpTrafficEntry[]> => ipcRenderer.invoke('acp:get-traffic'),
   acpGetPermissions: (): Promise<AcpPermissionRequest[]> => ipcRenderer.invoke('acp:get-permissions'),
   onAcpEvent: (cb: (event: AcpEvent) => void) => {

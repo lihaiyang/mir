@@ -338,18 +338,20 @@ Reducer 规则（对齐 ACP 语义）：
 
 ## 9. 内置默认 Agent 列表
 
-当前只内置两个真实 Agent（都已在协议层实测握手通过），另保留一个本地 mock agent 用于离线自测：
+当前内置三个 Agent：MIR 自己的 `mir-harness`（详见 [`docs/mir-harness.md`](./mir-harness.md)）与两个外部 Agent；
+本地 mock agent 只保留给离线自测，不再出现在默认列表里。
 
 | id | 名称 | 命令 | 实测能力 |
 | --- | --- | --- | --- |
+| `mir-harness` | MIR Harness | `{{EXEC_PATH}} {{APP_PATH}}/out/main/agent/index.js`（env `ELECTRON_RUN_AS_NODE=1`） | MIR 内置 Agent，OpenAI 兼容接口 + 5 个工具；`loadSession` + `sessionCapabilities.{list,resume,close}`，配置项 `model` / `thought_level`，模式 `ask` / `code` |
 | `pi` | Pi Coding Agent | `npx -y pi-acp@latest` | `initialize` → `agentInfo.name=pi-acp`，`loadSession: true`，`sessionCapabilities.{list,delete}`，auth method `pi_terminal_login`（terminal 类型，登录走 `pi` 自身配置） |
 | `deepseek-harness` | DeepSeek Harness | `dsh --profile acp` | `initialize` → `agentInfo.name=deepseek-harness-acp`，`sessionCapabilities.{close,list,resume}`，`authMethods: []` |
-| `mock` | Mock Agent (调试) | `node scripts/acp-mock-agent.mjs` | 本地假 Agent，覆盖全部 `SessionUpdate` 形状，供 selftest 与 UI 自测 |
+| `mock` | Mock Agent (调试) | `node scripts/acp-mock-agent.mjs` | 本地假 Agent，覆盖全部 `SessionUpdate` 形状，供 `npm run acp:selftest` 与 UI 自测（不在默认列表） |
 
 其它 Agent（Claude Code / Gemini / Codex / Copilot / Qwen / OpenCode / Auggie / Qoder / OpenClaw / Kiro / Hermes）
 不再默认内置，可在设置里「添加智能体」或从注册表浏览添加，命令与 VSIX 默认值一致。
 
-> **升级迁移（`ACP_CONFIG_VERSION=2`）**：老版本落盘的 12 个历史内置项，首次读取配置时按
+> **升级迁移（`ACP_CONFIG_VERSION=3`）**：老版本落盘的历史内置项（含旧默认的 mock），首次读取配置时按
 > `command|args` 签名识别并替换为新的默认项；用户自建过、或改过命令的条目原样保留。
 > 迁移只做一次（版本号写在 `acpSchemaVersion` 键）。
 

@@ -565,6 +565,8 @@ export const useAcpStore = defineStore('acp', () => {
       const detail = await window.electronAPI.acpLoadSession(agentId, sessionId, cwd ?? defaultCwd())
       ensureSessionState(detail)
       placeholder.loading = false
+      // 回放出来的消息不会收到 prompt-end，这里补一次收尾，避免最后一个气泡一直停在「输出中」
+      finishStreaming(placeholder)
       if (tab) void useTabStore().renameTab(tab.projectId, tab.id, detail.title || detail.agentName || 'ACP')
       void refreshHistory()
       return detail

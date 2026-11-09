@@ -20,7 +20,9 @@ import type {
   AcpTrafficEntry,
   SessionConfigOption
 } from '../../shared/acp'
+import type { HarnessConfigSnapshot } from '../../shared/harness'
 import { getAcpConfig, setAcpConfig } from './config'
+import { readHarnessConfig, saveHarnessConfig } from './harnessConfig'
 import { getTraffic } from './connection'
 import { setAcpEventSink } from './events'
 import { getPendingPermissions, respondPermission as settlePermission } from './handlers/permission'
@@ -83,6 +85,14 @@ export function registerAcpIpc(): void {
   ipcMain.handle('acp:get-state', (): AcpStateSnapshot => getState())
   ipcMain.handle('acp:get-agents', (): AcpAgentRuntimeInfo[] => getAgents())
   ipcMain.handle('acp:get-registry', (): Promise<AcpRegistryAgent[]> => getRegistry())
+
+  /* ------------------------ 内置 Agent（MIR Harness）配置 ------------------------ */
+
+  ipcMain.handle('acp:get-harness-config', (): HarnessConfigSnapshot => readHarnessConfig())
+  ipcMain.handle(
+    'acp:set-harness-config',
+    (_event, raw: unknown): HarnessConfigSnapshot => saveHarnessConfig(raw)
+  )
 
   /* ---------------------------- 会话生命周期 ---------------------------- */
 

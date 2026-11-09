@@ -7,6 +7,14 @@
 
     <div v-if="errorMsg" class="acp-error">{{ errorMsg }}</div>
 
+    <!-- MIR Harness (built-in agent) ---------------------------------- -->
+    <div class="acp-harness">
+      <div class="acp-divider">
+        <span class="acp-divider-title">{{ t('harness.sectionTitle') }}</span>
+      </div>
+      <HarnessSettingsSection />
+    </div>
+
     <!-- General ------------------------------------------------------- -->
     <div class="settings-group">
       <label class="settings-label">{{ t('acp.settings.permissionMode') }}</label>
@@ -178,6 +186,7 @@ import type {
 } from '@shared/acp'
 import { useAcpStore } from '../stores/acp'
 import Icon from './ui/Icon.vue'
+import HarnessSettingsSection from './HarnessSettingsSection.vue'
 
 /** Draft row: the persisted config plus textarea-friendly text forms. */
 interface AgentDraft extends AcpAgentConfig {
@@ -566,6 +575,38 @@ onBeforeUnmount(() => {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+/* MIR Harness block sits above the ACP groups; the divider keeps the two
+   scopes visually separate without another top-level heading. */
+.acp-harness {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-color);
+}
+.acp-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.acp-divider-title {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.acp-divider::after {
+  content: '';
+  flex: 1;
+  min-width: 0;
+  height: 1px;
+  background: var(--border-color);
 }
 
 /* Mirrors the settings-tab form classes; scoped styles do not cross components. */

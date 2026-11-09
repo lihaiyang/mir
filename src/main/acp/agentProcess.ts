@@ -12,8 +12,14 @@ import { basename } from 'node:path'
 import { app } from 'electron'
 import type { AcpAgentConfig } from '../../shared/acp'
 
-/** 仓库内脚本（如 mock agent）不在会话 cwd 下，用该占位符展开成 app path */
+/** 仓库内脚本（如内置 Agent bundle）不在会话 cwd 下，用该占位符展开成 app path */
 export const APP_PATH_TOKEN = '{{APP_PATH}}'
+
+/**
+ * 内置 Agent 用 Electron 自己当 Node 运行（用户机器上不一定装了 node）。
+ * 该占位符展开成当前可执行文件路径，配合 env ELECTRON_RUN_AS_NODE=1 使用。
+ */
+export const EXEC_PATH_TOKEN = '{{EXEC_PATH}}'
 
 const STDERR_TAIL_LIMIT = 8000
 const KILL_GRACE_MS = 5000
@@ -58,6 +64,17 @@ export function expandAppPath(value: string): string {
   return value.split(APP_PATH_TOKEN).join(app.getAppPath())
 }
 
+/** 展开内置 Agent 的可执行文件占位符（command / args / env 都可能用到） */
+export function expandExecPath(value: string): string {
+  if (!value.includes(EXEC_PATH_TOKEN)) return value
+  return value.split(EXEC_PATH_TOKEN).join(process.execPath)
+}
+
+/** 一次展开所有占位符 */
+export function expandPlaceholders(value: string): string {
+  return expandExecPath(expandAppPath(value))
+}
+
 /**
  * 挑选启动用的 shell：
  * - $SHELL 是 zsh / bash / ksh → 用登录 shell（-l）
@@ -82,14 +99,14 @@ export function resolveUnixShell(): { shell: string, login: boolean } {
 function buildEnv(agent: AcpAgentConfig): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env }
   for (const [key, value] of Object.entries(agent.env ?? {})) {
-    env[key] = expandAppPath(value)
+    env[key] = expandPlaceholders(value)
   }
   return env
 }
 
 export function spawnAgentProcess(agent: AcpAgentConfig, options: SpawnAgentOptions): AgentProcess {
-  const command = expandAppPath(agent.command)
-  const args = (agent.args ?? []).map(expandAppPath)
+  const command = expandPlaceholders(agent.command)
+  const args = (agent.args ?? []).map(expandPlaceholders)
   const env = buildEnv(agent)
 
   let child: ChildProcess

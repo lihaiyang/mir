@@ -223,10 +223,20 @@ export interface AcpStateSnapshot {
 /**
  * 默认可用的 ACP Agent。
  *
- * 当前只内置「Pi Coding Agent」「DeepSeek Harness」两个真实 Agent，外加一个
- * 本地 mock agent 用于离线自测；其它 Agent 可在设置里自行添加（或从注册表浏览）。
+ * 当前内置三个 Agent：MIR Harness（内置内核，OpenAI 兼容接口）、Pi Coding Agent、
+ * DeepSeek Harness；其它 Agent 可在设置里自行添加（或从注册表浏览）。
+ * mock agent（scripts/acp-mock-agent.mjs）只保留给自动化测试，不再出现在默认列表里。
  */
 export const DEFAULT_ACP_AGENTS: AcpAgentConfig[] = [
+  {
+    id: 'mir-harness',
+    name: 'MIR Harness',
+    // 用 Electron 自身当 Node（用户机器不一定装了 node），脚本在 asar 内
+    command: '{{EXEC_PATH}}',
+    args: ['{{APP_PATH}}/out/main/agent/index.js'],
+    env: { ELECTRON_RUN_AS_NODE: '1' },
+    description: 'MIR 内置 Agent，支持任意 OpenAI 兼容接口（可在设置中配置）'
+  },
   {
     id: 'pi',
     name: 'Pi Coding Agent',
@@ -240,13 +250,6 @@ export const DEFAULT_ACP_AGENTS: AcpAgentConfig[] = [
     command: 'dsh',
     args: ['--profile', 'acp'],
     description: 'DeepSeek Harness 的 ACP 服务（dsh --profile acp）'
-  },
-  {
-    id: 'mock',
-    name: 'Mock Agent (调试)',
-    command: 'node',
-    args: ['{{APP_PATH}}/scripts/acp-mock-agent.mjs'],
-    description: '本地假 Agent，用于 UI/协议自测，无需登录与联网'
   }
 ]
 

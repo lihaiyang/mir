@@ -11,13 +11,16 @@ import type { AcpAgentConfig, AcpAutoApprove, AcpConfig } from '../../shared/acp
 const STORE_KEY = 'acp'
 const SCHEMA_VERSION_KEY = 'acpSchemaVersion'
 /** 配置结构版本；升级时用于一次性迁移旧的默认 Agent 列表 */
-const ACP_CONFIG_VERSION = 2
+const ACP_CONFIG_VERSION = 3
 
 /**
  * 0.2.10-dev 阶段曾内置过的 Agent 启动命令。
  * 升级到 ACP_CONFIG_VERSION=2 时，命中这些签名的条目会被新的默认项替换，
  * 用户自己新增/改过命令的条目则原样保留。
  */
+/** 0.2.11 及更早版本的 mock agent 内置项；v3 迁移时替换为 MIR Harness */
+const LEGACY_MOCK_SIGNATURE = 'node|{{APP_PATH}}/scripts/acp-mock-agent.mjs'
+
 const LEGACY_DEFAULT_SIGNATURES = new Set([
   'node|{{APP_PATH}}/scripts/acp-mock-agent.mjs',
   'npx|@agentclientprotocol/claude-agent-acp@latest',
@@ -108,13 +111,21 @@ function signatureOf(agent: AcpAgentConfig): string {
   return [agent.command, ...(agent.args ?? [])].join('|')
 }
 
-/** 一次性迁移：用新的默认项替换旧的内置项，保留用户自建项 */
-function migrateAgents(stored: AcpAgentConfig[]): AcpAgentConfig[] {
+/**
+ * 一次性迁移：用新的默认项替换旧的内置项，保留用户自建项。
+ *
+ * - v1 → v2：替换 12 个历史默认 Agent
+ * - v2 → v3：把旧的内置 mock agent 换成内置的 MIR Harness（命令被用户改过的条目保留）
+ */
+function migrateAgents(stored: AcpAgentConfig[], fromVersion: number): AcpAgentConfig[] {
   const seeded = seedAgents()
   const seededIds = new Set(seeded.map((agent) => agent.id))
-  const custom = stored.filter(
-    (agent) => !LEGACY_DEFAULT_SIGNATURES.has(signatureOf(agent)) && !seededIds.has(agent.id)
-  )
+  const custom = stored.filter((agent) => {
+    const signature = signatureOf(agent)
+    if (LEGACY_DEFAULT_SIGNATURES.has(signature)) return false
+    if (fromVersion < 3 && signature === LEGACY_MOCK_SIGNATURE) return false
+    return !seededIds.has(agent.id)
+  })
   return [...seeded, ...custom]
 }
 
@@ -162,7 +173,7 @@ export function getAcpConfig(): AcpConfig {
   // 老版本落盘的 Agent 列表（12 个历史默认项）一次性迁移到新默认项
   const version = asNumber(getStore().get(SCHEMA_VERSION_KEY)) ?? 1
   if (version < ACP_CONFIG_VERSION) {
-    if (agents) config.agents = migrateAgents(agents)
+    if (agents) config.agents = migrateAgents(agents, version)
     persistConfig(config)
   }
 
