@@ -119,6 +119,18 @@ interface ElectronAPI {
   acpGetTraffic: () => Promise<import('@shared/acp').AcpTrafficEntry[]>
   acpGetPermissions: () => Promise<import('@shared/acp').AcpPermissionRequest[]>
   onAcpEvent: (cb: (event: import('@shared/acp').AcpEvent) => void) => () => void
+
+  // Userscripts（油猴脚本）— see src/shared/userscripts.ts
+  userscriptsList: () => Promise<import('@shared/userscripts').UserScriptSummary[]>
+  userscriptsDetail: (id: string) => Promise<import('@shared/userscripts').UserScriptDetail | null>
+  userscriptsInstall: (source: string) => Promise<import('@shared/userscripts').UserScriptSummary>
+  userscriptsInstallFromFile: () => Promise<import('@shared/userscripts').UserScriptSummary[]>
+  userscriptsSave: (id: string, source: string) => Promise<import('@shared/userscripts').UserScriptSummary>
+  userscriptsRemove: (id: string) => Promise<void>
+  userscriptsSetEnabled: (id: string, enabled: boolean) => Promise<import('@shared/userscripts').UserScriptSummary>
+  userscriptsOpenDir: () => Promise<void>
+  userscriptsRescan: () => Promise<import('@shared/userscripts').UserScriptSummary[]>
+  userscriptsRefreshCache: (id: string) => Promise<import('@shared/userscripts').UserScriptSummary>
 }
 
 interface PluginManifest {

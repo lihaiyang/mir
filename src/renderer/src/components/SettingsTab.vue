@@ -106,6 +106,11 @@
           </div>
         </template>
 
+        <!-- Userscripts -->
+        <template v-if="activeSection === 'userscripts'">
+          <UserscriptsSettingsSection />
+        </template>
+
         <!-- Shortcuts -->
         <template v-if="activeSection === 'shortcuts'">
           <div
@@ -142,6 +147,7 @@ import { useI18n } from 'vue-i18n'
 import { useSettingsStore, type Settings } from '../stores/settings'
 import AcpSettingsSection from './AcpSettingsSection.vue'
 import PluginManager from './PluginManager.vue'
+import UserscriptsSettingsSection from './UserscriptsSettingsSection.vue'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
@@ -156,6 +162,7 @@ const sections = computed(() => [
   { id: 'editor', label: t('settings.editor') },
   { id: 'git', label: t('settings.git') },
   { id: 'browser', label: t('settings.browser') },
+  { id: 'userscripts', label: t('userscripts.title') },
   { id: 'acp', label: t('settings.acp') },
   { id: 'shortcuts', label: t('settings.shortcuts') },
   { id: 'plugins', label: t('plugins.title') }

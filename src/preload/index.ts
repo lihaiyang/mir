@@ -19,6 +19,10 @@ import type {
 } from '@shared/acp'
 import type { HarnessConfig, HarnessConfigSnapshot } from '@shared/harness'
 import type { HarnessModelDiscoveryResult } from '@shared/harnessModels'
+import type {
+  UserScriptDetail,
+  UserScriptSummary
+} from '@shared/userscripts'
 
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -188,5 +192,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_e: Electron.IpcRendererEvent, event: AcpEvent) => cb(event)
     ipcRenderer.on('acp:event', listener)
     return () => ipcRenderer.removeListener('acp:event', listener)
-  }
+  },
+
+  // -------------------------------------------------------------------------
+  // Userscripts（油猴脚本）— see src/shared/userscripts.ts
+  // -------------------------------------------------------------------------
+  userscriptsList: (): Promise<UserScriptSummary[]> => ipcRenderer.invoke('userscripts:list'),
+  userscriptsDetail: (id: string): Promise<UserScriptDetail | null> =>
+    ipcRenderer.invoke('userscripts:detail', id),
+  userscriptsInstall: (source: string): Promise<UserScriptSummary> =>
+    ipcRenderer.invoke('userscripts:install', { source }),
+  userscriptsInstallFromFile: (): Promise<UserScriptSummary[]> =>
+    ipcRenderer.invoke('userscripts:install-from-file'),
+  userscriptsSave: (id: string, source: string): Promise<UserScriptSummary> =>
+    ipcRenderer.invoke('userscripts:save', { id, source }),
+  userscriptsRemove: (id: string): Promise<void> => ipcRenderer.invoke('userscripts:remove', id),
+  userscriptsSetEnabled: (id: string, enabled: boolean): Promise<UserScriptSummary> =>
+    ipcRenderer.invoke('userscripts:set-enabled', { id, enabled }),
+  userscriptsOpenDir: (): Promise<void> => ipcRenderer.invoke('userscripts:open-dir'),
+  userscriptsRescan: (): Promise<UserScriptSummary[]> => ipcRenderer.invoke('userscripts:rescan'),
+  userscriptsRefreshCache: (id: string): Promise<UserScriptSummary> =>
+    ipcRenderer.invoke('userscripts:refresh-cache', id)
 })

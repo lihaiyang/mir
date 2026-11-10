@@ -11,6 +11,7 @@ import { startSearch, cancelSearch } from './search'
 import { checkForUpdateNow, applyUpdate, setAutoUpdate } from './updater'
 import { getStore } from './store'
 import { registerAcpIpc } from './acp'
+import { registerUserscriptIpc } from './userscripts-ipc'
 import { listPluginsForRenderer, setPluginEnabled, setSharedModuleKeys, installPluginFromDir, uninstallPlugin, getPluginsDirForRenderer, installPluginFromGit } from './plugins'
 
 const execAsync = promisify(exec)
@@ -227,4 +228,7 @@ export function setupIpcHandlers(): void {
 
   // --- ACP (Agent Client Protocol) ---
   registerAcpIpc()
+
+  // --- Userscripts (油猴脚本) ---
+  registerUserscriptIpc()
 }

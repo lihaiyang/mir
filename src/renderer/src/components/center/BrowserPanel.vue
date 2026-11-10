@@ -31,6 +31,12 @@
         @focus="($event.target as HTMLInputElement).select()"
       />
       <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
+      <button
+        v-if="activeUserScriptCommands.length > 0"
+        class="icon-btn"
+        :title="t('userscripts.menuTitle')"
+        @click="showUserScriptMenu"
+      ><Icon name="zap" :size="13" /></button>
     </div>
 
     <!-- Webviews: one per tab, hidden ones keep compositor state -->
@@ -55,6 +61,7 @@
           @did-start-loading="() => onStartLoading(tab.id)"
           @did-stop-loading="() => onStopLoading(tab.id)"
           @page-title-updated="(e: PageTitleUpdatedEvent) => onTitleUpdated(tab.id, e)"
+          @ipc-message="(e: any) => onIpcMessage(tab.id, e)"
         />
       </div>
 
@@ -81,6 +88,12 @@ import type {
   PageTitleUpdatedEvent
 } from 'electron'
 import Icon from '../ui/Icon.vue'
+import { useContextMenu } from '../../composables/useContextMenu'
+import {
+  USERSCRIPT_HOST_CHANNEL,
+  type UserScriptHostMessage,
+  type UserScriptMenuCommand
+} from '@shared/userscripts'
 
 const props = withDefaults(defineProps<{ projectId?: string }>(), {
   projectId: PINNED_BROWSER_PROJECT_ID
@@ -91,6 +104,10 @@ const browserStore = useBrowserStore()
 const settingsStore = useSettingsStore()
 
 const tabs = computed(() => browserStore.getTabs(props.projectId))
+
+/** 每个标签页各自维护脚本菜单项（页面切换会重新注册） */
+const userScriptCommandsByTab = reactive<Record<string, UserScriptMenuCommand[]>>({})
+const { show: showMenu } = useContextMenu()
 const activeTabId = computed(() => browserStore.getActiveTabId(props.projectId))
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null)
 
@@ -175,9 +192,45 @@ function reload() {
   if (t?.url) webviews[id]?.loadURL(t.url)
   else webviews[id]?.reload()
 }
+function onIpcMessage(tabId: string, e: any) {
+  if (e?.channel !== USERSCRIPT_HOST_CHANNEL) return
+  const msg = e.args?.[0] as UserScriptHostMessage | undefined
+  if (msg?.type === 'menu') {
+    userScriptCommandsByTab[tabId] = Array.isArray(msg.commands) ? msg.commands : []
+  }
+}
+
+const activeUserScriptCommands = computed(() => {
+  const id = activeTabId.value
+  if (!id) return [] as UserScriptMenuCommand[]
+  return userScriptCommandsByTab[id] ?? []
+})
+
+function runUserScriptCommand(tabId: string, cmd: UserScriptMenuCommand) {
+  const key = `${cmd.scriptId}::${cmd.id}`
+  const code =
+    `(function(){try{var f=window.__mirUserScriptMenu&&window.__mirUserScriptMenu[${JSON.stringify(key)}];` +
+    `if(typeof f==='function')f()}catch(err){console.error('[userscript] 菜单命令执行失败',err)}})()`
+  void webviews[tabId]?.executeJavaScript(code).catch(() => {})
+}
+
+function showUserScriptMenu(e: MouseEvent) {
+  const tabId = activeTabId.value
+  if (!tabId) return
+  const items = activeUserScriptCommands.value.map(cmd => ({
+    label: `${cmd.scriptName} · ${cmd.title}`,
+    action: () => runUserScriptCommand(tabId, cmd)
+  }))
+  if (items.length > 0) showMenu(e, items)
+}
+
 function openDevTools() { webviews[activeTabId.value ?? '']?.openDevTools() }
 
-function onStartLoading(id: string) { state(id).isLoading = true }
+function onStartLoading(id: string) {
+  state(id).isLoading = true
+  // 新文档开始加载：上一页的脚本菜单作废，等本页脚本重新注册
+  userScriptCommandsByTab[id] = []
+}
 function onStopLoading(id: string) { state(id).isLoading = false }
 
 // Link click / location.href change — this is the user-visible intended URL.

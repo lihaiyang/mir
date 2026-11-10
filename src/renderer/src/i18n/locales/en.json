@@ -25,7 +25,9 @@
     "optional": "optional",
     "settings": "Settings",
     "saved": "Saved",
-    "reset": "Reset"
+    "reset": "Reset",
+    "edit": "Edit",
+    "loading": "Loading…"
   },
   "titlebar": {
     "leftTitle": "Items",
@@ -565,5 +567,32 @@
     "approvalModeHint": "What happens before the agent writes files or runs commands.",
     "systemPrompt": "System prompt",
     "systemPromptHint": "Prepended to every conversation. Leave empty to use the built-in prompt."
+  },
+  "userscripts": {
+    "title": "Userscripts",
+    "description": "Built-in lightweight userscript runner: @match/@include/@exclude, @run-at, GM storage, GM_addStyle/GM_addElement, GM_xmlhttpRequest, GM_registerMenuCommand, plus @require / @resource. Scripts live as .user.js files in the user data directory and can be imported or edited here.",
+    "installFromFile": "Import from file",
+    "openDir": "Open script folder",
+    "rescan": "Rescan",
+    "pasteInstall": "Paste script",
+    "cancelPaste": "Cancel paste",
+    "pastePlaceholder": "Paste the full .user.js content here, including the // ==UserScript== metadata block",
+    "pasteHint": "Must include @name and either @match or @include",
+    "install": "Install",
+    "installed": "Installed {count} script(s)",
+    "installedOne": "Installed \"{name}\"",
+    "empty": "No userscripts installed yet.",
+    "emptyHint": "Import from a file, or paste the script content in.",
+    "author": "Author",
+    "matchCount": "Matches {count} rule(s)",
+    "size": "Size {size}",
+    "enable": "Enable or disable",
+    "enabled": "Enabled",
+    "refreshCache": "Re-download assets",
+    "cacheReady": "@require / @resource for \"{name}\" are ready",
+    "confirmRemove": "Delete \"{name}\"? This also clears the GM values it stored.",
+    "saved": "Saved \"{name}\"",
+    "menuTitle": "Userscript menu",
+    "editorHint": "Saving re-parses the metadata; changing @name or @namespace creates a new script id"
   }
 }

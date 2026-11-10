@@ -24,6 +24,15 @@ MIR 是一个本地桌面 IDE，专为人类开发者和 AI 代理协同工作�
 
 标签页支持拖拽排序、跨窗格移动、右键菜单（重命名、复制、关闭其他、关闭右侧）。
 
+### 用户脚本（油猴脚本）
+
+内嵌浏览器内置了轻量用户脚本运行器，可以直接使用 `// ==UserScript==` 格式的油猴脚本，无需安装扩展。
+支持 `@match` / `@include` / `@exclude` / `@run-at` / `@require` / `@resource`，以及
+`GM_getValue`、`GM_setValue`、`GM_addStyle`、`GM_addElement`、`GM_xmlhttpRequest`（主进程代理，绕 CORS 并共享
+浏览器 Cookie）、`GM_registerMenuCommand`（工具栏闪电图标里执行）等 GM API。脚本以 `.user.js` 文件保存在
+用户数据目录，可在「设置 → 用户脚本」里导入、启停、编辑与重新下载依赖。实现细节见
+[docs/userscripts.md](docs/userscripts.md)。
+
 ### 内置终端
 
 终端使用 PTY 创建真实的 shell 进程 `/bin/zsh`，自动继承系统环境变量并注入 `LC_ALL=en_US.UTF-8` 保证 CJK 字符显示正确。支持选中复制、粘贴、清屏、重启，xterm 搜索插件按 `Ctrl+Shift+F` 即可搜索终端内容。主题跟随全局深色/浅色模式。

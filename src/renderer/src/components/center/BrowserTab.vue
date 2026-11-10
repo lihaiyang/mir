@@ -17,6 +17,12 @@
         <Icon :name="isBookmarked ? 'check' : 'plus'" :size="13" />
       </button>
       <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
+      <button
+        v-if="userScriptCommands.length > 0"
+        class="icon-btn us-menu-btn"
+        :title="t('userscripts.menuTitle')"
+        @click="showUserScriptMenu"
+      ><Icon name="zap" :size="13" /></button>
     </div>
 
     <!-- Bookmarks bar -->
@@ -45,6 +51,7 @@
       @console-message="onConsole"
       @did-fail-load="onFailLoad"
       @page-title-updated="onTitleUpdate"
+      @ipc-message="onIpcMessage"
     />
   </div>
 </template>
@@ -61,6 +68,11 @@ import { useContextMenu } from '../../composables/useContextMenu'
 import Icon from '../ui/Icon.vue'
 import type { Tab } from '../../stores/tabs'
 import type { WebviewTag } from 'electron'
+import {
+  USERSCRIPT_HOST_CHANNEL,
+  type UserScriptHostMessage,
+  type UserScriptMenuCommand
+} from '@shared/userscripts'
 
 const { t } = useI18n()
 
@@ -80,6 +92,9 @@ const urlBar = ref(props.tab.browserUrl || 'https://www.google.com')
 const initialUrl = ref(props.tab.browserUrl || 'https://www.google.com')
 const canGoBack = ref(false)
 const canGoForward = ref(false)
+
+/** 当前页面里脚本通过 GM_registerMenuCommand 注册的菜单项（由 preload 通过 ipc-message 下发） */
+const userScriptCommands = ref<UserScriptMenuCommand[]>([])
 
 interface Bookmark { title: string; url: string }
 const bookmarks = ref<Bookmark[]>([])
@@ -126,6 +141,31 @@ watch(() => standaloneNavBus.cmd, (cmd) => {
   standaloneNavBus.cmd = null
 })
 
+function onIpcMessage(e: any) {
+  if (e?.channel !== USERSCRIPT_HOST_CHANNEL) return
+  const msg = e.args?.[0] as UserScriptHostMessage | undefined
+  if (msg?.type === 'menu') {
+    userScriptCommands.value = Array.isArray(msg.commands) ? msg.commands : []
+  }
+}
+
+/** 菜单回调存在页面主世界的 window.__mirUserScriptMenu 上，直接让 webview 执行即可 */
+function runUserScriptCommand(cmd: UserScriptMenuCommand) {
+  const key = `${cmd.scriptId}::${cmd.id}`
+  const code =
+    `(function(){try{var f=window.__mirUserScriptMenu&&window.__mirUserScriptMenu[${JSON.stringify(key)}];` +
+    `if(typeof f==='function')f()}catch(err){console.error('[userscript] 菜单命令执行失败',err)}})()`
+  void wv.value?.executeJavaScript(code).catch(() => {})
+}
+
+function showUserScriptMenu(e: MouseEvent) {
+  const items = userScriptCommands.value.map(cmd => ({
+    label: `${cmd.scriptName} · ${cmd.title}`,
+    action: () => runUserScriptCommand(cmd)
+  }))
+  if (items.length > 0) showMenu(e, items)
+}
+
 function navigate(url: string) {
   let u = url.trim()
   if (!u.startsWith('http://') && !u.startsWith('https://') && !u.startsWith('file://')) {
@@ -165,6 +205,8 @@ function log(msg: string, ...args: any[]) {
 
 function onStartLoading() {
   log('start-loading')
+  // 新文档开始加载：上一页的脚本菜单作废，等本页脚本重新注册
+  userScriptCommands.value = []
   if (isStandalone.value) standaloneNavBus.isLoading = true
 }
 
