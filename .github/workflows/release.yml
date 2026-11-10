@@ -35,6 +35,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # 裸写的 @ 会被 vue-i18n 当成链接消息语法而在渲染期抛错（整页白屏）
+      - name: Check i18n messages
+        run: npm run i18n:check
+
       # No electron-rebuild step: node-pty ships a pure Node-API (N-API) addon,
       # whose ABI is stable across Node/Electron versions — the same pty.node
       # loads under both Node 22 and Electron's bundled Node. electron-builder

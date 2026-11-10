@@ -570,14 +570,14 @@
   },
   "userscripts": {
     "title": "用户脚本",
-    "description": "内置的轻量油猴脚本运行器：支持 @match/@include/@exclude、@run-at、GM 存储、GM_addStyle/GM_addElement、GM_xmlhttpRequest、GM_registerMenuCommand，以及 @require / @resource。脚本以 .user.js 文件形式保存在用户数据目录，也可以在这里导入或编辑。",
+    "description": "内置的轻量油猴脚本运行器：支持 {'@'}match/{'@'}include/{'@'}exclude、{'@'}run-at、GM 存储、GM_addStyle/GM_addElement、GM_xmlhttpRequest、GM_registerMenuCommand，以及 {'@'}require / {'@'}resource。脚本以 .user.js 文件形式保存在用户数据目录，也可以在这里导入或编辑。",
     "installFromFile": "从文件导入",
     "openDir": "打开脚本目录",
     "rescan": "重新扫描",
     "pasteInstall": "粘贴脚本",
     "cancelPaste": "取消粘贴",
     "pastePlaceholder": "在此粘贴 .user.js 的完整内容（含 // ==UserScript== 元数据块）",
-    "pasteHint": "必须包含 @name，以及 @match 或 @include 之一",
+    "pasteHint": "必须包含 {'@'}name，以及 {'@'}match 或 {'@'}include 之一",
     "install": "安装",
     "installed": "已安装 {count} 个脚本",
     "installedOne": "已安装「{name}」",
@@ -589,10 +589,10 @@
     "enable": "启用或停用",
     "enabled": "启用",
     "refreshCache": "重新下载依赖",
-    "cacheReady": "「{name}」的 @require / @resource 已就绪",
+    "cacheReady": "「{name}」的 {'@'}require / {'@'}resource 已就绪",
     "confirmRemove": "确定删除「{name}」吗？它会同时清除该脚本保存的 GM 键值。",
     "saved": "已保存「{name}」",
     "menuTitle": "用户脚本菜单",
-    "editorHint": "保存后会重新解析元数据；修改 @name 或 @namespace 会生成新的脚本 id"
+    "editorHint": "保存后会重新解析元数据；修改 {'@'}name 或 {'@'}namespace 会生成新的脚本 id"
   }
 }
