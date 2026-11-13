@@ -209,11 +209,10 @@ function stopResize() {
   layout.persist()
 }
 
-// Make sure every user-created browser project is part of the sortable
-// left-pane item order (pinned panel is excluded — it has a fixed entry).
+// Make sure every browser project — including the built-in panel, which is a
+// regular sortable left-pane row now — is part of the item order.
 function syncBrowserProjectsToOrder() {
   for (const bp of browserStore.projects) {
-    if (bp.id === PINNED_BROWSER_PROJECT_ID) continue
     const key = 'browser:' + bp.id
     if (!projectStore.itemOrder.includes(key)) {
       projectStore.addToOrder(key)

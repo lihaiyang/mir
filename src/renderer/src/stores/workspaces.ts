@@ -4,7 +4,7 @@ import { toPlainObject } from '../utils'
 import { useProjectStore } from './projects'
 import { useTabStore } from './tabs'
 import { useWebPageStore } from './webPages'
-import { useBrowserStore, PINNED_BROWSER_PROJECT_ID, type BrowserTabState } from './browser'
+import { useBrowserStore, PINNED_BROWSER_PROJECT_ID, BROWSER_PANEL_ORDER_KEY, type BrowserTabState } from './browser'
 import { useLayoutStore } from './layout'
 
 // A workspace is a named snapshot of the full app state: projects, pane layout,
@@ -13,6 +13,8 @@ export interface WorkspaceSnapshot {
   projects: ReturnType<typeof useProjectStore>['projects']
   activeProjectId: string | null
   itemOrder: string[]
+  // Optional because snapshots saved before pinning existed don't have it.
+  pinnedOrder?: string[]
   paneTrees: ReturnType<typeof useTabStore>['paneTrees']
   tabGroups: ReturnType<typeof useTabStore>['tabGroups']
   focusedGroupId: ReturnType<typeof useTabStore>['focusedGroupId']
@@ -65,6 +67,7 @@ export const useWorkspaceStore = defineStore('workspaces', () => {
       projects: toPlainObject(projectStore.projects),
       activeProjectId: projectStore.activeProjectId,
       itemOrder: toPlainObject(projectStore.itemOrder),
+      pinnedOrder: toPlainObject(projectStore.pinnedOrder),
       paneTrees: toPlainObject(tabStore.paneTrees),
       tabGroups: toPlainObject(tabStore.tabGroups),
       focusedGroupId: toPlainObject(tabStore.focusedGroupId),
@@ -94,8 +97,19 @@ export const useWorkspaceStore = defineStore('workspaces', () => {
     projectStore.projects = s.projects
     projectStore.activeProjectId = s.activeProjectId
     projectStore.itemOrder = s.itemOrder
+    projectStore.pinnedOrder = Array.isArray(s.pinnedOrder) ? [...s.pinnedOrder] : []
+    // The browser panel is a sortable row but must always keep an order slot.
+    // Snapshots taken before it became sortable have no pin state for it, so
+    // fall back to the old behavior: pinned at the top.
+    if (!projectStore.itemOrder.includes(BROWSER_PANEL_ORDER_KEY)) {
+      projectStore.itemOrder.unshift(BROWSER_PANEL_ORDER_KEY)
+    }
+    if (!Array.isArray(s.pinnedOrder) && !projectStore.pinnedOrder.includes(BROWSER_PANEL_ORDER_KEY)) {
+      projectStore.pinnedOrder.unshift(BROWSER_PANEL_ORDER_KEY)
+    }
     await projectStore.persist()
     await projectStore.persistOrder()
+    await projectStore.persistPinned()
 
     tabStore.paneTrees = s.paneTrees
     tabStore.tabGroups = s.tabGroups

@@ -18,6 +18,10 @@ export interface BrowserProject {
 
 export const DEFAULT_HOME_URL = 'https://www.baidu.com/'
 export const PINNED_BROWSER_PROJECT_ID = 'browser-panel'
+// Order key of the built-in browser panel in the left pane (itemOrder /
+// pinnedOrder). It is a regular row like projects and web pages: it can be
+// pinned, unpinned and sorted, it just cannot be renamed or removed.
+export const BROWSER_PANEL_ORDER_KEY = 'browser:' + PINNED_BROWSER_PROJECT_ID
 
 // Reload bus: the main process forwards Cmd/Ctrl+R (and F5) to the renderer via
 // `shortcut:reload-browser`; App.vue bumps this nonce. BrowserPanel and BrowserTab

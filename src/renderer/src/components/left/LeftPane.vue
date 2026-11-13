@@ -4,16 +4,7 @@
     <div class="icon-bar">
       <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="14" /></div>
       <div
-        class="icon-bar-btn browser-panel-btn"
-        :class="{ active: browserStore.activeProjectId === PINNED_BROWSER_PROJECT_ID }"
-        :title="$t('leftPane.browserPanel')"
-        @click="openBrowserPanel"
-      >
-        <Icon name="globe" :size="14" />
-        <span class="pin-badge"><Icon name="pin" :size="9" /></span>
-      </div>
-      <div
-        v-for="item in orderedItems"
+        v-for="item in barItems"
         :key="item.orderKey"
         class="icon-bar-btn"
         :class="{ active: isItemActive(item), notifying: item.type === 'webpage' && item.data.hasNotification }"
@@ -21,6 +12,8 @@
         @click="onItemClick(item)"
       >
         <Icon :name="itemIcon(item)" :size="14" />
+        <span v-if="projectStore.isPinned(item.orderKey)" class="pin-badge"><Icon name="pin" :size="9" /></span>
+        <span v-if="unreadOf(item) > 0" class="icon-unread" :title="unreadTitle(item)">{{ unreadLabel(item) }}</span>
       </div>
     </div>
   </div>
@@ -41,18 +34,8 @@
         </div>
       </div>
 
-    <!-- Fixed browser panel entry (pinned, non-removable) -->
-    <div
-      class="left-item browser-panel-entry"
-      :class="{ active: browserStore.activeProjectId === PINNED_BROWSER_PROJECT_ID }"
-      @click="openBrowserPanel"
-    >
-      <span class="item-icon"><Icon name="globe" :size="14" /></span>
-      <span class="item-name">{{ $t('leftPane.browserPanel') }}</span>
-      <span class="pin-badge" :title="$t('leftPane.pinned')"><Icon name="pin" :size="10" /></span>
-    </div>
-    <div class="left-divider" />
-
+    <!-- The browser panel is a regular, pinnable row (it lives in itemOrder /
+         pinnedOrder like everything else) so it can be moved below any item. -->
     <div class="item-list">
       <div
         v-if="orderedItems.length === 0"
@@ -62,30 +45,32 @@
       </div>
 
       <div
-        v-for="(item, idx) in orderedItems"
-        :key="item.orderKey"
+        v-for="row in displayItems"
+        :key="row.item.orderKey"
         class="left-item"
         :class="{
-          active: isItemActive(item),
-          notifying: item.type === 'webpage' && item.data.hasNotification
+          active: isItemActive(row.item),
+          notifying: row.item.type === 'webpage' && row.item.data.hasNotification,
+          pinned: row.group === 'pinned',
+          'section-start': row.group === 'normal' && row.idx === 0 && pinnedItems.length > 0
         }"
         draggable="true"
-        @click="onItemClick(item)"
-        @contextmenu="showItemMenu($event, item, idx)"
-        @dragstart="dragStart($event, idx, item)"
-        @dragover.prevent="dragOver($event, idx, item)"
-        @dragleave="dragLeave($event, idx)"
-        @drop.stop="dragDrop(idx, item)"
+        @click="onItemClick(row.item)"
+        @contextmenu="showItemMenu($event, row)"
+        @dragstart="dragStart($event, row)"
+        @dragover="dragOver($event, row)"
+        @dragleave="dragLeave($event)"
+        @drop.stop="dragDrop(row)"
         @dragend="dragEnd"
       >
         <span class="item-icon">
-          <Icon :name="itemIcon(item)" :size="14" />
+          <Icon :name="itemIcon(row.item)" :size="14" />
         </span>
         <span
-          v-if="!editing || editingId !== item.orderKey"
+          v-if="!editing || editingId !== row.item.orderKey"
           class="item-name"
-          @dblclick.stop="startEdit(item)"
-        >{{ itemTitle(item) }}</span>
+          @dblclick.stop="startEdit(row.item)"
+        >{{ itemTitle(row.item) }}</span>
         <input
           v-else
           ref="editInput"
@@ -96,7 +81,20 @@
           @keydown.esc="cancelEdit"
           @click.stop
         />
-        <span class="item-subtitle" :title="itemSubtitle(item)">{{ itemSubtitle(item) }}</span>
+        <span
+          v-if="unreadOf(row.item) > 0"
+          class="item-unread"
+          :title="unreadTitle(row.item)"
+        >{{ unreadLabel(row.item) }}</span>
+        <button
+          class="item-pin-btn"
+          :class="{ pinned: projectStore.isPinned(row.item.orderKey) }"
+          :title="projectStore.isPinned(row.item.orderKey) ? $t('leftPane.unpin') : $t('leftPane.pinToTop')"
+          @click.stop="projectStore.togglePin(row.item.orderKey)"
+        >
+          <Icon name="pin" :size="11" />
+        </button>
+        <span class="item-subtitle" :title="itemSubtitle(row.item)">{{ itemSubtitle(row.item) }}</span>
       </div>
     </div>
 
@@ -204,15 +202,47 @@ const orderedItems = computed<OrderedItem[]>(() => {
       const w = webPageStore.webPages.find(w => w.id === id)
       return w ? { type: 'webpage', data: w, orderKey: key } : null
     } else if (type === 'browser') {
-      // The pinned browser panel is shown as a separate fixed entry; only
-      // user-created browser projects participate in the sortable list.
-      if (id === PINNED_BROWSER_PROJECT_ID) return null
+      // Includes the built-in browser panel: it is a normal row now, so it can
+      // be pinned/unpinned and sorted against projects and web pages.
       const bp = browserStore.projects.find(b => b.id === id)
       return bp ? { type: 'browser', data: bp, orderKey: key } : null
     }
     return null
   }).filter(Boolean) as OrderedItem[]
 })
+
+type ItemGroup = 'pinned' | 'normal'
+
+interface DisplayItem {
+  item: OrderedItem
+  group: ItemGroup
+  /** Position within its own group (pinned / normal), not in itemOrder. */
+  idx: number
+}
+
+// Pinned items, in pin order. Stale keys (item removed from another store)
+// simply do not resolve and are skipped instead of breaking the list.
+const pinnedItems = computed<OrderedItem[]>(() => {
+  const byKey = new Map(orderedItems.value.map(item => [item.orderKey, item]))
+  return projectStore.pinnedOrder
+    .map(key => byKey.get(key))
+    .filter((item): item is OrderedItem => Boolean(item))
+})
+
+// Everything else, keeping the flat itemOrder sorting.
+const unpinnedItems = computed<OrderedItem[]>(() =>
+  orderedItems.value.filter(item => !projectStore.isPinned(item.orderKey))
+)
+
+// Collapsed icon bar: pinned items first, then the rest.
+const barItems = computed<OrderedItem[]>(() => [...pinnedItems.value, ...unpinnedItems.value])
+
+// Single render list for the expanded pane. Drag / move-up / move-down use
+// `group` + `idx`, so the two sections sort independently.
+const displayItems = computed<DisplayItem[]>(() => [
+  ...pinnedItems.value.map((item, idx) => ({ item, group: 'pinned' as const, idx })),
+  ...unpinnedItems.value.map((item, idx) => ({ item, group: 'normal' as const, idx }))
+])
 
 function isItemActive(item: OrderedItem): boolean {
   if (item.type === 'project') {
@@ -226,7 +256,14 @@ function isItemActive(item: OrderedItem): boolean {
 
 function itemTitle(item: OrderedItem): string {
   if (item.type === 'project') return (item.data as Project).name
-  if (item.type === 'browser') return (item.data as BrowserProject).name
+  if (item.type === 'browser') {
+    // The built-in panel's stored name is not localized, so keep showing the
+    // localized label it had as the old fixed entry.
+    if ((item.data as BrowserProject).id === PINNED_BROWSER_PROJECT_ID) {
+      return t('leftPane.browserPanel')
+    }
+    return (item.data as BrowserProject).name
+  }
   return (item.data as WebPage).title
 }
 
@@ -248,6 +285,22 @@ function itemSubtitle(item: OrderedItem): string {
     return `${bp.tabs.length} ${t('browser.tabs')}`
   }
   return (item.data as WebPage).url
+}
+
+/** Unread notification count; only web pages carry one. */
+function unreadOf(item: OrderedItem): number {
+  if (item.type !== 'webpage') return 0
+  return Math.max(0, (item.data as WebPage).unreadCount || 0)
+}
+
+/** Badge text, clamped like other chat apps so the row never grows. */
+function unreadLabel(item: OrderedItem): string {
+  const n = unreadOf(item)
+  return n > 99 ? '99+' : String(n)
+}
+
+function unreadTitle(item: OrderedItem): string {
+  return t('leftPane.unreadNotifications', { count: unreadOf(item) })
 }
 
 function onItemClick(item: OrderedItem) {
@@ -280,16 +333,6 @@ function onItemClick(item: OrderedItem) {
   }
 }
 
-// Fixed browser panel: a non-removable multi-tab browser entry.
-function openBrowserPanel() {
-  if (projectStore.activeProject) rightCollapsedSnapshot = layout.rightCollapsed
-  layout.rightCollapsed = true
-  layout.persist()
-  browserStore.activate()
-  projectStore.setActiveProject(null)
-  webPageStore.selectWebPage(null)
-}
-
 // Drag reorder.
 // State is kept in plain locals (NOT reactive refs): mutating refs inside
 // dragStart/dragOver triggers Vue re-renders mid-DnD, which in Electron can
@@ -304,8 +347,9 @@ function openBrowserPanel() {
 // fallback.
 let dragFromIdx = -1
 let dragFromKey = ''
-let lastDropIdx = -1
+let dragFromGroup: ItemGroup | '' = ''
 let lastDropKey = ''
+let lastDropGroup: ItemGroup | '' = ''
 let lastDropTarget: HTMLElement | null = null
 let dropHandled = false
 
@@ -316,17 +360,18 @@ function clearDropIndicator() {
   }
 }
 
-function dragStart(e: DragEvent, idx: number, item: OrderedItem) {
+function dragStart(e: DragEvent, row: DisplayItem) {
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move'
     // Non-empty payload: some Chromium builds won't initiate a usable drag
     // session when the DataTransfer carries no data, which prevents drop.
     e.dataTransfer.setData('text/plain', 'mir-reorder')
   }
-  dragFromIdx = idx
-  dragFromKey = item.orderKey
-  lastDropIdx = -1
+  dragFromIdx = row.idx
+  dragFromKey = row.item.orderKey
+  dragFromGroup = row.group
   lastDropKey = ''
+  lastDropGroup = ''
   lastDropTarget = null
   dropHandled = false
   // Mark body as dragging so embedded <webview> elements become click-through,
@@ -335,52 +380,73 @@ function dragStart(e: DragEvent, idx: number, item: OrderedItem) {
   ;(e.currentTarget as HTMLElement).classList.add('drag-source')
 }
 
-function dragOver(e: DragEvent, idx: number, item: OrderedItem) {
-  // Explicit preventDefault (in addition to the .prevent modifier) to
-  // guarantee the target accepts the drop.
+function dragOver(e: DragEvent, row: DisplayItem) {
+  // Pinned and normal rows are two independent sortable groups. Pinning is an
+  // explicit action (pin button / context menu), so a drag started in one
+  // group never reorders or pins items in the other.
+  if (dragFromGroup !== row.group) {
+    lastDropKey = ''
+    lastDropGroup = ''
+    clearDropIndicator()
+    return
+  }
+  // Explicit preventDefault guarantees the target accepts the drop.
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
   const el = e.currentTarget as HTMLElement
-  lastDropIdx = idx
-  lastDropKey = item.orderKey
+  lastDropKey = row.item.orderKey
+  lastDropGroup = row.group
   if (lastDropTarget !== el) {
     clearDropIndicator()
     lastDropTarget = el
   }
-  // Indicator mirrors reorderItems() semantics: dragging down (fromIdx < idx)
+  // Indicator mirrors the reorder semantics: dragging down (fromIdx < idx)
   // inserts below the target; dragging up inserts above it.
-  const above = dragFromIdx > idx
+  const above = dragFromIdx > row.idx
   el.classList.toggle('drop-above', above)
   el.classList.toggle('drop-below', !above)
 }
 
-function dragLeave(e: DragEvent, _idx: number) {
+function dragLeave(e: DragEvent) {
   // Don't clear when merely moving onto a child element of the same item.
   const related = e.relatedTarget as Node | null
   if (related && (e.currentTarget as HTMLElement).contains(related)) return
   if (lastDropTarget === e.currentTarget) clearDropIndicator()
 }
 
-function dragDrop(_toIdx: number, item: OrderedItem) {
-  if (dragFromKey && item.orderKey && dragFromKey !== item.orderKey) {
-    projectStore.reorderItemsByKey(dragFromKey, item.orderKey)
+function dragDrop(row: DisplayItem) {
+  if (dragFromGroup === row.group && dragFromKey && dragFromKey !== row.item.orderKey) {
+    if (row.group === 'pinned') {
+      projectStore.reorderPinnedByKey(dragFromKey, row.item.orderKey)
+    } else {
+      projectStore.reorderItemsByKey(dragFromKey, row.item.orderKey)
+    }
   }
   dropHandled = true
   dragFromIdx = -1
   dragFromKey = ''
+  dragFromGroup = ''
   clearDropIndicator()
 }
 
 function dragEnd() {
   // Safety net: if `drop` never fired on a target (e.g. webview interference),
-  // complete the reorder here using the last hovered item.
-  if (!dropHandled && dragFromKey && lastDropKey && dragFromKey !== lastDropKey) {
-    projectStore.reorderItemsByKey(dragFromKey, lastDropKey)
+  // complete the reorder here using the last hovered item in the same group.
+  if (
+    !dropHandled && dragFromKey && lastDropKey &&
+    dragFromKey !== lastDropKey && dragFromGroup === lastDropGroup
+  ) {
+    if (dragFromGroup === 'pinned') {
+      projectStore.reorderPinnedByKey(dragFromKey, lastDropKey)
+    } else {
+      projectStore.reorderItemsByKey(dragFromKey, lastDropKey)
+    }
   }
   dragFromIdx = -1
   dragFromKey = ''
-  lastDropIdx = -1
+  dragFromGroup = ''
   lastDropKey = ''
+  lastDropGroup = ''
   dropHandled = false
   clearDropIndicator()
   document.body.classList.remove('mir-dragging')
@@ -512,24 +578,60 @@ async function confirmNewFolder() {
 const removingItem = ref<{ type: string; id: string; title: string; hint: string } | null>(null)
 const agentProject = ref<Project | null>(null)
 
-function showItemMenu(e: MouseEvent, item: OrderedItem, idx: number) {
+function groupList(group: ItemGroup): OrderedItem[] {
+  return group === 'pinned' ? pinnedItems.value : unpinnedItems.value
+}
+
+// Move one step up/down inside the row's own group. Pinned and normal items
+// use separate order arrays, so a move never crosses the pin boundary.
+function moveWithinGroup(row: DisplayItem, direction: -1 | 1) {
+  const target = groupList(row.group)[row.idx + direction]
+  if (!target) return
+  if (row.group === 'pinned') {
+    projectStore.reorderPinnedByKey(row.item.orderKey, target.orderKey)
+  } else {
+    projectStore.reorderItemsByKey(row.item.orderKey, target.orderKey)
+  }
+}
+
+function pinLabel(item: OrderedItem): string {
+  return projectStore.isPinned(item.orderKey)
+    ? t('leftPane.unpin')
+    : t('leftPane.pinToTop')
+}
+
+function showItemMenu(e: MouseEvent, row: DisplayItem) {
+  const item = row.item
   onItemClick(item)
+  const groupSize = groupList(row.group).length
   if (item.type === 'project') {
     const project = item.data as Project
     showMenu(e, [
       { label: t('common.rename'), icon: 'file-text', action: () => startEdit(item) },
+      { label: pinLabel(item), icon: 'pin', action: () => projectStore.togglePin(item.orderKey) },
       { label: t('leftPane.agentCommands'), icon: 'robot', action: () => { agentProject.value = project } },
-      { label: t('common.moveUp'), icon: 'arrow-up', disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
-      { label: t('common.moveDown'), icon: 'arrow-down', disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
+      { label: t('common.moveUp'), icon: 'arrow-up', disabled: row.idx === 0, action: () => moveWithinGroup(row, -1) },
+      { label: t('common.moveDown'), icon: 'arrow-down', disabled: row.idx === groupSize - 1, action: () => moveWithinGroup(row, 1) },
       { separator: true },
       { label: t('contextMenu.removeFromList'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'project', id: project.id, title: project.name, hint: t('leftPane.removeProjectHint') } } }
     ])
   } else if (item.type === 'browser') {
     const bp = item.data as BrowserProject
+    // The built-in browser panel can be pinned/unpinned and moved like any
+    // other row, but it cannot be renamed or removed.
+    if (bp.id === PINNED_BROWSER_PROJECT_ID) {
+      showMenu(e, [
+        { label: pinLabel(item), icon: 'pin', action: () => projectStore.togglePin(item.orderKey) },
+        { label: t('common.moveUp'), icon: 'arrow-up', disabled: row.idx === 0, action: () => moveWithinGroup(row, -1) },
+        { label: t('common.moveDown'), icon: 'arrow-down', disabled: row.idx === groupSize - 1, action: () => moveWithinGroup(row, 1) }
+      ])
+      return
+    }
     showMenu(e, [
       { label: t('common.rename'), icon: 'file-text', action: () => startEdit(item) },
-      { label: t('common.moveUp'), icon: 'arrow-up', disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
-      { label: t('common.moveDown'), icon: 'arrow-down', disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
+      { label: pinLabel(item), icon: 'pin', action: () => projectStore.togglePin(item.orderKey) },
+      { label: t('common.moveUp'), icon: 'arrow-up', disabled: row.idx === 0, action: () => moveWithinGroup(row, -1) },
+      { label: t('common.moveDown'), icon: 'arrow-down', disabled: row.idx === groupSize - 1, action: () => moveWithinGroup(row, 1) },
       { separator: true },
       { label: t('common.remove'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'browser', id: bp.id, title: bp.name, hint: t('leftPane.removeBrowserProjectHint') } } }
     ])
@@ -539,9 +641,10 @@ function showItemMenu(e: MouseEvent, item: OrderedItem, idx: number) {
       { label: t('common.open'), icon: 'globe', action: () => onItemClick(item) },
       { label: t('contextMenu.copyUrl'), icon: 'copy', action: () => navigator.clipboard.writeText(wp.url) },
       { label: t('common.rename'), icon: 'file-text', action: () => startEdit(item) },
+      { label: pinLabel(item), icon: 'pin', action: () => projectStore.togglePin(item.orderKey) },
       { label: t('contextMenu.markAsRead'), icon: 'check', disabled: !wp.hasNotification, action: () => markAsRead(wp) },
-      { label: t('common.moveUp'), icon: 'arrow-up', disabled: idx === 0, action: () => projectStore.moveItem(item.orderKey, -1) },
-      { label: t('common.moveDown'), icon: 'arrow-down', disabled: idx === orderedItems.value.length - 1, action: () => projectStore.moveItem(item.orderKey, 1) },
+      { label: t('common.moveUp'), icon: 'arrow-up', disabled: row.idx === 0, action: () => moveWithinGroup(row, -1) },
+      { label: t('common.moveDown'), icon: 'arrow-down', disabled: row.idx === groupSize - 1, action: () => moveWithinGroup(row, 1) },
       { separator: true },
       { label: t('common.remove'), icon: 'trash', danger: true, action: () => { removingItem.value = { type: 'webpage', id: wp.id, title: wp.title, hint: t('leftPane.removeWebPageHint') } } }
     ])
@@ -582,6 +685,8 @@ const editValue = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
 
 function startEdit(item: OrderedItem) {
+  // The built-in browser panel keeps its localized label and is not renameable.
+  if (item.type === 'browser' && (item.data as BrowserProject).id === PINNED_BROWSER_PROJECT_ID) return
   editing.value = true
   editingId.value = item.orderKey
   editValue.value = itemTitle(item)
@@ -729,6 +834,43 @@ function cancelEdit() { editing.value = false }
 .left-item.drop-above::before { top: 0; }
 .left-item.drop-below::before { bottom: 0; }
 
+/* Pinned rows echo the fixed browser entry: accent icon, kept in the top group. */
+.left-item.pinned .item-icon { color: var(--text-accent); }
+
+/* Separator between the pinned group and the normal list. Drawn with a border
+   on the row box instead of ::before, which is reserved for drop indicators,
+   so a hovered row can still show its drag line. */
+.left-item.section-start {
+  margin-top: 7px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 6px;
+}
+
+/* Pin toggle. Always in the DOM (only opacity changes) so revealing it on
+   hover never shifts the row; pinned rows keep it visible as a state cue. */
+.item-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.left-item:hover .item-pin-btn,
+.left-item:focus-within .item-pin-btn,
+.item-pin-btn.pinned { opacity: 1; }
+.item-pin-btn.pinned { color: var(--text-accent); }
+.item-pin-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.item-pin-btn.pinned:hover { color: var(--text-accent); }
+
 .item-icon {
   display: inline-flex;
   align-items: center;
@@ -766,9 +908,7 @@ function cancelEdit() { editing.value = false }
   white-space: nowrap;
 }
 
-/* Fixed browser panel entry */
-.browser-panel-entry { cursor: pointer; }
-.browser-panel-entry .item-icon { color: var(--text-accent); }
+/* Pin badge (collapsed icon bar) */
 .pin-badge {
   display: inline-flex;
   align-items: center;
@@ -787,12 +927,44 @@ function cancelEdit() { editing.value = false }
   height: 10px;
   color: var(--text-accent);
 }
-.left-divider {
-  height: 1px;
-  background: var(--border-color);
-  margin: 3px 8px;
+/* Unread notification count. Amber matches the notify pulse; --text-on-accent
+   flips with the theme so the digits stay readable on both backgrounds. */
+.item-unread {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--text-warning);
+  color: var(--text-on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
-
+.icon-bar-btn .icon-unread {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 13px;
+  height: 12px;
+  padding: 0 3px;
+  border: 1px solid var(--bg-secondary);
+  border-radius: var(--radius-pill);
+  background: var(--text-warning);
+  color: var(--text-on-accent);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
 /* Notification blink */
 @keyframes notify-pulse {
   0%, 100% { background: transparent; }

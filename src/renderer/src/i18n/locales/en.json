@@ -55,6 +55,9 @@
     "addBrowserProject": "Browser Project",
     "removeBrowserProjectHint": "This browser project and its tabs will be removed from the list.",
     "pinned": "Pinned",
+    "pinToTop": "Pin to Top",
+    "unpin": "Unpin",
+    "unreadNotifications": "{count} unread notifications",
     "homeProject": "Home"
   },
   "workspace": {

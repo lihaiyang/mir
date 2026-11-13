@@ -266,9 +266,11 @@ function onTitleUpdate(e: any) {
 
   const currentUrl = wv.value?.getURL()
   if (currentUrl) {
+    // Report every title the page sets: the web page store decides whether it
+    // is a new notification and what the unread badge should show.
     for (const wp of webPageStore.webPages) {
-      if (wp.url === currentUrl && title !== wp.baselineTitle) {
-        webPageStore.setNotification(wp.id, true)
+      if (wp.url === currentUrl) {
+        void webPageStore.noteTitle(wp.id, title)
       }
     }
   }
