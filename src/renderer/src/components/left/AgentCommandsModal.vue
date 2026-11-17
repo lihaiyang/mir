@@ -75,12 +75,12 @@ async function launch(cmd: AgentCommand) {
 </script>
 
 <style scoped>
-.agent-list { display: flex; flex-direction: column; gap: 12px; max-height: 320px; overflow-y: auto; margin: 8px 0; }
-.agent-item { border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.agent-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin: 8px 0; }
+.agent-item { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-tertiary); }
 .agent-item-row { display: flex; gap: 4px; align-items: center; }
-.agent-name-input { flex: 1; font-size: 13px; }
-.agent-cmd-input { width: 100%; font-size: 12px; font-family: monospace; }
-.agent-desc-input { width: 100%; font-size: 11px; color: var(--text-secondary); }
-.agent-empty { color: var(--text-secondary); font-size: 12px; text-align: center; padding: 12px; }
+.agent-name-input { flex: 1; font-size: var(--text-md); }
+.agent-cmd-input { width: 100%; font-size: var(--text-sm); font-family: var(--font-mono); }
+.agent-desc-input { width: 100%; font-size: var(--text-xs); color: var(--text-secondary); }
+.agent-empty { color: var(--text-faint); font-size: var(--text-sm); text-align: center; padding: 16px; }
 .icon-btn.danger:hover { color: var(--text-danger); }
 </style>

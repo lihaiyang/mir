@@ -115,24 +115,24 @@ function formatTime(ts: number): string {
 .ws-list {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 .ws-empty {
-  padding: 16px;
+  padding: 20px 16px;
   text-align: center;
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--text-faint);
+  font-size: var(--text-sm);
 }
 .ws-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: var(--text-md);
 }
 .ws-item + .ws-item {
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-subtle);
 }
 .ws-item.active {
   background: var(--bg-selected);
@@ -144,9 +144,9 @@ function formatTime(ts: number): string {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ws-name:hover { color: var(--text-accent); }
+.ws-name:hover { color: var(--accent-strong); }
 .ws-time {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-faint);
   white-space: nowrap;
 }
@@ -157,9 +157,9 @@ function formatTime(ts: number): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;

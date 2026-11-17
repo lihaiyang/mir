@@ -165,11 +165,11 @@ function onMarkdownClick(event: MouseEvent): void {
   max-width: 78%;
   padding: var(--space-2) var(--space-3);
   background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
   color: var(--text-primary);
   font-size: var(--text-md);
-  line-height: 1.55;
+  line-height: var(--leading-base);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -181,15 +181,15 @@ function onMarkdownClick(event: MouseEvent): void {
   align-items: flex-start;
 }
 .agent-avatar {
-  margin-top: 3px;
-  color: var(--text-accent);
-  opacity: 0.75;
+  margin-top: 4px;
+  color: var(--accent-strong);
+  opacity: 0.9;
 }
 .agent-body {
   flex: 1;
   min-width: 0;
-  font-size: var(--text-md);
-  line-height: 1.6;
+  font-size: var(--text-base);
+  line-height: var(--leading-lg);
   color: var(--text-primary);
 }
 .markdown {
@@ -211,21 +211,21 @@ function onMarkdownClick(event: MouseEvent): void {
 .markdown :deep(ul) { list-style: disc; }
 .markdown :deep(ol) { list-style: decimal; }
 .markdown :deep(li) { margin: 0.15em 0; }
-.markdown :deep(a) { color: var(--text-accent); text-decoration: none; cursor: pointer; }
+.markdown :deep(a) { color: var(--accent-strong); text-decoration: none; cursor: pointer; }
 .markdown :deep(a:hover) { text-decoration: underline; }
 .markdown :deep(code) {
   font-family: var(--font-mono);
   font-size: 0.88em;
-  background: var(--bg-tertiary);
-  padding: 0.12em 0.32em;
-  border-radius: 3px;
+  background: var(--bg-elevated);
+  padding: 0.12em 0.34em;
+  border-radius: var(--radius-xs);
 }
 .markdown :deep(pre) {
   margin: 0.5em 0;
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   overflow-x: auto;
 }
 .markdown :deep(pre code) { background: none; padding: 0; font-size: var(--text-sm); line-height: 1.5; }
@@ -237,18 +237,19 @@ function onMarkdownClick(event: MouseEvent): void {
 }
 .markdown :deep(table) { border-collapse: collapse; margin: 0.5em 0; width: 100%; }
 .markdown :deep(th),
-.markdown :deep(td) { border: 1px solid var(--border-color); padding: 4px 8px; text-align: left; font-size: var(--text-sm); }
+.markdown :deep(td) { border: 1px solid var(--border-subtle); padding: 4px 8px; text-align: left; font-size: var(--text-sm); }
 .markdown :deep(th) { background: var(--bg-secondary); font-weight: 600; }
-.markdown :deep(hr) { border: none; border-top: 1px solid var(--border-color); margin: 0.8em 0; }
-.markdown :deep(img) { max-width: 100%; border-radius: var(--radius-sm); }
+.markdown :deep(hr) { border: none; border-top: 1px solid var(--border-subtle); margin: 0.8em 0; }
+.markdown :deep(img) { max-width: 100%; border-radius: var(--radius-md); }
 
 .stream-caret {
   display: inline-block;
-  width: 7px;
+  width: 6px;
   height: 14px;
   margin-left: 2px;
   vertical-align: text-bottom;
-  background: var(--text-accent);
+  border-radius: 1px;
+  background: var(--accent-strong);
   animation: caret-blink 1s steps(2, start) infinite;
 }
 @keyframes caret-blink {

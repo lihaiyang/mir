@@ -225,7 +225,7 @@ function onKeydown(event: KeyboardEvent): void {
   position: relative;
   flex-shrink: 0;
   padding: var(--space-2) var(--space-4) var(--space-3);
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-subtle);
   background: var(--bg-primary);
 }
 
@@ -233,28 +233,29 @@ function onKeydown(event: KeyboardEvent): void {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--bg-tertiary);
+  box-shadow: var(--shadow-1);
   transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
 .composer-box:focus-within {
-  border-color: var(--text-accent);
-  box-shadow: var(--focus-ring);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .composer.is-disabled .composer-box { opacity: 0.6; }
 
 .composer-input {
   width: 100%;
-  min-height: 30px;
-  max-height: 160px;
+  min-height: 32px;
+  max-height: 180px;
   padding: var(--space-2) var(--space-3) 0;
   border: none;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: var(--text-md);
-  line-height: 1.5;
+  font-size: var(--text-base);
+  line-height: var(--leading-lg);
   resize: none;
   overflow-y: hidden;
 }
@@ -284,11 +285,11 @@ function onKeydown(event: KeyboardEvent): void {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border-radius: var(--radius-sm);
-  color: var(--text-accent);
+  color: var(--accent-strong);
 }
 .composer-send:hover:not(:disabled) { background: var(--bg-hover); }
 .composer-send:disabled { color: var(--text-faint); }
@@ -314,19 +315,19 @@ function onKeydown(event: KeyboardEvent): void {
   z-index: 20;
   max-height: 220px;
   overflow-y: auto;
-  padding: var(--space-1);
-  border: 1px solid var(--border-strong);
+  padding: 4px;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  box-shadow: var(--shadow-2);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-panel);
 }
 .slash-item {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   width: 100%;
-  padding: 5px var(--space-2);
-  border-radius: var(--radius-sm);
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-xs);
   text-align: left;
 }
 .slash-item.is-active { background: var(--bg-selected); }
@@ -334,7 +335,7 @@ function onKeydown(event: KeyboardEvent): void {
   flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--text-accent);
+  color: var(--accent-strong);
 }
 .slash-desc {
   flex: 1;

@@ -35,32 +35,34 @@ const emit = defineEmits<{
   position: fixed;
   inset: 0;
   z-index: 1100;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .bsc-modal {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
   width: 420px;
   padding: 20px;
 }
 
 .bsc-title {
-  font-size: 15px;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
 }
 
 .bsc-message {
-  font-size: 13px;
+  font-size: var(--text-md);
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: var(--leading-md);
   margin-bottom: 20px;
 }
 
@@ -71,11 +73,11 @@ const emit = defineEmits<{
 }
 
 .danger {
-  color: #f44747;
-  border-color: rgba(244, 71, 71, 0.4);
+  color: var(--text-danger);
+  border-color: color-mix(in srgb, var(--text-danger) 40%, var(--border-color));
 }
 
 .danger:hover {
-  background: rgba(244, 71, 71, 0.1);
+  background: var(--danger-soft);
 }
 </style>

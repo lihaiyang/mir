@@ -101,11 +101,11 @@ async function respond(optionId: string | null): Promise<void> {
 <style scoped>
 .permission-card {
   position: relative;
-  margin: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0;
   padding: var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--text-warning) 45%, var(--border-color));
+  border: 1px solid color-mix(in srgb, var(--text-warning) 32%, var(--border-color));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--text-warning) 7%, var(--bg-secondary));
+  background: var(--warning-soft);
   box-shadow: var(--shadow-1);
 }
 
@@ -184,14 +184,15 @@ async function respond(optionId: string | null): Promise<void> {
 
 .permission-btn--allow_once,
 .permission-btn--allow_always {
-  color: var(--text-on-accent);
-  background: var(--text-accent);
+  color: var(--bg-primary);
+  background: var(--text-primary);
   border-color: transparent;
+  font-weight: 600;
 }
 .permission-btn--allow_once:hover,
 .permission-btn--allow_always:hover {
-  color: var(--text-on-accent);
-  filter: brightness(1.08);
+  color: var(--bg-primary);
+  filter: brightness(0.94);
 }
 
 .permission-btn--reject_always { color: var(--text-danger); }

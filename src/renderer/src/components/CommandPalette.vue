@@ -138,12 +138,12 @@ function runItem(cmd: PaletteCommand) {
 }
 
 .cp-modal {
-  background: var(--bg-primary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-3);
-  width: 560px;
-  max-height: 440px;
+  width: 580px;
+  max-height: 460px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -157,28 +157,29 @@ function runItem(cmd: PaletteCommand) {
 
 .cp-input {
   width: 100%;
-  padding: 12px 16px;
-  font-size: 14px;
+  padding: 14px 16px;
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 0;
   outline: none;
   box-shadow: none;
 }
 .cp-input:focus { box-shadow: none; }
-.cp-input::placeholder { color: var(--text-secondary); }
+.cp-input::placeholder { color: var(--text-faint); }
 
 .cp-list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 6px;
 }
 
 .cp-group {
-  padding: 8px 16px 4px;
-  font-size: 10px;
+  padding: 8px 8px 4px;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -188,9 +189,11 @@ function runItem(cmd: PaletteCommand) {
 .cp-item {
   display: flex;
   align-items: center;
-  padding: 7px 16px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
   color: var(--text-primary);
   gap: 10px;
 }
@@ -198,8 +201,8 @@ function runItem(cmd: PaletteCommand) {
   background: var(--bg-hover);
 }
 .cp-item.active {
-  background: var(--bg-active);
-  color: #fff;
+  background: var(--accent-soft);
+  color: var(--text-primary);
 }
 .cp-item-icon {
   display: inline-flex;
@@ -209,7 +212,7 @@ function runItem(cmd: PaletteCommand) {
   color: var(--text-secondary);
   flex-shrink: 0;
 }
-.cp-item.active .cp-item-icon { color: rgba(255,255,255,0.8); }
+.cp-item.active .cp-item-icon { color: var(--accent-strong); }
 
 .cp-item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -217,45 +220,45 @@ function runItem(cmd: PaletteCommand) {
   color: var(--text-warning);
   font-weight: 600;
 }
-.cp-item.active .cp-match { color: #fff; text-decoration: underline; }
+.cp-item.active .cp-match { color: var(--text-warning); text-decoration: underline; }
 
 .cp-item-kbd {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  padding: 1px 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .cp-item.active .cp-item-kbd {
-  color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.2);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
 }
 
 .cp-empty {
-  padding: 24px 16px;
+  padding: 28px 16px;
   text-align: center;
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--text-faint);
+  font-size: var(--text-md);
 }
 
 .cp-footer {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 16px;
-  border-top: 1px solid var(--border-color);
+  padding: 7px 14px;
+  border-top: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
 }
 .cp-footer-hint {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-faint);
 }
 .cp-footer-hint kbd {
@@ -263,13 +266,13 @@ function runItem(cmd: PaletteCommand) {
   font-size: 10px;
   color: var(--text-secondary);
   background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
   padding: 0 4px;
 }
 .cp-footer-count {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-faint);
 }
 </style>

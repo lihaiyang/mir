@@ -200,39 +200,40 @@ onMounted(() => {
 .plugin-manager {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 14px;
+  padding: 20px;
   height: 100%;
   overflow: auto;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 .pm-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.pm-title { font-size: 16px; font-weight: 600; }
+.pm-title { font-size: var(--text-xl); line-height: var(--leading-xl); font-weight: 600; }
 .pm-header-actions { display: flex; gap: 8px; }
 .pm-hint {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   padding: 8px 12px;
   background: var(--bg-secondary);
-  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   word-break: break-all;
 }
-.pm-hint code { color: var(--text-accent); font-family: monospace; }
+.pm-hint code { color: var(--accent-strong); font-family: var(--font-mono); }
 .pm-msg {
   padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
 }
-.pm-msg.ok { background: rgba(68,170,68,0.15); color: #4a4; }
-.pm-msg.fail { background: rgba(238,85,85,0.15); color: #e55; }
+.pm-msg.ok { background: var(--success-soft); color: var(--text-success); }
+.pm-msg.fail { background: var(--danger-soft); color: var(--text-danger); }
 .pm-empty {
-  color: var(--text-secondary);
+  color: var(--text-faint);
   padding: 32px;
   text-align: center;
 }
@@ -240,53 +241,54 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 12px;
+  padding: 14px;
   background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   gap: 12px;
 }
 .pm-card.disabled { opacity: 0.5; }
 .pm-card-info { flex: 1; min-width: 0; }
-.pm-card-name { font-weight: 600; font-size: 14px; }
-.pm-card-version { font-weight: 400; font-size: 11px; color: var(--text-secondary); margin-left: 6px; }
-.pm-card-id { font-size: 11px; color: var(--text-secondary); font-family: monospace; margin-top: 2px; }
-.pm-card-desc { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
-.pm-card-author { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.pm-card-name { font-weight: 600; font-size: var(--text-base); line-height: var(--leading-base); }
+.pm-card-version { font-weight: 400; font-size: var(--text-xs); color: var(--text-faint); margin-left: 6px; }
+.pm-card-id { font-size: var(--text-xs); color: var(--text-faint); font-family: var(--font-mono); margin-top: 2px; }
+.pm-card-desc { font-size: var(--text-sm); color: var(--text-secondary); margin-top: 6px; }
+.pm-card-author { font-size: var(--text-xs); color: var(--text-faint); margin-top: 4px; }
 .pm-card-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .pm-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  background: var(--bg-primary);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 .pm-btn:hover { background: var(--bg-hover); }
-.pm-btn-sm { padding: 3px 10px; font-size: 11px; }
-.pm-btn-primary { background: var(--text-accent); color: #fff; border-color: var(--text-accent); }
+.pm-btn-sm { padding: 3px 10px; font-size: var(--text-xs); }
+.pm-btn-primary { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; font-weight: 600; }
 .pm-btn-primary:hover { opacity: 0.9; }
-.pm-btn-danger { color: #e55; }
-.pm-btn-danger:hover { background: rgba(238,85,85,0.15); }
+.pm-btn-danger { color: var(--text-danger); }
+.pm-btn-danger:hover { background: var(--danger-soft); }
 .pm-restart-hint {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  background: rgba(255,180,0,0.12);
-  color: #e90;
-  border-radius: 4px;
-  font-size: 12px;
+  background: var(--warning-soft);
+  color: var(--text-warning);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
 }
 .pm-modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: var(--overlay);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,7 +297,8 @@ onMounted(() => {
 .pm-modal {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
   padding: 20px;
   width: 480px;
   max-width: 90vw;
@@ -303,19 +306,19 @@ onMounted(() => {
   flex-direction: column;
   gap: 14px;
 }
-.pm-modal-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.pm-modal-title { font-size: var(--text-lg); line-height: var(--leading-lg); font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .pm-modal-field { display: flex; flex-direction: column; gap: 4px; }
-.pm-modal-field label { font-size: 12px; color: var(--text-secondary); }
+.pm-modal-field label { font-size: var(--text-xs); color: var(--text-secondary); }
 .pm-input {
-  padding: 6px 8px;
-  background: var(--bg-primary);
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
   outline: none;
 }
-.pm-input:focus { border-color: var(--text-accent); }
-.pm-modal-status { font-size: 12px; color: var(--text-secondary); }
+.pm-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.pm-modal-status { font-size: var(--text-sm); color: var(--text-secondary); }
 .pm-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 </style>

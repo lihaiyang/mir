@@ -720,7 +720,7 @@ function cancelEdit() { editing.value = false }
   user-select: none;
 }
 .left-pane-inner.collapsed {
-  padding: 4px 0;
+  padding: 6px 0;
 }
 .icon-bar {
   display: flex;
@@ -735,30 +735,32 @@ function cancelEdit() { editing.value = false }
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
   position: relative;
 }
 .icon-bar-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.icon-bar-btn.active { background: var(--bg-active); color: #fff; }
+.icon-bar-btn.active { background: var(--accent-soft); color: var(--accent-strong); }
 
 .left-header {
   display: flex;
   align-items: center;
   height: var(--titlebar-height);
-  padding: 0 8px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-subtle);
   gap: 4px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 .left-title {
   flex: 1;
-  font-size: 11px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
 }
 
 .add-wrapper { position: relative; }
@@ -767,11 +769,12 @@ function cancelEdit() { editing.value = false }
   top: 100%;
   right: 0;
   margin-top: 4px;
-  min-width: 160px;
-  background: var(--bg-primary);
+  min-width: 168px;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  padding: 4px;
   z-index: 100;
   overflow: hidden;
 }
@@ -779,8 +782,10 @@ function cancelEdit() { editing.value = false }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
   cursor: pointer;
   white-space: nowrap;
   color: var(--text-primary);
@@ -790,32 +795,32 @@ function cancelEdit() { editing.value = false }
 .item-list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 .empty-hint {
   text-align: center;
-  color: var(--text-secondary);
-  font-size: 12px;
-  padding: 24px 16px;
+  color: var(--text-faint);
+  font-size: var(--text-sm);
   line-height: 1.6;
+  padding: 24px 16px;
 }
 
 .left-item {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 5px 8px;
   cursor: pointer;
-  border-radius: 4px;
-  margin: 1px 4px;
-  gap: 6px;
+  border-radius: var(--radius-sm);
+  margin: 1px 6px;
+  gap: 8px;
   min-height: 30px;
   flex-wrap: wrap;
 }
 .left-item:hover { background: var(--bg-hover); }
 .left-item.active {
   background: var(--bg-selected);
-  box-shadow: inset 2px 0 0 var(--text-accent);
+  box-shadow: inset 2px 0 0 var(--accent-strong);
 }
 .left-item.drag-source { opacity: 0.4; }
 /* Drop indicator: an absolutely-positioned line that does NOT change the
@@ -827,23 +832,24 @@ function cancelEdit() { editing.value = false }
   left: 4px;
   right: 4px;
   height: 2px;
-  background: var(--text-accent);
+  background: var(--accent-strong);
+  border-radius: var(--radius-pill);
   pointer-events: none;
   z-index: 2;
 }
-.left-item.drop-above::before { top: 0; }
-.left-item.drop-below::before { bottom: 0; }
+.left-item.drop-above::before { top: -1px; }
+.left-item.drop-below::before { bottom: -1px; }
 
 /* Pinned rows echo the fixed browser entry: accent icon, kept in the top group. */
-.left-item.pinned .item-icon { color: var(--text-accent); }
+.left-item.pinned .item-icon { color: var(--accent-strong); }
 
 /* Separator between the pinned group and the normal list. Drawn with a border
    on the row box instead of ::before, which is reserved for drop indicators,
    so a hovered row can still show its drag line. */
 .left-item.section-start {
-  margin-top: 7px;
-  border-top: 1px solid var(--border-color);
-  padding-top: 6px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 7px;
 }
 
 /* Pin toggle. Always in the DOM (only opacity changes) so revealing it on
@@ -856,34 +862,35 @@ function cancelEdit() { editing.value = false }
   height: 18px;
   padding: 0;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-faint);
   cursor: pointer;
   opacity: 0;
   flex-shrink: 0;
-  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+  transition: opacity var(--transition-fast) ease, color var(--transition-fast) ease, background var(--transition-fast) ease;
 }
 .left-item:hover .item-pin-btn,
 .left-item:focus-within .item-pin-btn,
 .item-pin-btn.pinned { opacity: 1; }
-.item-pin-btn.pinned { color: var(--text-accent); }
+.item-pin-btn.pinned { color: var(--accent-strong); }
 .item-pin-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-.item-pin-btn.pinned:hover { color: var(--text-accent); }
+.item-pin-btn.pinned:hover { color: var(--accent-strong); }
 
 .item-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 16px;
-  color: var(--text-secondary);
+  color: var(--text-faint);
   flex-shrink: 0;
 }
-.left-item.active .item-icon { color: var(--text-accent); }
+.left-item.active .item-icon { color: var(--accent-strong); }
 
 .item-name {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -891,18 +898,19 @@ function cancelEdit() { editing.value = false }
 }
 .item-name-input {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--text-md);
   padding: 2px 4px;
   background: var(--bg-tertiary);
-  border: 1px solid var(--text-accent);
+  border: 1px solid var(--accent);
   color: var(--text-primary);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 .item-subtitle {
-  font-size: 10px;
-  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-faint);
   width: 100%;
-  padding-left: 20px;
+  padding-left: 24px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -915,7 +923,7 @@ function cancelEdit() { editing.value = false }
   justify-content: center;
   width: 14px;
   height: 14px;
-  color: var(--text-accent);
+  color: var(--accent-strong);
   flex-shrink: 0;
   opacity: 0.85;
 }
@@ -925,7 +933,7 @@ function cancelEdit() { editing.value = false }
   right: 2px;
   width: 10px;
   height: 10px;
-  color: var(--text-accent);
+  color: var(--accent-strong);
 }
 /* Unread notification count. Amber matches the notify pulse; --text-on-accent
    flips with the theme so the digits stay readable on both backgrounds. */
@@ -934,11 +942,11 @@ function cancelEdit() { editing.value = false }
   align-items: center;
   justify-content: center;
   min-width: 16px;
-  height: 15px;
+  height: 16px;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: var(--text-warning);
-  color: var(--text-on-accent);
+  background: var(--warning-soft);
+  color: var(--text-warning);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
@@ -958,7 +966,7 @@ function cancelEdit() { editing.value = false }
   border: 1px solid var(--bg-secondary);
   border-radius: var(--radius-pill);
   background: var(--text-warning);
-  color: var(--text-on-accent);
+  color: var(--bg-primary);
   font-size: 8px;
   font-weight: 700;
   line-height: 1;
@@ -968,7 +976,7 @@ function cancelEdit() { editing.value = false }
 /* Notification blink */
 @keyframes notify-pulse {
   0%, 100% { background: transparent; }
-  50% { background: rgba(245, 158, 11, 0.12); }
+  50% { background: var(--warning-soft); }
 }
 .left-item.notifying {
   animation: notify-pulse 1.2s ease-in-out infinite;
@@ -981,34 +989,35 @@ function cancelEdit() { editing.value = false }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 200;
+  backdrop-filter: blur(6px);
 }
 .modal {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 20px;
   min-width: 360px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  box-shadow: var(--shadow-3);
 }
-.modal-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.modal-title { font-size: var(--text-lg); line-height: var(--leading-lg); font-weight: 600; margin-bottom: 12px; }
 .modal-field { margin-bottom: 10px; }
-.modal-label { display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+.modal-label { display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 4px; }
 .modal-input {
   width: 100%;
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: var(--text-md);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
 }
-.modal-input:focus { border-color: var(--text-accent); }
+.modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1024,7 +1033,7 @@ function cancelEdit() { editing.value = false }
 }
 .btn-small {
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 </style>

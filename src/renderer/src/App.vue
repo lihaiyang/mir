@@ -478,13 +478,13 @@ onUnmounted(() => {
 .left-pane {
   flex-shrink: 0;
   overflow: hidden;
-  border-right: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-subtle);
   transition: width var(--transition-base) var(--ease-out);
 }
 .right-pane {
   flex-shrink: 0;
   overflow: hidden;
-  border-left: 1px solid var(--border-color);
+  border-left: 1px solid var(--border-subtle);
   transition: width var(--transition-base) var(--ease-out);
 }
 /* Drag hot-zone only: the visible divider is the 1px panel border, so the
@@ -500,7 +500,7 @@ onUnmounted(() => {
 }
 .splitter:hover,
 .splitter.dragging {
-  background: rgba(76, 194, 255, 0.35);
+  background: var(--accent-strong);
 }
 </style>
 

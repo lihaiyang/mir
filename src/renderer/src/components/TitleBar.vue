@@ -194,17 +194,17 @@ function stopResize() {
 <style scoped>
 .titlebar {
   display: flex; align-items: center;
-  height: 32px;
+  height: var(--titlebar-height);
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
   -webkit-app-region: drag; flex-shrink: 0;
 }
 .tl-left { height: 100%; flex-shrink: 0; min-width: 40px; }
 .tl-splitter {
   width: 1px; height: 100%;
-  background: var(--border-color); flex-shrink: 0;
+  background: var(--border-subtle); flex-shrink: 0;
 }
-.tl-splitter:hover { background: var(--text-accent); }
+.tl-splitter:hover { background: var(--accent-strong); }
 
 /* ── Normal tab mode ── */
 .tl-center {
@@ -219,13 +219,13 @@ function stopResize() {
   position: absolute;
   right: -4px; top: 0; bottom: 0;
   width: 4px;
-  background: var(--border-color);
+  background: transparent;
   cursor: col-resize;
   z-index: 10;
   -webkit-app-region: no-drag;
 }
 .tl-pane-splitter:hover,
-.tl-pane-splitter.dragging { background: var(--text-accent); }
+.tl-pane-splitter.dragging { background: var(--accent-strong); }
 .tl-center :deep(.tab-bar) {
   border-bottom: none;
   -webkit-app-region: drag;
@@ -269,19 +269,20 @@ function stopResize() {
   width: clamp(320px, 38%, 560px);
   flex-shrink: 0;
   background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   padding: 0 4px;
-  height: 22px;
+  height: 24px;
   -webkit-app-region: no-drag;
 }
 .tl-browser-bar:focus-within {
-  border-color: var(--text-accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .tl-nav-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0;
-  font-size: 11px; color: var(--text-secondary);
+  width: 22px; height: 22px; border-radius: var(--radius-xs); flex-shrink: 0;
+  font-size: var(--text-xs); color: var(--text-secondary);
   -webkit-app-region: no-drag;
 }
 .tl-nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
@@ -290,7 +291,7 @@ function stopResize() {
 .tl-url-input {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   padding: 1px 6px;
   background: transparent;
   border: none;
@@ -304,8 +305,8 @@ function stopResize() {
 .tl-right-spacer { flex: 1; -webkit-app-region: drag; }
 .tl-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
-  color: var(--text-secondary); font-size: 14px; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--text-secondary); font-size: var(--text-base); flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 .tl-btn:hover { background: var(--bg-hover); color: var(--text-primary); }

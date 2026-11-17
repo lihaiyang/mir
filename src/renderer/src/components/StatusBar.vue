@@ -401,12 +401,13 @@ async function refreshGitStatus() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 22px;
-  padding: 0 8px;
+  height: 24px;
+  padding: 0 10px;
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  font-size: 11px;
-  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-faint);
   flex-shrink: 0;
   user-select: none;
 }
@@ -415,16 +416,17 @@ async function refreshGitStatus() {
 .status-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
 }
 
 .status-item {
   cursor: default;
-  padding: 1px 4px;
-  border-radius: 2px;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
 .status-item:hover {
@@ -438,37 +440,40 @@ async function refreshGitStatus() {
 
 .git-branch {
   font-weight: 600;
-  color: var(--text-accent);
+  color: var(--accent-strong);
 }
 
 .status-badge {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
+  padding: 0 4px;
 }
 
 .ahead { color: var(--text-success); }
-.behind { color: #f59e0b; }
+.behind { color: var(--text-warning); }
 
 .branch-footer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .branch-input {
   width: 100%;
   padding: 6px 8px;
-  font-size: 12px;
-  background: transparent;
+  font-size: var(--text-sm);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   outline: none;
 }
 
+.branch-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
 .branch-create-btn {
   width: 100%;
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 </style>

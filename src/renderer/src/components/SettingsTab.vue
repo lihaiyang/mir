@@ -237,12 +237,13 @@ function shortcutLabel(key: string): string {
   height: var(--tab-height, 30px);
   padding: 0 12px;
   background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 .settings-toolbar-label {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -252,12 +253,12 @@ function shortcutLabel(key: string): string {
   gap: 8px;
 }
 .settings-saved {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-success);
 }
 .st-reset {
-  font-size: 11px;
-  border-radius: 4px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-xs);
   cursor: pointer;
   border: none;
   padding: 3px 10px;
@@ -274,28 +275,29 @@ function shortcutLabel(key: string): string {
   overflow: hidden;
 }
 .settings-nav {
-  width: 140px;
+  width: 168px;
   background: var(--bg-secondary);
   flex-shrink: 0;
-  padding: 8px 0;
-  border-right: 1px solid var(--border-color);
+  padding: 8px 6px;
+  border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
 }
 .settings-nav-item {
-  padding: 7px 14px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-md);
   color: var(--text-secondary);
 }
 .settings-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-.settings-nav-item.active { background: var(--bg-active); color: #fff; }
+.settings-nav-item.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 500; }
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 .settings-group {
   display: flex;
@@ -307,26 +309,27 @@ function shortcutLabel(key: string): string {
   align-items: center;
 }
 .settings-label {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   font-weight: 600;
 }
 .settings-input {
-  font-size: 13px;
-  padding: 5px 8px;
+  font-size: var(--text-md);
+  padding: 6px 10px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   width: 100%;
 }
+.settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .settings-select {
-  font-size: 13px;
-  padding: 5px 8px;
+  font-size: var(--text-md);
+  padding: 6px 10px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 .settings-content-flush {
   padding: 0;

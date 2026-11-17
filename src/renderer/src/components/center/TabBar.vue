@@ -322,12 +322,12 @@ onUnmounted(() => {
   align-items: flex-end;
   height: var(--tab-height, 30px);
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
   overflow-x: auto;
   overflow-y: hidden;
   flex-shrink: 0;
-  gap: 0;
-  padding: 0 6px;
+  gap: 2px;
+  padding: 0 8px;
   -webkit-app-region: drag;
   cursor: default;
 }
@@ -336,19 +336,20 @@ onUnmounted(() => {
 .tab {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 0 10px;
-  height: 26px;
-  min-width: 90px;
-  max-width: 180px;
+  height: 28px;
+  min-width: 96px;
+  max-width: 190px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
   color: var(--text-secondary);
   user-select: none;
   flex-shrink: 0;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: transparent;
-  border-top: 2px solid transparent;
+  border-top: 1px solid transparent;
   -webkit-app-region: no-drag;
   transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
@@ -356,17 +357,18 @@ onUnmounted(() => {
 .tab.active {
   background: var(--bg-primary);
   color: var(--text-primary);
-  height: calc(var(--tab-height, 30px) - 1px);
-  border-top: 2px solid var(--text-accent);
+  height: var(--tab-height, 30px);
+  border-top: 1px solid var(--border-hairline);
+  box-shadow: inset 0 2px 0 var(--accent-strong);
 }
 
 .tab-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--text-faint);
 }
-.tab.active .tab-icon { color: var(--text-accent); }
+.tab.active .tab-icon { color: var(--accent-strong); }
 .tab-title {
   flex: 1;
   overflow: hidden;
@@ -375,29 +377,29 @@ onUnmounted(() => {
 }
 .tab-title-input {
   flex: 1;
-  font-size: 11px;
+  font-size: var(--text-sm);
   padding: 1px 4px;
   background: var(--bg-tertiary);
-  border: 1px solid var(--text-accent);
+  border: 1px solid var(--accent);
   color: var(--text-primary);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 .tab-modified-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #d97706;
+  background: var(--text-warning);
   flex-shrink: 0;
 }
 .tab-close {
-  color: var(--text-secondary);
+  color: var(--text-faint);
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   opacity: 0;
 }
 .tab:hover .tab-close,
@@ -416,20 +418,22 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  width: 28px;
+  padding: 0;
   height: 100%;
-  color: var(--text-secondary);
+  color: var(--text-faint);
 }
 .tab-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 .tab-dropdown {
   position: absolute;
-  margin-top: 2px;
-  min-width: 160px;
-  background: var(--bg-primary);
+  margin-top: 4px;
+  min-width: 168px;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  padding: 4px;
   z-index: 100;
   overflow: hidden;
   -webkit-app-region: no-drag;
@@ -437,10 +441,11 @@ onUnmounted(() => {
 .tab-dropdown-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast) ease;
 }
 .tab-dropdown-item:hover { background: var(--bg-hover); }
 .tab-dropdown-icon {
@@ -450,11 +455,11 @@ onUnmounted(() => {
   width: 16px;
   color: var(--text-secondary);
 }
-.tab-dropdown-name { font-size: 13px; font-weight: 500; }
+.tab-dropdown-name { font-size: var(--text-md); line-height: var(--leading-md); font-weight: 500; }
 .tab-dropdown-separator {
   height: 1px;
-  background: var(--border-color);
-  margin: 4px 8px;
+  background: var(--border-subtle);
+  margin: 4px 6px;
 }
-.tab-dropdown-desc { font-size: 11px; color: var(--text-secondary); }
+.tab-dropdown-desc { font-size: var(--text-xs); color: var(--text-secondary); }
 </style>

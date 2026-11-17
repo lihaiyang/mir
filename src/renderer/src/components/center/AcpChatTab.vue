@@ -393,7 +393,7 @@ function openAgentsPanel(): void {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-2) 0 var(--space-3);
+  padding: var(--space-3) max(var(--space-4), calc((100% - 780px) / 2)) var(--space-4);
 }
 
 .chat-jump {
@@ -464,18 +464,18 @@ function openAgentsPanel(): void {
   align-items: baseline;
   gap: var(--space-2);
   width: 100%;
-  padding: 4px var(--space-2);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  padding: 7px var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   background: var(--bg-secondary);
   text-align: left;
 }
-.chat-command-chip:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+.chat-command-chip:hover { border-color: var(--border-color); background: var(--bg-elevated); }
 .chat-command-name {
   flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--text-accent);
+  color: var(--accent-strong);
 }
 .chat-command-desc {
   flex: 1;
@@ -530,7 +530,7 @@ function openAgentsPanel(): void {
 }
 
 .chat-agent-select {
-  height: 26px;
+  height: 28px;
   max-width: 200px;
   padding: 0 var(--space-2);
   border: 1px solid var(--border-color);
@@ -544,24 +544,25 @@ function openAgentsPanel(): void {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
+  height: 28px;
   padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
-  background: var(--text-accent);
-  color: var(--text-on-accent);
+  background: var(--text-primary);
+  color: var(--bg-primary);
   font-size: var(--text-sm);
+  font-weight: 600;
 }
-.chat-primary-btn:hover:not(:disabled) { filter: brightness(1.08); background: var(--text-accent); }
+.chat-primary-btn:hover:not(:disabled) { filter: brightness(0.94); background: var(--text-primary); }
 
 .chat-secondary-btn {
-  height: 26px;
+  height: 28px;
   padding: 0 var(--space-3);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
-.chat-secondary-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.chat-secondary-btn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg-hover); }
 
 .spin { animation: spin 1.1s linear infinite; }
 @keyframes spin {

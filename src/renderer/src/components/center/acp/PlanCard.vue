@@ -58,8 +58,8 @@ function priorityLabel(priority: PlanEntry['priority']): string {
 
 <style scoped>
 .plan-card {
-  margin: var(--space-2) var(--space-4);
-  border: 1px solid var(--border-color);
+  margin: var(--space-2) 0;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
   overflow: hidden;
@@ -69,13 +69,13 @@ function priorityLabel(priority: PlanEntry['priority']): string {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 5px var(--space-3);
-  background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 6px var(--space-3);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
   color: var(--text-secondary);
 }
-.plan-icon { color: var(--text-accent); }
+.plan-icon { color: var(--accent-strong); }
 .plan-title { font-weight: 600; letter-spacing: 0.02em; }
 .plan-count {
   margin-left: auto;
@@ -93,13 +93,13 @@ function priorityLabel(priority: PlanEntry['priority']): string {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  padding: 4px var(--space-3);
+  padding: 5px var(--space-3);
   font-size: var(--text-sm);
-  line-height: 1.45;
+  line-height: var(--leading-sm);
   color: var(--text-secondary);
 }
 .plan-item--in_progress {
-  background: color-mix(in srgb, var(--text-accent) 8%, transparent);
+  background: var(--accent-soft);
   color: var(--text-primary);
 }
 .plan-item--completed { color: var(--text-faint); }
@@ -113,7 +113,7 @@ function priorityLabel(priority: PlanEntry['priority']): string {
   flex-shrink: 0;
 }
 .plan-status--completed { color: var(--text-success); }
-.plan-status--in_progress { color: var(--text-accent); }
+.plan-status--in_progress { color: var(--accent-strong); }
 .plan-status--pending { color: var(--text-faint); }
 
 .plan-dot {
@@ -135,11 +135,11 @@ function priorityLabel(priority: PlanEntry['priority']): string {
 
 .plan-priority {
   flex-shrink: 0;
-  padding: 0 5px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-color);
-  font-size: 10px;
-  line-height: 15px;
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
   letter-spacing: 0.02em;
   color: var(--text-faint);
 }
