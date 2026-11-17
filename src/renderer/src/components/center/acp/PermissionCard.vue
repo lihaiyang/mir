@@ -101,10 +101,10 @@ async function respond(optionId: string | null): Promise<void> {
 <style scoped>
 .permission-card {
   position: relative;
-  margin: var(--space-2) 0;
-  padding: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: var(--space-4);
   border: 1px solid color-mix(in srgb, var(--text-warning) 32%, var(--border-color));
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--warning-soft);
   box-shadow: var(--shadow-1);
 }
@@ -166,14 +166,14 @@ async function respond(optionId: string | null): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .permission-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 6px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);

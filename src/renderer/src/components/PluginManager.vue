@@ -200,8 +200,8 @@ onMounted(() => {
 .plugin-manager {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 18px;
+  padding: 24px;
   height: 100%;
   overflow: auto;
   background: var(--bg-primary);
@@ -218,7 +218,7 @@ onMounted(() => {
 .pm-hint {
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  padding: 8px 12px;
+  padding: 10px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -241,11 +241,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 14px;
+  padding: 18px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  gap: 12px;
+  border-radius: var(--radius-lg);
+  gap: 16px;
 }
 .pm-card.disabled { opacity: 0.5; }
 .pm-card-info { flex: 1; min-width: 0; }
@@ -259,7 +259,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 7px 14px;
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -297,20 +297,20 @@ onMounted(() => {
 .pm-modal {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
-  padding: 20px;
-  width: 480px;
+  padding: 24px;
+  width: 520px;
   max-width: 90vw;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 .pm-modal-title { font-size: var(--text-lg); line-height: var(--leading-lg); font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .pm-modal-field { display: flex; flex-direction: column; gap: 4px; }
 .pm-modal-field label { font-size: var(--text-xs); color: var(--text-secondary); }
 .pm-input {
-  padding: 6px 10px;
+  padding: 7px 12px;
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -320,5 +320,5 @@ onMounted(() => {
 }
 .pm-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .pm-modal-status { font-size: var(--text-sm); color: var(--text-secondary); }
-.pm-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.pm-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 </style>

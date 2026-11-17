@@ -195,11 +195,12 @@ function stopResize() {
 .titlebar {
   display: flex; align-items: center;
   height: var(--titlebar-height);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, var(--border-subtle), transparent 72%), var(--bg-secondary);
+  border-bottom: 1px solid var(--border-hairline);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
   -webkit-app-region: drag; flex-shrink: 0;
 }
-.tl-left { height: 100%; flex-shrink: 0; min-width: 40px; }
+.tl-left { height: 100%; flex-shrink: 0; min-width: 48px; }
 .tl-splitter {
   width: 1px; height: 100%;
   background: var(--border-subtle); flex-shrink: 0;
@@ -266,13 +267,13 @@ function stopResize() {
   display: flex;
   align-items: center;
   gap: 2px;
-  width: clamp(320px, 38%, 560px);
+  width: clamp(360px, 42%, 640px);
   flex-shrink: 0;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: 0 4px;
-  height: 24px;
+  padding: 0 6px;
+  height: 30px;
   -webkit-app-region: no-drag;
 }
 .tl-browser-bar:focus-within {
@@ -281,7 +282,7 @@ function stopResize() {
 }
 .tl-nav-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: var(--radius-xs); flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: var(--radius-xs); flex-shrink: 0;
   font-size: var(--text-xs); color: var(--text-secondary);
   -webkit-app-region: no-drag;
 }
@@ -292,7 +293,7 @@ function stopResize() {
   flex: 1;
   min-width: 0;
   font-size: var(--text-sm);
-  padding: 1px 6px;
+  padding: 2px 8px;
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -305,7 +306,7 @@ function stopResize() {
 .tl-right-spacer { flex: 1; -webkit-app-region: drag; }
 .tl-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: var(--radius-sm); cursor: pointer;
+  width: 32px; height: 32px; border-radius: var(--radius-sm); cursor: pointer;
   color: var(--text-secondary); font-size: var(--text-base); flex-shrink: 0;
   -webkit-app-region: no-drag;
 }

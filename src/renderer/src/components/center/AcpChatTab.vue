@@ -374,8 +374,8 @@ function openAgentsPanel(): void {
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
-  padding: 5px var(--space-4);
-  border-bottom: 1px solid var(--border-color);
+  padding: 7px var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
   font-size: var(--text-xs);
   color: var(--text-faint);
@@ -393,7 +393,7 @@ function openAgentsPanel(): void {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-3) max(var(--space-4), calc((100% - 780px) / 2)) var(--space-4);
+  padding: var(--space-4) max(var(--space-5), calc((100% - 820px) / 2)) var(--space-5);
 }
 
 .chat-jump {
@@ -404,10 +404,10 @@ function openAgentsPanel(): void {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill);
-  background: var(--bg-tertiary);
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   font-size: var(--text-xs);
   box-shadow: var(--shadow-1);
@@ -425,7 +425,7 @@ function openAgentsPanel(): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px var(--space-4) var(--space-2);
+  padding: 64px var(--space-4) var(--space-2);
   text-align: center;
 }
 .chat-empty-icon { color: var(--text-faint); opacity: 0.7; }
@@ -457,14 +457,14 @@ function openAgentsPanel(): void {
 .chat-command-chips {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 .chat-command-chip {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   width: 100%;
-  padding: 7px var(--space-3);
+  padding: 10px var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
@@ -530,9 +530,9 @@ function openAgentsPanel(): void {
 }
 
 .chat-agent-select {
-  height: 28px;
-  max-width: 200px;
-  padding: 0 var(--space-2);
+  height: 34px;
+  max-width: 220px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
@@ -543,9 +543,9 @@ function openAgentsPanel(): void {
 .chat-primary-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 var(--space-3);
+  gap: 6px;
+  height: 34px;
+  padding: 0 var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--text-primary);
   color: var(--bg-primary);
@@ -555,8 +555,8 @@ function openAgentsPanel(): void {
 .chat-primary-btn:hover:not(:disabled) { filter: brightness(0.94); background: var(--text-primary); }
 
 .chat-secondary-btn {
-  height: 28px;
-  padding: 0 var(--space-3);
+  height: 34px;
+  padding: 0 var(--space-4);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);

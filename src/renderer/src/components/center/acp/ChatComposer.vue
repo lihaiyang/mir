@@ -224,7 +224,7 @@ function onKeydown(event: KeyboardEvent): void {
 .composer {
   position: relative;
   flex-shrink: 0;
-  padding: var(--space-2) var(--space-4) var(--space-3);
+  padding: var(--space-3) var(--space-5) var(--space-4);
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-primary);
 }
@@ -233,9 +233,9 @@ function onKeydown(event: KeyboardEvent): void {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--bg-tertiary);
-  box-shadow: var(--shadow-1);
+  border-radius: var(--radius-xl);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-2);
   transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
 }
 .composer-box:focus-within {
@@ -246,11 +246,11 @@ function onKeydown(event: KeyboardEvent): void {
 
 .composer-input {
   width: 100%;
-  min-height: 32px;
-  max-height: 180px;
-  padding: var(--space-2) var(--space-3) 0;
+  min-height: 44px;
+  max-height: 220px;
+  padding: 10px var(--space-4) 2px;
   border: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-ui);
@@ -269,7 +269,7 @@ function onKeydown(event: KeyboardEvent): void {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 2px var(--space-2) 2px var(--space-3);
+  padding: 6px var(--space-2) 6px var(--space-4);
 }
 .composer-hint {
   flex: 1;
@@ -285,8 +285,8 @@ function onKeydown(event: KeyboardEvent): void {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border-radius: var(--radius-sm);
   color: var(--accent-strong);
@@ -298,8 +298,8 @@ function onKeydown(event: KeyboardEvent): void {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
-  padding: 0 var(--space-2);
+  height: 30px;
+  padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   color: var(--text-danger);
@@ -313,9 +313,9 @@ function onKeydown(event: KeyboardEvent): void {
   right: var(--space-4);
   bottom: calc(100% - var(--space-1));
   z-index: 20;
-  max-height: 220px;
+  max-height: 260px;
   overflow-y: auto;
-  padding: 4px;
+  padding: 6px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
@@ -326,7 +326,7 @@ function onKeydown(event: KeyboardEvent): void {
   align-items: baseline;
   gap: var(--space-2);
   width: 100%;
-  padding: 6px var(--space-2);
+  padding: 8px 10px;
   border-radius: var(--radius-xs);
   text-align: left;
 }

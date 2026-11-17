@@ -58,9 +58,9 @@ function priorityLabel(priority: PlanEntry['priority']): string {
 
 <style scoped>
 .plan-card {
-  margin: var(--space-2) 0;
+  margin: var(--space-3) 0;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--bg-secondary);
   overflow: hidden;
 }
@@ -69,7 +69,7 @@ function priorityLabel(priority: PlanEntry['priority']): string {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 6px var(--space-3);
+  padding: 8px var(--space-4);
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
@@ -93,7 +93,7 @@ function priorityLabel(priority: PlanEntry['priority']): string {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  padding: 5px var(--space-3);
+  padding: 7px var(--space-4);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   color: var(--text-secondary);

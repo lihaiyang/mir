@@ -252,7 +252,7 @@
   .type-row .meta{flex:none; font:10px/14px var(--mono); color:var(--faint); text-align:right}
   .radii{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
   .radius{border:1px solid var(--line); background:var(--raise); padding:9px 12px; font:10px/14px var(--mono); color:var(--muted)}
-  .radius:nth-child(1){border-radius:4px}.radius:nth-child(2){border-radius:6px}.radius:nth-child(3){border-radius:8px}
+  .radius:nth-child(1){border-radius:5px}.radius:nth-child(2){border-radius:8px}.radius:nth-child(3){border-radius:10px}
   .radius:nth-child(4){border-radius:12px}.radius:nth-child(5){border-radius:16px}.radius:nth-child(6){border-radius:999px}
 
   footer{margin-top:60px; padding-top:22px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; gap:14px 26px;
@@ -303,6 +303,156 @@
     .pane{transition:border-color .2s ease}
     .pane:hover{border-color:rgba(255,255,255,.16)}
   }
+
+  /* ============ v2: one size bigger, solid tab plates ============ */
+  body{font-size:15px; line-height:26px}
+  .lede{font-size:15px; line-height:27px}
+  .stat b{font-size:22px; line-height:28px}
+
+  .win{
+    --w-bg:#101012; --w-panel:#17171a; --w-well:#1d1d21; --w-elev:#202024;
+    --w-hover:#26262b; --w-line:rgba(255,255,255,.10); --w-soft:rgba(255,255,255,.07);
+    --w-text:#f9fafb; --w-muted:#adb2b8; --w-faint:#81858c;
+    --w-acc:#7aaaff; --w-fill:#5686fe; --w-sel:rgba(86,134,254,.12);
+    --w-active:rgba(86,134,254,.18); --w-code:#0b0b0d;
+    --w-r:8px; --w-r2:10px; --w-r3:12px;
+    --w-tab:40px; --w-tabfs:13px; --w-row:36px;
+    font:14px/22px var(--ui);
+  }
+  .win.old{font:13px/20px var(--ui)}
+  .win.old .tb{height:32px; background:var(--w-panel); box-shadow:none; border-bottom-color:var(--w-line)}
+  .win.old .tab.on{height:29px}
+
+  /* titlebar: 42px, 1px top sheen, tabs as solid plates */
+  .win.new .tb{height:42px; background:linear-gradient(180deg,var(--w-soft),transparent 70%),var(--w-panel);
+    border-bottom:1px solid var(--w-line); box-shadow:inset 0 1px 0 var(--w-soft)}
+  .win.new .tb-left{width:170px; padding:0 14px}
+  .win.new .tb-tabs{align-items:center; gap:4px; padding:0 8px}
+  .win.new .tab{height:34px; margin:2px 0; padding:0 12px; border:0; border-radius:8px;
+    min-width:100px; max-width:200px; gap:8px; font-size:13px; color:var(--w-muted);
+    background:transparent}
+  .win.new .tab.on{height:34px; background:var(--w-fill); color:#fff; border:0;
+    box-shadow:0 1px 3px rgba(0,0,0,.28)}
+  .win.new .tab.on .i{color:#fff}
+  .win.new .tab.on .x{color:rgba(255,255,255,.75); opacity:1}
+  .win.new .tab:hover:not(.on){background:var(--w-hover); color:var(--w-text)}
+  .win.new .tb-right{width:52px}
+
+  /* sidebar: 36px rows, full rounded selection */
+  .win.new .side{width:220px; padding:10px 0}
+  .win.new .side-head{height:36px; padding:0 14px; font-size:12px; line-height:18px; letter-spacing:.08em}
+  .win.new .side-item{min-height:36px; margin:2px 8px; padding:0 10px; border-radius:8px; gap:10px;
+    font-size:14px; color:var(--w-text)}
+  .win.new .side-item.on{background:var(--w-active); box-shadow:none; color:#fff}
+  .win.new .side-item.on .i{color:var(--w-acc)}
+  .win.new .side-item .pin{margin-left:auto; opacity:.8}
+  .win.new .side-sub{font-size:12px; line-height:18px; padding:2px 28px 4px}
+  .win.new .side-sep{margin:8px 14px}
+
+  /* chat: wider reading column, 12px cards, 16px composer */
+  .win.new .chat{padding:20px 24px; gap:16px}
+  .win.new .user{max-width:74%; padding:10px 14px; border-radius:16px 16px 6px 16px;
+    background:var(--w-well); font-size:14px; line-height:22px}
+  .win.new .agent{gap:12px}
+  .win.new .ava{width:26px; height:26px; border-radius:8px; margin-top:2px}
+  .win.new .agent-body p{font-size:14px; line-height:24px; margin-bottom:10px}
+  .win.new .tool{border-radius:12px; border-color:var(--w-soft); margin:8px 0;
+    box-shadow:0 1px 3px rgba(0,0,0,.24)}
+  .win.new .tool-head{min-height:36px; padding:6px 14px; font-size:13px; gap:8px}
+  .win.new .tool-body{padding:10px 14px; font-size:12px; line-height:20px}
+  .win.new .tool-diff{padding:12px 14px; font-size:12px; line-height:20px}
+  .win.new .composer{margin:0 24px 18px; padding:12px 14px; border-radius:16px;
+    background:var(--w-elev); box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .win.new .composer .ph{font-size:14px}
+  .win.new .cbar{margin-top:10px}
+  .win.new .send{width:30px; height:30px; border-radius:8px; background:var(--w-text); color:var(--w-bg)}
+  .win.new .status{height:28px; padding:0 14px; font-size:12px; line-height:18px; letter-spacing:.01em}
+
+  /* overview */
+  .overview{height:500px}
+  .win.old.overview{height:460px}
+  .overview .side{width:220px}
+  .win.old.overview .side{width:196px}
+  .overview .tb-left{width:170px}
+  .win.old.overview .tb-left{width:150px}
+
+  /* titlebar / tabs close-up */
+  .closeup-title{height:250px}
+  .breadcrumb{height:34px; padding:0 16px; font-size:12px; line-height:18px}
+  .code{padding:12px 0; font:12px/22px var(--mono)}
+
+  /* left pane close-up */
+  .closeup-left{height:420px}
+  .closeup-left .side{width:300px}
+  .win.old .closeup-left .side{width:282px}
+
+  /* chat close-up */
+  .closeup-chat{height:590px}
+  .closeup-chat .chat{padding:20px 24px; gap:16px}
+  .closeup-chat .composer{margin:0 24px 18px}
+  .win.new .perm{border-radius:12px; padding:12px 14px}
+  .win.new .perm b{font-size:13px; line-height:20px}
+  .win.new .perm small{font-size:12px; line-height:18px}
+  .win.new .chipbtn{height:30px; padding:0 12px; border-radius:6px; font-size:13px; line-height:28px}
+
+  /* settings close-up */
+  .closeup-settings{height:470px}
+  .win.new .set-nav{width:188px; padding:10px 8px}
+  .win.new .set-nav div{padding:8px 12px; margin-bottom:2px; border-radius:8px; font-size:14px}
+  .win.new .set-main{padding:24px 28px}
+  .win.new .set-main h3{font-size:18px; line-height:28px}
+  .win.new .set-main .desc{font-size:13px; line-height:20px; margin-bottom:22px}
+  .win.new .field{margin-bottom:18px}
+  .win.new .field label{font-size:13px; line-height:20px; margin-bottom:7px}
+  .win.new .input{height:34px; padding:0 12px; border-radius:8px; font-size:14px}
+  .win.new .toggle-row{padding:12px 0}
+  .win.new .toggle-row b{font-size:13px; line-height:20px}
+  .win.new .toggle-row small{font-size:12px; line-height:18px}
+  .win.new .sw{width:38px; height:22px}
+  .win.new .sw::after{width:16px; height:16px}
+  .win.new .set-actions{margin-top:20px}
+  .win.new .btn{height:34px; padding:0 14px; border-radius:8px; font-size:13px; line-height:32px}
+
+  /* modal close-up */
+  .closeup-modal{height:370px}
+  .win.new .dialog{width:min(430px,88%); padding:24px; border-radius:16px;
+    box-shadow:0 28px 70px rgba(0,0,0,.58)}
+  .win.new .dialog h4{font-size:17px; line-height:26px}
+  .win.new .dialog p{font-size:14px; line-height:22px; margin-bottom:18px}
+  .win.new .branch-row{padding:10px 12px; border-radius:8px; font-size:13px; line-height:20px; margin-bottom:8px}
+  .win.new .actions{gap:10px; margin-top:20px}
+
+  @media (max-width:980px){
+    .overview,.win.old.overview{height:460px}
+    .closeup-chat{height:560px}
+    .closeup-settings{height:540px}
+  }
+  @media (max-width:640px){
+    .overview{height:480px}
+    .win.old.overview{height:430px}
+    .overview .side{width:160px}
+    .win.old.overview .side{width:148px}
+    .win.new.overview .tb-left{width:112px}
+    .win.new.overview .tab{min-width:80px; padding:0 8px}
+    .win.new.closeup-title .tb-left{width:112px}
+    .win.new.closeup-title .tab{min-width:84px; padding:0 10px}
+    .closeup-title .tab:nth-child(3),.closeup-title .tab:nth-child(4){display:none}
+    .win.new.closeup-title .tb-right{width:36px}
+    .win.new .chat{padding:12px; gap:12px}
+    .win.new .composer{margin:0 12px 10px; padding:8px 10px}
+    .win.new .tool-head .kind,.win.new .tool-head .ok{display:none}
+    .win.new .tool-diff{font-size:10px; line-height:17px}
+    .tool-diff span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .closeup-chat{height:540px}
+    .closeup-chat .chat{padding:12px}
+    .closeup-chat .composer{margin:0 12px 12px}
+    .closeup-left .side{width:240px}
+    .win.old .closeup-left .side{width:230px}
+    .closeup-settings{height:590px}
+    .win.new .set-nav{width:128px}
+    .win.new .set-main{padding:16px}
+    .win.new .dialog{padding:18px}
+  }
 </style>
 </head>
 <body>
@@ -331,14 +481,14 @@
     <div class="eyebrow"><i></i>mir / interface refresh / 2026</div>
     <h1>把界面收干净，<br><span>让内容先说话。</span></h1>
     <p class="lede">
-      参照 DeepSeek Harness 的视觉语言重做 mir：近黑分层背景、发丝级描边、单一冷蓝强调色，
-      以及一套从 4px 起步的圆角与字号刻度。交互逻辑与 props 一行未动，只重写样式层。
+      第二版参照 DeepSeek Harness 再往前一步：15px 基准字号、近黑画布与抬升面板、
+      发丝级描边，以及整块填充的冷蓝圆角页签。交互逻辑与 props 一行未动，只重写样式层。
       下面是旧版与新版在同一内容下的逐块对照。
     </p>
     <div class="stats">
       <div class="stat"><b>18</b><span>files restyled</span></div>
-      <div class="stat"><b>37</b><span>color tokens</span></div>
-      <div class="stat"><b>4</b><span>core radii</span></div>
+      <div class="stat"><b>38</b><span>color tokens</span></div>
+      <div class="stat"><b>5</b><span>core radii</span></div>
       <div class="stat"><b>0</b><span>new dependencies</span></div>
     </div>
   </header>
@@ -375,10 +525,10 @@
                 <div class="agent">
                   <div class="ava"><svg class="i"><use href="#i-spark"/></svg></div>
                   <div class="agent-body">
-                    <p>已把选中态换成 10% 冷蓝叠加，tab 统一到 6px；标题栏改用发丝描边。</p>
+                    <p>页签改成整块冷蓝圆角片，选中态放大到 36px 行高；标题栏加了一层顶光。</p>
                     <div class="tool">
                       <div class="tool-head"><svg class="i mini"><use href="#i-code"/></svg><span>编辑 main.css</span><span class="kind">+32 −18</span><span class="ok">已完成</span></div>
-                      <div class="tool-diff"><span class="add">+ --bg-selected: rgba(86,134,254,.10);</span><span class="del">- --bg-selected: #123a55;</span></div>
+                      <div class="tool-diff"><span class="add">+ --bg-selected: rgba(86,134,254,.12);</span><span class="del">- --bg-selected: #123a55;</span></div>
                     </div>
                   </div>
                 </div>
@@ -394,7 +544,7 @@
       </figure>
 
       <figure class="pane">
-        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>blue #7aaaff · 6px radius</em></figcaption>
+        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>blue #5686fe · 12px panel</em></figcaption>
         <div class="win new overview">
           <div class="tb">
             <div class="tb-left"><span class="lights"><i></i><i></i><i></i></span></div>
@@ -422,10 +572,10 @@
                 <div class="agent">
                   <div class="ava"><svg class="i"><use href="#i-spark"/></svg></div>
                   <div class="agent-body">
-                    <p>已把选中态换成 10% 冷蓝叠加，tab 统一到 6px；标题栏改用发丝描边。</p>
+                    <p>页签改成整块冷蓝圆角片，选中态放大到 36px 行高；标题栏加了一层顶光。</p>
                     <div class="tool">
                       <div class="tool-head"><svg class="i mini"><use href="#i-code"/></svg><span>编辑 main.css</span><span class="kind">+32 −18</span><span class="ok">已完成</span></div>
-                      <div class="tool-diff"><span class="add">+ --bg-selected: rgba(86,134,254,.10);</span><span class="del">- --bg-selected: #123a55;</span></div>
+                      <div class="tool-diff"><span class="add">+ --bg-selected: rgba(86,134,254,.12);</span><span class="del">- --bg-selected: #123a55;</span></div>
                     </div>
                   </div>
                 </div>
@@ -443,7 +593,7 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="sec-num">02</span><h2>标题栏与标签页</h2><p>层级靠描边，不靠阴影</p></div>
+    <div class="sec-head"><span class="sec-num">02</span><h2>标题栏与标签页</h2><p>实心冷蓝圆角片，不再用一条线</p></div>
     <div class="compare">
       <figure class="pane">
         <figcaption class="pane-label"><span class="side-tag before"><i></i>Before · 旧版</span><em>26px tab · 2px top border</em></figcaption>
@@ -469,7 +619,7 @@
         </div>
       </figure>
       <figure class="pane">
-        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>28px tab · hairline + inset</em></figcaption>
+        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>34px tab · solid 8px plate</em></figcaption>
         <div class="win new closeup-title">
           <div class="tb">
             <div class="tb-left"><span class="lights"><i></i><i></i><i></i></span></div>
@@ -484,9 +634,9 @@
           <div class="breadcrumb"><svg class="i mini"><use href="#i-folder"/></svg><span>src</span><span>/</span><span>renderer</span><span>/</span><span>src</span><span>/</span><span>assets</span><span>/</span><span class="cur">main.css</span></div>
           <div class="code">
             <div class="row"><span class="ln">1</span><span><span class="k">:root</span> {</span></div>
-            <div class="row"><span class="ln">2</span><span>  <span class="k">--bg-primary</span>: <span class="s">#151517</span>;</span></div>
-            <div class="row"><span class="ln">3</span><span>  <span class="k">--accent</span>: <span class="s">#5686fe</span>; <span class="c">/* one blue, two weights */</span></span></div>
-            <div class="row"><span class="ln">4</span><span>  <span class="k">--radius-sm</span>: <span class="n">6px</span>;</span></div>
+            <div class="row"><span class="ln">2</span><span>  <span class="k">--bg-primary</span>: <span class="s">#101012</span>;</span></div>
+            <div class="row"><span class="ln">3</span><span>  <span class="k">--accent</span>: <span class="s">#5686fe</span>;</span></div>
+            <div class="row"><span class="ln">4</span><span>  <span class="k">--radius-sm</span>: <span class="n">8px</span>;</span></div>
             <div class="row"><span class="ln">5</span><span>}</span></div>
           </div>
         </div>
@@ -502,7 +652,6 @@
         <div class="win old closeup-left">
           <aside class="side">
             <div class="side-head"><span>工作区</span><svg class="i mini"><use href="#i-plus"/></svg></div>
-            <div class="add-menu"><div><svg class="i mini"><use href="#i-file"/></svg>新建页面</div><div><svg class="i mini"><use href="#i-folder"/></svg>新建文件夹</div><div><svg class="i mini"><use href="#i-spark"/></svg>新建智能体</div></div>
             <div class="side-item on"><svg class="i"><use href="#i-spark"/></svg><span class="nm">mir</span><span class="badge">3</span></div>
             <div class="side-sub">3 个进行中的会话</div>
             <div class="side-item"><svg class="i"><use href="#i-chat"/></svg><span class="nm">重做 Token 层</span></div>
@@ -517,11 +666,10 @@
         </div>
       </figure>
       <figure class="pane">
-        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>32px row · 10% blue tint</em></figcaption>
+        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>36px row · full 18% blue plate</em></figcaption>
         <div class="win new closeup-left">
           <aside class="side">
             <div class="side-head"><span>工作区</span><svg class="i mini"><use href="#i-plus"/></svg></div>
-            <div class="add-menu"><div><svg class="i mini"><use href="#i-file"/></svg>新建页面</div><div><svg class="i mini"><use href="#i-folder"/></svg>新建文件夹</div><div><svg class="i mini"><use href="#i-spark"/></svg>新建智能体</div></div>
             <div class="side-item on"><svg class="i"><use href="#i-spark"/></svg><span class="nm">mir</span><span class="badge">3</span></div>
             <div class="side-sub">3 个进行中的会话</div>
             <div class="side-item"><svg class="i"><use href="#i-chat"/></svg><span class="nm">重做 Token 层</span></div>
@@ -571,7 +719,7 @@
         </div>
       </figure>
       <figure class="pane">
-        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>calm · 8px card · sunken body</em></figcaption>
+        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>12px card · 16px composer</em></figcaption>
         <div class="win new closeup-chat">
           <div class="chat">
             <div class="user">帮我把设置页的 nav 也统一一下，现在选中态像 2012 年的 IDE。</div>
@@ -631,7 +779,7 @@
         </div>
       </figure>
       <figure class="pane">
-        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>tinted nav · 6px inputs</em></figcaption>
+        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>8px nav · 34px inputs</em></figcaption>
         <div class="win new closeup-settings">
           <div class="settings">
             <nav class="set-nav">
@@ -646,7 +794,7 @@
               <p class="desc">界面密度、主题与强调色。所有改动即时生效，不需要重启。</p>
               <div class="field"><label>主题</label><div class="input"><span>跟随系统</span><svg class="i mini chev"><use href="#i-chev"/></svg></div></div>
               <div class="two">
-                <div class="field"><label>界面字号</label><div class="input"><span>13 px</span><svg class="i mini chev"><use href="#i-chev"/></svg></div></div>
+                <div class="field"><label>界面字号</label><div class="input"><span>15 px</span><svg class="i mini chev"><use href="#i-chev"/></svg></div></div>
                 <div class="field"><label>界面密度</label><div class="input"><span>舒适</span><svg class="i mini chev"><use href="#i-chev"/></svg></div></div>
               </div>
               <div class="toggle-row"><div class="tx"><b>显示状态栏</b><small>在底部显示分支、编码与连接状态</small></div><div class="sw on"></div></div>
@@ -681,7 +829,7 @@
         </div>
       </figure>
       <figure class="pane">
-        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>12px · hairline + soft shadow</em></figcaption>
+        <figcaption class="pane-label"><span class="side-tag after"><i></i>After · 新版</span><em>16px · 24px padding</em></figcaption>
         <div class="win new closeup-modal">
           <div class="stage">
             <div class="ghost-win">
@@ -708,14 +856,14 @@
       <div class="card">
         <h3>颜色 · dark</h3>
         <div class="swatches">
-          <div class="swatch"><i style="background:#151517"></i><b>bg-primary</b><span>#151517</span></div>
-          <div class="swatch"><i style="background:#1b1b1c"></i><b>bg-secondary</b><span>#1b1b1c</span></div>
-          <div class="swatch"><i style="background:#232324"></i><b>bg-tertiary</b><span>#232324</span></div>
-          <div class="swatch"><i style="background:#262628"></i><b>bg-elevated</b><span>#262628</span></div>
-          <div class="swatch"><i style="background:#2c2c2e"></i><b>bg-hover</b><span>#2c2c2e</span></div>
-          <div class="swatch"><i style="background:#101012"></i><b>bg-sunken</b><span>#101012</span></div>
-          <div class="swatch"><i style="background:rgba(86,134,254,.16)"></i><b>bg-active</b><span>blue 16%</span></div>
-          <div class="swatch"><i style="background:rgba(86,134,254,.10)"></i><b>bg-selected</b><span>blue 10%</span></div>
+          <div class="swatch"><i style="background:#101012"></i><b>bg-primary</b><span>#101012</span></div>
+          <div class="swatch"><i style="background:#17171a"></i><b>bg-secondary</b><span>#17171a</span></div>
+          <div class="swatch"><i style="background:#1d1d21"></i><b>bg-tertiary</b><span>#1d1d21</span></div>
+          <div class="swatch"><i style="background:#202024"></i><b>bg-elevated</b><span>#202024</span></div>
+          <div class="swatch"><i style="background:#26262b"></i><b>bg-hover</b><span>#26262b</span></div>
+          <div class="swatch"><i style="background:#0b0b0d"></i><b>bg-sunken</b><span>#0b0b0d</span></div>
+          <div class="swatch"><i style="background:rgba(86,134,254,.18)"></i><b>bg-active</b><span>blue 18%</span></div>
+          <div class="swatch"><i style="background:rgba(86,134,254,.12)"></i><b>bg-selected</b><span>blue 12%</span></div>
           <div class="swatch"><i style="background:#f9fafb"></i><b>text-primary</b><span>#f9fafb</span></div>
           <div class="swatch"><i style="background:#adb2b8"></i><b>text-secondary</b><span>#adb2b8</span></div>
           <div class="swatch"><i style="background:#81858c"></i><b>text-faint</b><span>#81858c</span></div>
@@ -726,21 +874,21 @@
           <div class="swatch"><i style="background:#22c55e"></i><b>success</b><span>#22c55e</span></div>
         </div>
         <div class="radii">
-          <span class="radius">xs · 4</span><span class="radius">sm · 6</span><span class="radius">md · 8</span>
+          <span class="radius">xs · 5</span><span class="radius">sm · 8</span><span class="radius">md · 10</span>
           <span class="radius">lg · 12</span><span class="radius">xl · 16</span><span class="radius">pill · 999</span>
         </div>
       </div>
       <div class="card">
         <h3>字号 · 行高</h3>
-        <div class="type-row"><span class="sample" style="font-size:17px;line-height:28px">面板标题 Panel title</span><span class="meta">17 / 28</span></div>
-        <div class="type-row"><span class="sample" style="font-size:14px;line-height:24px">正文与对话内容 Body</span><span class="meta">14 / 24</span></div>
-        <div class="type-row"><span class="sample" style="font-size:13px;line-height:20px">列表项、表单、按钮</span><span class="meta">13 / 20</span></div>
-        <div class="type-row"><span class="sample" style="font-size:12px;line-height:18px">次级说明与元信息</span><span class="meta">12 / 18</span></div>
-        <div class="type-row"><span class="sample" style="font-size:11px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)">分组标题 / 状态栏</span><span class="meta">11 / 16</span></div>
+        <div class="type-row"><span class="sample" style="font-size:19px;line-height:32px">面板标题 Panel title</span><span class="meta">19 / 32</span></div>
+        <div class="type-row"><span class="sample" style="font-size:15px;line-height:26px">正文与对话内容 Body</span><span class="meta">15 / 26</span></div>
+        <div class="type-row"><span class="sample" style="font-size:14px;line-height:22px">列表项、表单、按钮</span><span class="meta">14 / 22</span></div>
+        <div class="type-row"><span class="sample" style="font-size:13px;line-height:20px">次级说明与元信息</span><span class="meta">13 / 20</span></div>
+        <div class="type-row"><span class="sample" style="font-size:12px;line-height:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)">分组标题 / 状态栏</span><span class="meta">12 / 18</span></div>
         <h3 style="margin-top:22px">描边与阴影</h3>
-        <div class="type-row"><span class="sample" style="font:11px/18px var(--mono);color:var(--muted)">border-subtle · rgba(255,255,255,.06)</span><span class="meta">hairline</span></div>
-        <div class="type-row"><span class="sample" style="font:11px/18px var(--mono);color:var(--muted)">border-color · rgba(255,255,255,.09)</span><span class="meta">default</span></div>
-        <div class="type-row"><span class="sample" style="font:11px/18px var(--mono);color:var(--muted)">focus-ring · 2px #7aaaff / 55%</span><span class="meta">a11y</span></div>
+        <div class="type-row"><span class="sample" style="font:12px/20px var(--mono);color:var(--muted)">border-subtle · rgba(255,255,255,.07)</span><span class="meta">hairline</span></div>
+        <div class="type-row"><span class="sample" style="font:12px/20px var(--mono);color:var(--muted)">border-color · rgba(255,255,255,.10)</span><span class="meta">default</span></div>
+        <div class="type-row"><span class="sample" style="font:12px/20px var(--mono);color:var(--muted)">focus-ring · 2px #7aaaff / 55%</span><span class="meta">a11y</span></div>
       </div>
     </div>
   </section>
@@ -748,6 +896,7 @@
   <footer>
     <b>mir · UI refresh</b><span class="sep"></span>
     <span>17 个组件与全局样式表</span><span class="sep"></span>
+    <span>15px 基准 · 实心页签 · 面板 12px</span><span class="sep"></span>
     <span>Vue 3 + CSS variables，无新依赖</span><span class="sep"></span>
     <span>交互逻辑与 props 未改动</span>
     <span class="end">before / after · single file</span>

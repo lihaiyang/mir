@@ -75,8 +75,8 @@ async function launch(cmd: AgentCommand) {
 </script>
 
 <style scoped>
-.agent-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin: 8px 0; }
-.agent-item { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-tertiary); }
+.agent-list { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; margin: 12px 0; }
+.agent-item { border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-tertiary); }
 .agent-item-row { display: flex; gap: 4px; align-items: center; }
 .agent-name-input { flex: 1; font-size: var(--text-md); }
 .agent-cmd-input { width: 100%; font-size: var(--text-sm); font-family: var(--font-mono); }

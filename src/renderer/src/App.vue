@@ -193,9 +193,9 @@ function onMouseMove(e: MouseEvent) {
   if (!resizing) return
   const delta = e.clientX - startX
   if (resizing === 'left') {
-    layout.leftWidth = Math.max(150, Math.min(400, startVal + delta))
+    layout.leftWidth = Math.max(180, Math.min(460, startVal + delta))
   } else {
-    layout.rightWidth = Math.max(240, Math.min(600, startVal - delta))
+    layout.rightWidth = Math.max(300, Math.min(700, startVal - delta))
   }
 }
 
@@ -478,21 +478,21 @@ onUnmounted(() => {
 .left-pane {
   flex-shrink: 0;
   overflow: hidden;
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-hairline);
   transition: width var(--transition-base) var(--ease-out);
 }
 .right-pane {
   flex-shrink: 0;
   overflow: hidden;
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-hairline);
   transition: width var(--transition-base) var(--ease-out);
 }
 /* Drag hot-zone only: the visible divider is the 1px panel border, so the
    line stays uniform and aligned with the titlebar splitters. The hot-zone
    turns into a subtle accent glow while dragging/hovering. */
 .splitter {
-  width: 3px;
-  margin: 0 -1px;
+  width: 4px;
+  margin: 0 -2px;
   cursor: col-resize;
   background: transparent;
   flex-shrink: 0;

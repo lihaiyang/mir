@@ -101,25 +101,25 @@ function formatTime(ts: number): string {
 
 <style scoped>
 .ws-modal {
-  width: 440px;
+  width: 480px;
   max-width: 90vw;
 }
 .ws-save {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 .ws-save .modal-input {
   flex: 1;
 }
 .ws-list {
-  max-height: 300px;
+  max-height: 340px;
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 .ws-empty {
-  padding: 20px 16px;
+  padding: 24px 16px;
   text-align: center;
   color: var(--text-faint);
   font-size: var(--text-sm);
@@ -127,8 +127,8 @@ function formatTime(ts: number): string {
 .ws-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 10px 14px;
   font-size: var(--text-md);
 }
 .ws-item + .ws-item {
@@ -157,8 +157,8 @@ function formatTime(ts: number): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-xs);
   color: var(--text-secondary);
   cursor: pointer;

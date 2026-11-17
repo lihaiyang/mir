@@ -140,10 +140,11 @@ function runItem(cmd: PaletteCommand) {
 .cp-modal {
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
-  width: 580px;
-  max-height: 460px;
+  width: 640px;
+  max-width: calc(100vw - 32px);
+  max-height: 520px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -157,7 +158,7 @@ function runItem(cmd: PaletteCommand) {
 
 .cp-input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 18px 20px;
   font-size: var(--text-base);
   line-height: var(--leading-base);
   background: transparent;
@@ -174,11 +175,11 @@ function runItem(cmd: PaletteCommand) {
 .cp-list {
   flex: 1;
   overflow-y: auto;
-  padding: 6px;
+  padding: 8px;
 }
 
 .cp-group {
-  padding: 8px 8px 4px;
+  padding: 10px 10px 6px;
   font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
@@ -189,13 +190,13 @@ function runItem(cmd: PaletteCommand) {
 .cp-item {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-md);
   line-height: var(--leading-md);
   color: var(--text-primary);
-  gap: 10px;
+  gap: 12px;
 }
 .cp-item:hover {
   background: var(--bg-hover);
@@ -229,7 +230,7 @@ function runItem(cmd: PaletteCommand) {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xs);
-  padding: 1px 6px;
+  padding: 2px 7px;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -249,8 +250,8 @@ function runItem(cmd: PaletteCommand) {
 .cp-footer {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 7px 14px;
+  gap: 16px;
+  padding: 10px 16px;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
 }
@@ -263,7 +264,7 @@ function runItem(cmd: PaletteCommand) {
 }
 .cp-footer-hint kbd {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);

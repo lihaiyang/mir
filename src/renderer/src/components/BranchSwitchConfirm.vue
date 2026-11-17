@@ -45,10 +45,10 @@ const emit = defineEmits<{
 .bsc-modal {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-3);
-  width: 420px;
-  padding: 20px;
+  width: 460px;
+  padding: 24px;
 }
 
 .bsc-title {
@@ -56,14 +56,14 @@ const emit = defineEmits<{
   line-height: var(--leading-lg);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .bsc-message {
   font-size: var(--text-md);
   color: var(--text-secondary);
   line-height: var(--leading-md);
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .bsc-actions {

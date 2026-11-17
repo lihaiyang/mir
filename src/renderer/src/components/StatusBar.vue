@@ -401,12 +401,13 @@ async function refreshGitStatus() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 24px;
-  padding: 0 10px;
+  height: 28px;
+  padding: 0 14px;
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-hairline);
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   flex-shrink: 0;
   user-select: none;
@@ -416,16 +417,16 @@ async function refreshGitStatus() {
 .status-right {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .status-item {
   cursor: default;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
@@ -446,7 +447,7 @@ async function refreshGitStatus() {
 .status-badge {
   font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0 4px;
+  padding: 0 5px;
 }
 
 .ahead { color: var(--text-success); }
@@ -460,7 +461,7 @@ async function refreshGitStatus() {
 
 .branch-input {
   width: 100%;
-  padding: 6px 8px;
+  padding: 7px 10px;
   font-size: var(--text-sm);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
@@ -473,7 +474,7 @@ async function refreshGitStatus() {
 
 .branch-create-btn {
   width: 100%;
-  padding: 5px 8px;
+  padding: 7px 10px;
   font-size: var(--text-sm);
 }
 </style>

@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import { debounce, toPlainObject } from '../utils'
 
 export const useLayoutStore = defineStore('layout', () => {
-  const leftWidth = ref(220)
-  const rightWidth = ref(300)
+  const leftWidth = ref(260)
+  const rightWidth = ref(340)
   const leftCollapsed = ref(false)
   const rightCollapsed = ref(false)
   const rightActivePanel = ref<string>('files')

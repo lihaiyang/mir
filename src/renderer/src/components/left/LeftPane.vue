@@ -720,17 +720,17 @@ function cancelEdit() { editing.value = false }
   user-select: none;
 }
 .left-pane-inner.collapsed {
-  padding: 6px 0;
+  padding: 8px 0;
 }
 .icon-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 .icon-bar-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -747,9 +747,9 @@ function cancelEdit() { editing.value = false }
   display: flex;
   align-items: center;
   height: var(--titlebar-height);
-  padding: 0 10px;
-  border-bottom: 1px solid var(--border-subtle);
-  gap: 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  gap: 6px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
@@ -759,7 +759,7 @@ function cancelEdit() { editing.value = false }
   line-height: var(--leading-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--text-faint);
 }
 
@@ -768,21 +768,21 @@ function cancelEdit() { editing.value = false }
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
-  min-width: 168px;
+  margin-top: 6px;
+  min-width: 190px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
-  padding: 4px;
+  padding: 6px;
   z-index: 100;
   overflow: hidden;
 }
 .add-dropdown-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-xs);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
@@ -795,7 +795,7 @@ function cancelEdit() { editing.value = false }
 .item-list {
   flex: 1;
   overflow-y: auto;
-  padding: 6px 0;
+  padding: 8px 0;
 }
 .empty-hint {
   text-align: center;
@@ -809,18 +809,18 @@ function cancelEdit() { editing.value = false }
   position: relative;
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 6px 10px;
   cursor: pointer;
   border-radius: var(--radius-sm);
-  margin: 1px 6px;
-  gap: 8px;
-  min-height: 30px;
+  margin: 2px 8px;
+  gap: 10px;
+  min-height: 36px;
   flex-wrap: wrap;
 }
 .left-item:hover { background: var(--bg-hover); }
 .left-item.active {
-  background: var(--bg-selected);
-  box-shadow: inset 2px 0 0 var(--accent-strong);
+  background: var(--bg-active);
+  color: var(--text-primary);
 }
 .left-item.drag-source { opacity: 0.4; }
 /* Drop indicator: an absolutely-positioned line that does NOT change the
@@ -847,9 +847,9 @@ function cancelEdit() { editing.value = false }
    on the row box instead of ::before, which is reserved for drop indicators,
    so a hovered row can still show its drag line. */
 .left-item.section-start {
-  margin-top: 8px;
+  margin-top: 12px;
   border-top: 1px solid var(--border-subtle);
-  padding-top: 7px;
+  padding-top: 10px;
 }
 
 /* Pin toggle. Always in the DOM (only opacity changes) so revealing it on
@@ -858,8 +858,8 @@ function cancelEdit() { editing.value = false }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   border: none;
   border-radius: var(--radius-xs);
@@ -881,7 +881,7 @@ function cancelEdit() { editing.value = false }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
+  width: 18px;
   color: var(--text-faint);
   flex-shrink: 0;
 }
@@ -899,7 +899,7 @@ function cancelEdit() { editing.value = false }
 .item-name-input {
   flex: 1;
   font-size: var(--text-md);
-  padding: 2px 4px;
+  padding: 3px 6px;
   background: var(--bg-tertiary);
   border: 1px solid var(--accent);
   color: var(--text-primary);
@@ -908,9 +908,9 @@ function cancelEdit() { editing.value = false }
 .item-subtitle {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
-  color: var(--text-faint);
+  color: var(--text-secondary);
   width: 100%;
-  padding-left: 24px;
+  padding-left: 28px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -941,13 +941,13 @@ function cancelEdit() { editing.value = false }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: var(--radius-pill);
   background: var(--warning-soft);
   color: var(--text-warning);
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1;
   flex-shrink: 0;
@@ -999,17 +999,17 @@ function cancelEdit() { editing.value = false }
 .modal {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  min-width: 360px;
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  min-width: 400px;
   box-shadow: var(--shadow-3);
 }
-.modal-title { font-size: var(--text-lg); line-height: var(--leading-lg); font-weight: 600; margin-bottom: 12px; }
-.modal-field { margin-bottom: 10px; }
-.modal-label { display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 4px; }
+.modal-title { font-size: var(--text-lg); line-height: var(--leading-lg); font-weight: 600; margin-bottom: 16px; }
+.modal-field { margin-bottom: 14px; }
+.modal-label { display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 6px; }
 .modal-input {
   width: 100%;
-  padding: 6px 8px;
+  padding: 7px 12px;
   font-size: var(--text-md);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
@@ -1021,18 +1021,18 @@ function cancelEdit() { editing.value = false }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 20px;
 }
 .path-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .path-row .modal-input {
   flex: 1;
 }
 .btn-small {
-  padding: 4px 10px;
+  padding: 6px 12px;
   font-size: var(--text-sm);
   white-space: nowrap;
 }

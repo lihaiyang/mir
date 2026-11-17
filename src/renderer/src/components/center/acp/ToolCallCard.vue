@@ -324,10 +324,11 @@ function openFile(path: string, line?: number): void {
 
 <style scoped>
 .tool-card {
-  margin: 2px 0;
+  margin: 8px 0;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--bg-secondary);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
   transition: border-color var(--transition-fast) ease, background var(--transition-fast) ease;
 }
@@ -341,8 +342,8 @@ function openFile(path: string, line?: number): void {
   align-items: center;
   gap: var(--space-2);
   width: 100%;
-  min-height: 28px;
-  padding: 2px var(--space-3);
+  min-height: 36px;
+  padding: 6px var(--space-4);
   border-radius: 0;
   text-align: left;
   color: var(--text-primary);
@@ -388,7 +389,7 @@ function openFile(path: string, line?: number): void {
 }
 
 .tool-body {
-  padding: 0 var(--space-3) var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-sunken);
 }
@@ -406,7 +407,7 @@ function openFile(path: string, line?: number): void {
 .tool-text :deep(p:last-child) { margin-bottom: 0; }
 .tool-text :deep(pre) {
   margin: 0.4em 0;
-  padding: var(--space-2);
+  padding: var(--space-3);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -455,7 +456,7 @@ function openFile(path: string, line?: number): void {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 4px var(--space-2);
+  padding: 6px var(--space-3);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: var(--text-xs);
@@ -505,7 +506,7 @@ function openFile(path: string, line?: number): void {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 4px var(--space-2);
+  padding: 6px var(--space-3);
   background: var(--bg-tertiary);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -514,7 +515,7 @@ function openFile(path: string, line?: number): void {
 .tool-terminal-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tool-terminal-out {
   margin: 0;
-  padding: var(--space-2);
+  padding: var(--space-3);
   max-height: 220px;
   overflow: auto;
   background: var(--bg-sunken);
@@ -537,8 +538,8 @@ function openFile(path: string, line?: number): void {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  max-width: 260px;
-  padding: 2px 7px;
+  max-width: 300px;
+  padding: 3px 9px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   font-size: var(--text-xs);

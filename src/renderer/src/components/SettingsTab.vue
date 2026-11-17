@@ -234,10 +234,10 @@ function shortcutLabel(key: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--tab-height, 30px);
-  padding: 0 12px;
+  height: var(--tab-height, 40px);
+  padding: 0 16px;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-hairline);
   flex-shrink: 0;
 }
 .settings-toolbar-label {
@@ -275,15 +275,16 @@ function shortcutLabel(key: string): string {
   overflow: hidden;
 }
 .settings-nav {
-  width: 168px;
+  width: 188px;
   background: var(--bg-secondary);
   flex-shrink: 0;
-  padding: 8px 6px;
+  padding: 10px 8px;
   border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
 }
 .settings-nav-item {
-  padding: 7px 10px;
+  padding: 8px 12px;
+  margin-bottom: 2px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-md);
@@ -294,10 +295,10 @@ function shortcutLabel(key: string): string {
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 .settings-group {
   display: flex;
@@ -312,10 +313,11 @@ function shortcutLabel(key: string): string {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   font-weight: 600;
+  line-height: var(--leading-sm);
 }
 .settings-input {
   font-size: var(--text-md);
-  padding: 6px 10px;
+  padding: 7px 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -325,7 +327,7 @@ function shortcutLabel(key: string): string {
 .settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .settings-select {
   font-size: var(--text-md);
-  padding: 6px 10px;
+  padding: 7px 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);

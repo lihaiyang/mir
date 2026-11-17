@@ -319,47 +319,47 @@ onUnmounted(() => {
 <style scoped>
 .tab-bar {
   display: flex;
-  align-items: flex-end;
-  height: var(--tab-height, 30px);
+  align-items: center;
+  height: var(--tab-height, 40px);
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-hairline);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
   overflow-x: auto;
   overflow-y: hidden;
   flex-shrink: 0;
-  gap: 2px;
-  padding: 0 8px;
+  gap: 4px;
+  padding: 0 10px;
   -webkit-app-region: drag;
   cursor: default;
 }
 .tab-bar::-webkit-scrollbar { height: 0; }
 
+/* Active tabs are solid rounded plates — no underline, no trapezoid. */
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  height: 28px;
-  min-width: 96px;
-  max-width: 190px;
+  gap: 8px;
+  padding: 0 12px;
+  height: 34px;
+  margin: 2px 0;
+  min-width: 100px;
+  max-width: 200px;
   cursor: pointer;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   color: var(--text-secondary);
   user-select: none;
   flex-shrink: 0;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-sm);
   background: transparent;
-  border-top: 1px solid transparent;
   -webkit-app-region: no-drag;
   transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .tab:hover { background: var(--bg-hover); color: var(--text-primary); }
 .tab.active {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  height: var(--tab-height, 30px);
-  border-top: 1px solid var(--border-hairline);
-  box-shadow: inset 0 2px 0 var(--accent-strong);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-1);
 }
 
 .tab-icon {
@@ -368,7 +368,7 @@ onUnmounted(() => {
   justify-content: center;
   color: var(--text-faint);
 }
-.tab.active .tab-icon { color: var(--accent-strong); }
+.tab.active .tab-icon { color: var(--text-on-accent); }
 .tab-title {
   flex: 1;
   overflow: hidden;
@@ -378,7 +378,7 @@ onUnmounted(() => {
 .tab-title-input {
   flex: 1;
   font-size: var(--text-sm);
-  padding: 1px 4px;
+  padding: 2px 6px;
   background: var(--bg-tertiary);
   border: 1px solid var(--accent);
   color: var(--text-primary);
@@ -391,11 +391,12 @@ onUnmounted(() => {
   background: var(--text-warning);
   flex-shrink: 0;
 }
+.tab.active .tab-modified-dot { background: var(--text-on-accent); }
 .tab-close {
   color: var(--text-faint);
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -404,23 +405,27 @@ onUnmounted(() => {
 }
 .tab:hover .tab-close,
 .tab.active .tab-close { opacity: 1; }
+.tab.active .tab-close { color: var(--text-on-accent); opacity: 0.72; }
+.tab.active .tab-close:hover { background: var(--on-accent-soft); color: var(--text-on-accent); opacity: 1; }
 .tab-close:hover { background: var(--bg-hover); color: var(--text-danger); }
 
 .tab-toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   flex-shrink: 0;
   height: 100%;
   margin-left: auto;
+  gap: 2px;
   -webkit-app-region: no-drag;
 }
 .tab-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: 32px;
   padding: 0;
-  height: 100%;
+  height: 32px;
+  border-radius: var(--radius-xs);
   color: var(--text-faint);
 }
 .tab-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
@@ -433,7 +438,7 @@ onUnmounted(() => {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
-  padding: 4px;
+  padding: 6px;
   z-index: 100;
   overflow: hidden;
   -webkit-app-region: no-drag;
@@ -441,8 +446,8 @@ onUnmounted(() => {
 .tab-dropdown-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
+  gap: 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-xs);
   cursor: pointer;
   transition: background var(--transition-fast) ease;

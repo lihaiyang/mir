@@ -153,7 +153,7 @@ function onMarkdownClick(event: MouseEvent): void {
 
 <style scoped>
 .chat-message {
-  padding: var(--space-1) var(--space-4);
+  padding: 6px var(--space-5);
 }
 
 /* ── user ── */
@@ -162,11 +162,11 @@ function onMarkdownClick(event: MouseEvent): void {
   justify-content: flex-end;
 }
 .user-bubble {
-  max-width: 78%;
-  padding: var(--space-2) var(--space-3);
+  max-width: 76%;
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
+  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-xs) var(--radius-xl);
   color: var(--text-primary);
   font-size: var(--text-md);
   line-height: var(--leading-base);
@@ -177,11 +177,11 @@ function onMarkdownClick(event: MouseEvent): void {
 /* ── agent ── */
 .agent-row {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: flex-start;
 }
 .agent-avatar {
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--accent-strong);
   opacity: 0.9;
 }
@@ -222,7 +222,7 @@ function onMarkdownClick(event: MouseEvent): void {
 }
 .markdown :deep(pre) {
   margin: 0.5em 0;
-  padding: var(--space-3);
+  padding: var(--space-4);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
