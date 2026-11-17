@@ -2,7 +2,7 @@
   <!-- Collapsed icon bar -->
   <div v-if="layout.leftCollapsed" class="left-pane-inner collapsed">
     <div class="icon-bar">
-      <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="14" /></div>
+      <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="16" /></div>
       <div
         v-for="item in barItems"
         :key="item.orderKey"
@@ -11,7 +11,7 @@
         :title="itemTitle(item)"
         @click="onItemClick(item)"
       >
-        <Icon :name="itemIcon(item)" :size="14" />
+        <Icon :name="itemIcon(item)" :size="18" />
         <span v-if="projectStore.isPinned(item.orderKey)" class="pin-badge"><Icon name="pin" :size="9" /></span>
         <span v-if="unreadOf(item) > 0" class="icon-unread" :title="unreadTitle(item)">{{ unreadLabel(item) }}</span>
       </div>
@@ -21,15 +21,15 @@
   <!-- Expanded -->
   <div v-else class="left-pane-inner" @dragover.prevent @drop="onDrop">
       <div class="left-header">
-        <button class="icon-btn" :title="$t('common.collapse')" @click="layout.leftCollapsed = true; layout.persist()"><Icon name="chevrons-left" :size="14" /></button>
+        <button class="icon-btn" :title="$t('common.collapse')" @click="layout.leftCollapsed = true; layout.persist()"><Icon name="chevrons-left" :size="16" /></button>
         <span class="left-title">{{ $t('titlebar.leftTitle') }}</span>
         <div class="add-wrapper" ref="addBtnRef">
-          <button class="icon-btn" title="Add" @click.stop="toggleAddMenu"><Icon name="plus" :size="14" /></button>
+          <button class="icon-btn" title="Add" @click.stop="toggleAddMenu"><Icon name="plus" :size="16" /></button>
           <div v-if="showAddMenu" class="add-dropdown" @click.stop @mouseleave="showAddMenu = false">
-            <div class="add-dropdown-item" @click="addProject"><Icon name="folder" :size="14" /> {{ $t('titlebar.addProject') }}</div>
-            <div class="add-dropdown-item" @click="startNewFolder"><Icon name="folder-plus" :size="14" /> {{ $t('leftPane.newFolder') }}</div>
-            <div class="add-dropdown-item" @click="addBrowserProject"><Icon name="globe" :size="14" /> {{ $t('leftPane.addBrowserProject') }}</div>
-            <div class="add-dropdown-item" @click="startAddWebPage"><Icon name="globe" :size="14" /> {{ $t('titlebar.addWebPage') }}</div>
+            <div class="add-dropdown-item" @click="addProject"><Icon name="folder" :size="16" /> {{ $t('titlebar.addProject') }}</div>
+            <div class="add-dropdown-item" @click="startNewFolder"><Icon name="folder-plus" :size="16" /> {{ $t('leftPane.newFolder') }}</div>
+            <div class="add-dropdown-item" @click="addBrowserProject"><Icon name="globe" :size="16" /> {{ $t('leftPane.addBrowserProject') }}</div>
+            <div class="add-dropdown-item" @click="startAddWebPage"><Icon name="globe" :size="16" /> {{ $t('titlebar.addWebPage') }}</div>
           </div>
         </div>
       </div>
@@ -64,7 +64,7 @@
         @dragend="dragEnd"
       >
         <span class="item-icon">
-          <Icon :name="itemIcon(row.item)" :size="14" />
+          <Icon :name="itemIcon(row.item)" :size="18" />
         </span>
         <span
           v-if="!editing || editingId !== row.item.orderKey"
@@ -81,6 +81,7 @@
           @keydown.esc="cancelEdit"
           @click.stop
         />
+        <span class="item-subtitle" :title="itemSubtitle(row.item)">{{ itemSubtitle(row.item) }}</span>
         <span
           v-if="unreadOf(row.item) > 0"
           class="item-unread"
@@ -92,9 +93,8 @@
           :title="projectStore.isPinned(row.item.orderKey) ? $t('leftPane.unpin') : $t('leftPane.pinToTop')"
           @click.stop="projectStore.togglePin(row.item.orderKey)"
         >
-          <Icon name="pin" :size="11" />
+          <Icon name="pin" :size="12" />
         </button>
-        <span class="item-subtitle" :title="itemSubtitle(row.item)">{{ itemSubtitle(row.item) }}</span>
       </div>
     </div>
 
@@ -795,7 +795,7 @@ function cancelEdit() { editing.value = false }
 .item-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 .empty-hint {
   text-align: center;
@@ -809,13 +809,14 @@ function cancelEdit() { editing.value = false }
   position: relative;
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 2px 8px;
   cursor: pointer;
   border-radius: var(--radius-sm);
-  margin: 2px 8px;
-  gap: 10px;
-  min-height: 36px;
-  flex-wrap: wrap;
+  margin: 1px 6px;
+  gap: 8px;
+  min-height: 27px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .left-item:hover { background: var(--bg-hover); }
 .left-item.active {
@@ -847,9 +848,9 @@ function cancelEdit() { editing.value = false }
    on the row box instead of ::before, which is reserved for drop indicators,
    so a hovered row can still show its drag line. */
 .left-item.section-start {
-  margin-top: 12px;
+  margin-top: 5px;
   border-top: 1px solid var(--border-subtle);
-  padding-top: 10px;
+  padding-top: 4px;
 }
 
 /* Pin toggle. Always in the DOM (only opacity changes) so revealing it on
@@ -881,14 +882,16 @@ function cancelEdit() { editing.value = false }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  width: 20px;
   color: var(--text-faint);
   flex-shrink: 0;
 }
 .left-item.active .item-icon { color: var(--accent-strong); }
 
 .item-name {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 62%;
   font-size: var(--text-md);
   line-height: var(--leading-md);
   font-weight: 500;
@@ -897,20 +900,22 @@ function cancelEdit() { editing.value = false }
   white-space: nowrap;
 }
 .item-name-input {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--text-md);
-  padding: 3px 6px;
+  padding: 2px 6px;
   background: var(--bg-tertiary);
   border: 1px solid var(--accent);
   color: var(--text-primary);
   border-radius: var(--radius-xs);
 }
 .item-subtitle {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-left: 2px;
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
-  color: var(--text-secondary);
-  width: 100%;
-  padding-left: 28px;
+  color: var(--text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -941,13 +946,13 @@ function cancelEdit() { editing.value = false }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   border-radius: var(--radius-pill);
   background: var(--warning-soft);
   color: var(--text-warning);
-  font-size: var(--text-xs);
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
   flex-shrink: 0;

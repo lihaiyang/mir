@@ -8,7 +8,7 @@
           <input type="checkbox" v-model="showHidden" @change="loadTree" />
           <span class="toggle-label">.</span>
         </label>
-        <button class="icon-btn" :title="$t('fileTree.refresh')" @click="loadTree"><Icon name="refresh" :size="13" /></button>
+        <button class="icon-btn" :title="$t('fileTree.refresh')" @click="loadTree"><Icon name="refresh" :size="18" /></button>
       </div>
       <div class="tree-scroll" @contextmenu.prevent="showRootMenu">
         <RightTreeNode
@@ -141,14 +141,15 @@ async function openInEditor(fp: string) {
 .tree-header {
   display: flex;
   align-items: center;
-  padding: 4px 6px;
+  min-height: 44px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border-color);
-  gap: 2px;
+  gap: 4px;
   flex-shrink: 0;
 }
 .tree-root-name {
   flex: 1;
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -161,8 +162,8 @@ async function openInEditor(fp: string) {
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
 }
 .show-hidden-toggle:hover { background: var(--bg-hover); }

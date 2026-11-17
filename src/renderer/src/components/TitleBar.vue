@@ -11,10 +11,10 @@
 
         <!-- nav + address bar cluster -->
         <div class="tl-browser-bar" @dblclick.stop>
-          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoBack"  @click="navCmd('back')"><Icon name="chevron-left" :size="13" /></button>
-          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoForward" @click="navCmd('forward')"><Icon name="chevron-right" :size="13" /></button>
+          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoBack"  @click="navCmd('back')"><Icon name="chevron-left" :size="15" /></button>
+          <button class="tl-nav-btn" :disabled="!standaloneNavBus.canGoForward" @click="navCmd('forward')"><Icon name="chevron-right" :size="15" /></button>
           <button class="tl-nav-btn" @click="navCmd('reload')">
-            <Icon :name="standaloneNavBus.isLoading ? 'x' : 'refresh'" :size="13" />
+            <Icon :name="standaloneNavBus.isLoading ? 'x' : 'refresh'" :size="15" />
           </button>
           <input
             v-model="addrBar"
@@ -25,7 +25,7 @@
             @dblclick.stop
             @mousedown.stop
           />
-          <button class="tl-nav-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
+          <button class="tl-nav-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="15" /></button>
         </div>
 
         <!-- drag pad right -->
@@ -74,7 +74,7 @@
 
     <div class="tl-right" :style="{ width: rightWidthPx }">
       <div class="tl-right-spacer" />
-      <button class="tl-btn" :title="$t('common.settings')" @click="openSettings"><Icon name="settings" :size="14" /></button>
+      <button class="tl-btn" :title="$t('common.settings')" @click="openSettings"><Icon name="settings" :size="18" /></button>
     </div>
   </div>
 </template>

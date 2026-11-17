@@ -43,6 +43,30 @@
   --diff-del-bg: #3c1f1b;
   --diff-del-text: #f87171;
 
+  /* Terminal gets its own surface, one step below the editor well. The
+     ANSI palette is tuned for this background, not inherited from VS Code. */
+  --terminal-bg: #0b0b0d;
+  --terminal-fg: #e6e8ee;
+  --terminal-cursor: #7aaaff;
+  --terminal-selection: rgba(86, 134, 254, 0.30);
+  --terminal-selection-fg: #f9fafb;
+  --ansi-black: #1e1e1e;
+  --ansi-red: #f25a5a;
+  --ansi-green: #4ade80;
+  --ansi-yellow: #e5c07b;
+  --ansi-blue: #7aaaff;
+  --ansi-magenta: #c084fc;
+  --ansi-cyan: #67e8f9;
+  --ansi-white: #d4d4d4;
+  --ansi-bright-black: #8b8f96;
+  --ansi-bright-red: #ff8a8a;
+  --ansi-bright-green: #86efac;
+  --ansi-bright-yellow: #fde68a;
+  --ansi-bright-blue: #a5c4ff;
+  --ansi-bright-magenta: #d8b4fe;
+  --ansi-bright-cyan: #a5f3fc;
+  --ansi-bright-white: #ffffff;
+
   --overlay: rgba(0, 0, 0, 0.62);
   --scrollbar-track: transparent;
   --scrollbar-thumb: #3c3c3d;
@@ -136,6 +160,29 @@
   --diff-add-text: #1a7f37;
   --diff-del-bg: #fdeceb;
   --diff-del-text: #b42318;
+  /* Cool-gray terminal well: darker than the #f4f5f8 canvas, not white.
+     All ANSI entries clear 5:1 on #e3e6ea; foreground clears 13:1. */
+  --terminal-bg: #e3e6ea;
+  --terminal-fg: #1a1d21;
+  --terminal-cursor: #0b5cad;
+  --terminal-selection: rgba(14, 128, 200, 0.22);
+  --terminal-selection-fg: #0b1b2a;
+  --ansi-black: #24292f;
+  --ansi-red: #b42318;
+  --ansi-green: #1a6b30;
+  --ansi-yellow: #7a5200;
+  --ansi-blue: #0757a8;
+  --ansi-magenta: #7038c8;
+  --ansi-cyan: #14666c;
+  --ansi-white: #57606a;
+  --ansi-bright-black: #4b5563;
+  --ansi-bright-red: #a40e26;
+  --ansi-bright-green: #116329;
+  --ansi-bright-yellow: #7a4d00;
+  --ansi-bright-blue: #0550ae;
+  --ansi-bright-magenta: #6639ba;
+  --ansi-bright-cyan: #0f5f66;
+  --ansi-bright-white: #1f2328;
   --overlay: rgba(15, 23, 42, 0.32);
   --scrollbar-thumb: rgba(15, 23, 42, 0.20);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.32);

@@ -13,7 +13,7 @@
       @dragover.prevent
       @drop="dragDrop(idx)"
     >
-      <span class="tab-icon"><Icon :name="tabIcon(tab.type)" :size="12" /></span>
+      <span class="tab-icon"><Icon :name="tabIcon(tab.type)" :size="16" /></span>
       <span
         v-if="!editingTabId || editingTabId !== tab.id"
         class="tab-title"
@@ -32,18 +32,18 @@
       <button
         class="tab-close"
         @click.stop="confirmCloseTab(tab)"
-      ><Icon name="x" :size="10" /></button>
+      ><Icon name="x" :size="12" /></button>
     </div>
     <div class="tab-toolbar" ref="toolbarRef">
       <template v-if="!toolbarOverflow">
-        <button class="tab-action-btn" :title="t('tab.terminal')" @click.stop="createTab('terminal')"><Icon name="terminal" :size="13" /></button>
-        <button class="tab-action-btn" :title="t('tab.fileEditor')" @click.stop="createTab('editor')"><Icon name="file-text" :size="13" /></button>
-        <button class="tab-action-btn" :title="t('tab.browser')" @click.stop="createTab('browser')"><Icon name="globe" :size="13" /></button>
-        <button class="tab-action-btn" :title="t('tab.splitDown')" @click.stop="splitPane('vertical')"><Icon name="rows" :size="13" /></button>
-        <button class="tab-action-btn" :title="t('tab.splitRight')" @click.stop="splitPane('horizontal')"><Icon name="columns" :size="13" /></button>
-        <button class="tab-action-btn" :title="t('tab.closePane')" @click.stop="closeThisPane"><Icon name="x" :size="13" /></button>
+        <button class="tab-action-btn" :title="t('tab.terminal')" @click.stop="createTab('terminal')"><Icon name="terminal" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.fileEditor')" @click.stop="createTab('editor')"><Icon name="file-text" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.browser')" @click.stop="createTab('browser')"><Icon name="globe" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.splitDown')" @click.stop="splitPane('vertical')"><Icon name="rows" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.splitRight')" @click.stop="splitPane('horizontal')"><Icon name="columns" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.closePane')" @click.stop="closeThisPane"><Icon name="x" :size="17" /></button>
       </template>
-      <button v-else ref="moreBtnRef" class="tab-action-btn" @click.stop="toggleMoreDropdown"><Icon name="more" :size="13" /></button>
+      <button v-else ref="moreBtnRef" class="tab-action-btn" @click.stop="toggleMoreDropdown"><Icon name="more" :size="17" /></button>
     </div>
 
     <!-- Overflow dropdown -->
@@ -56,28 +56,28 @@
       @mouseleave="showMoreDropdown = false"
     >
       <div class="tab-dropdown-item" @click="createTab('terminal'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon"><Icon name="terminal" :size="14" /></span>
+        <span class="tab-dropdown-icon"><Icon name="terminal" :size="16" /></span>
         <div class="tab-dropdown-name">{{ t('tab.terminal') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="createTab('editor'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon"><Icon name="file-text" :size="14" /></span>
+        <span class="tab-dropdown-icon"><Icon name="file-text" :size="16" /></span>
         <div class="tab-dropdown-name">{{ t('tab.fileEditor') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="createTab('browser'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon"><Icon name="globe" :size="14" /></span>
+        <span class="tab-dropdown-icon"><Icon name="globe" :size="16" /></span>
         <div class="tab-dropdown-name">{{ t('tab.browser') }}</div>
       </div>
       <div class="tab-dropdown-separator"></div>
       <div class="tab-dropdown-item" @click="splitPane('vertical'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon"><Icon name="rows" :size="14" /></span>
+        <span class="tab-dropdown-icon"><Icon name="rows" :size="16" /></span>
         <div class="tab-dropdown-name">{{ t('tab.splitDown') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="splitPane('horizontal'); showMoreDropdown = false">
-        <span class="tab-dropdown-icon"><Icon name="columns" :size="14" /></span>
+        <span class="tab-dropdown-icon"><Icon name="columns" :size="16" /></span>
         <div class="tab-dropdown-name">{{ t('tab.splitRight') }}</div>
       </div>
       <div class="tab-dropdown-item" @click="closeThisPane(); showMoreDropdown = false">
-        <span class="tab-dropdown-icon"><Icon name="x" :size="14" /></span>
+        <span class="tab-dropdown-icon"><Icon name="x" :size="16" /></span>
         <div class="tab-dropdown-name">{{ t('tab.closePane') }}</div>
       </div>
     </div>

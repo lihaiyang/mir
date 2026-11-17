@@ -5,13 +5,13 @@
       <span class="acp-header-title">{{ t('acp.agents') }}</span>
       <div class="acp-header-actions">
         <button class="icon-btn" :title="t('acp.refresh')" :disabled="refreshing" @click="refreshAll">
-          <Icon name="refresh" :size="13" />
+          <Icon name="refresh" :size="18" />
         </button>
         <button class="icon-btn" :title="t('acp.browseRegistry')" @click="openRegistry">
-          <Icon name="plus" :size="14" />
+          <Icon name="plus" :size="18" />
         </button>
         <button class="icon-btn" :title="t('acp.openSettings')" @click="openSettings">
-          <Icon name="settings" :size="13" />
+          <Icon name="settings" :size="18" />
         </button>
       </div>
     </div>
@@ -154,7 +154,7 @@
         <div class="acp-modal-head">
           <span class="acp-modal-title">{{ t('acp.registry.title') }}</span>
           <button class="icon-btn" :title="t('common.close')" @click="showRegistry = false">
-            <Icon name="x" :size="14" />
+            <Icon name="x" :size="18" />
           </button>
         </div>
         <input v-model="registryQuery" class="acp-modal-search" :placeholder="t('acp.registry.search')" />
@@ -658,8 +658,9 @@ onBeforeUnmount(() => {
 .acp-header {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: 4px 4px 4px 10px;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 6px 8px 6px 12px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   position: sticky;
@@ -682,7 +683,7 @@ onBeforeUnmount(() => {
 .acp-header-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -691,7 +692,7 @@ onBeforeUnmount(() => {
   padding: 4px 6px;
   font-size: var(--text-xs);
   color: var(--text-danger);
-  background: rgba(244, 112, 112, 0.1);
+  background: var(--danger-soft);
   border-radius: var(--radius-sm);
   word-break: break-word;
   white-space: pre-wrap;

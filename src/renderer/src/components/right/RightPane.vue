@@ -11,7 +11,7 @@
         class="icon-bar-btn"
         :title="layout.rightCollapsed ? t('common.expand') : t('common.collapse')"
         @click="toggleCollapse"
-      ><Icon :name="layout.rightCollapsed ? 'chevrons-left' : 'chevrons-right'" :size="14" /></div>
+      ><Icon :name="layout.rightCollapsed ? 'chevrons-left' : 'chevrons-right'" :size="16" /></div>
       <div
         v-for="panel in panels"
         :key="panel.id"
@@ -19,7 +19,7 @@
         :class="{ active: !layout.rightCollapsed && layout.rightActivePanel === panel.id }"
         :title="panel.label"
         @click="onPanelClick(panel.id)"
-      ><Icon :name="panel.icon" :size="16" /></div>
+      ><Icon :name="panel.icon" :size="18" /></div>
     </div>
   </div>
 </template>
@@ -87,36 +87,27 @@ function toggleCollapse() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 0;
-  gap: 2px;
+  padding: 8px 0;
+  gap: 4px;
   flex-shrink: 0;
-  width: 32px;
+  width: 40px;
   border-left: 1px solid var(--border-color);
 }
 .icon-bar-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-md);
   color: var(--text-secondary);
   position: relative;
 }
 .icon-bar-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .icon-bar-btn.active {
-  color: var(--text-accent);
-}
-.icon-bar-btn.active::before {
-  content: '';
-  position: absolute;
-  right: -4px;
-  top: 4px;
-  bottom: 4px;
-  width: 3px;
-  background: var(--text-accent);
-  border-radius: 2px 0 0 2px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 </style>

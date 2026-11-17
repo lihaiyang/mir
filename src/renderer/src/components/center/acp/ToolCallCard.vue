@@ -498,7 +498,7 @@ function openFile(path: string, line?: number): void {
 
 /* terminal */
 .tool-terminal {
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -518,11 +518,12 @@ function openFile(path: string, line?: number): void {
   padding: var(--space-3);
   max-height: 220px;
   overflow: auto;
-  background: var(--bg-sunken);
+  background: var(--terminal-bg);
+  border-top: 1px solid var(--border-color);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: 1.5;
-  color: var(--text-secondary);
+  color: var(--terminal-fg);
   white-space: pre-wrap;
   word-break: break-word;
 }

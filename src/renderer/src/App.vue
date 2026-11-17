@@ -22,7 +22,7 @@
       <!-- Right pane -->
       <div
         class="right-pane"
-        :style="layout.rightCollapsed ? { width: '32px' } : { width: layout.rightWidth + 'px' }"
+        :style="layout.rightCollapsed ? { width: '40px' } : { width: layout.rightWidth + 'px' }"
       >
         <RightPane />
       </div>

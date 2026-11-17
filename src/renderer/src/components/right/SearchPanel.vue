@@ -12,7 +12,7 @@
           @keydown.enter="runSearch"
           @keydown.escape="showHistory = false"
         />
-        <button class="icon-btn" title="Search" @click="runSearch" :disabled="searching"><Icon name="search" :size="14" /></button>
+        <button class="icon-btn" title="Search" @click="runSearch" :disabled="searching"><Icon name="search" :size="18" /></button>
       </div>
 
       <!-- History dropdown -->
@@ -53,7 +53,7 @@
           class="search-input"
           :placeholder="$t('search.replaceWith')"
         />
-        <button class="icon-btn" :title="$t('search.replaceAll')" @click="confirmReplace" :disabled="searching || !replaceQuery"><Icon name="rotate" :size="14" /></button>
+        <button class="icon-btn" :title="$t('search.replaceAll')" @click="confirmReplace" :disabled="searching || !replaceQuery"><Icon name="rotate" :size="18" /></button>
       </div>
     </div>
 
@@ -299,31 +299,31 @@ async function doReplace() {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .search-controls {
-  padding: 8px;
+  padding: 10px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .search-row {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
 }
-.search-input { flex: 1; font-size: 12px; }
+.search-input { flex: 1; font-size: var(--text-sm); }
 .search-options { display: flex; gap: 8px; align-items: center; }
 .opt-label {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: var(--text-xs);
   cursor: pointer;
-  padding: 2px 5px;
-  border-radius: 3px;
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border-color);
 }
 .opt-label:hover { background: var(--bg-hover); }
@@ -363,5 +363,5 @@ async function doReplace() {
 .result-item:hover { background: var(--bg-hover); }
 .result-line { color: var(--text-accent); width: 36px; text-align: right; flex-shrink: 0; font-size: 11px; }
 .result-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-:deep(mark) { background: #f59e0b; color: #000; border-radius: 2px; padding: 0 1px; }
+:deep(mark) { background: var(--warning-soft); color: var(--text-primary); border-radius: 2px; padding: 0 1px; }
 </style>

@@ -5,16 +5,16 @@
       <!-- Branch / status header -->
       <div class="git-header">
         <div class="git-branch" @click="showBranchMenu">
-          <span class="git-branch-icon"><Icon name="git-branch" :size="14" /></span>
+          <span class="git-branch-icon"><Icon name="git-branch" :size="18" /></span>
           <span class="branch-name">{{ status?.branch || '...' }}</span>
           <span v-if="(status?.ahead ?? 0) > 0" class="badge-up">↑{{ status!.ahead }}</span>
           <span v-if="(status?.behind ?? 0) > 0" class="badge-down">↓{{ status!.behind }}</span>
         </div>
         <div class="git-actions">
-          <button class="icon-btn" :title="$t('git.fetch')" @click="runFetch" :disabled="running"><Icon name="download" :size="13" /></button>
-          <button class="icon-btn" :title="$t('git.pull')" @click="runPull" :disabled="running"><Icon name="chevron-down" :size="13" /></button>
-          <button class="icon-btn" :title="$t('git.push')" @click="runPush" :disabled="running"><Icon name="upload" :size="13" /></button>
-          <button class="icon-btn" :title="$t('git.refresh')" @click="loadStatus"><Icon name="refresh" :size="13" /></button>
+          <button class="icon-btn" :title="$t('git.fetch')" @click="runFetch" :disabled="running"><Icon name="download" :size="18" /></button>
+          <button class="icon-btn" :title="$t('git.pull')" @click="runPull" :disabled="running"><Icon name="chevron-down" :size="18" /></button>
+          <button class="icon-btn" :title="$t('git.push')" @click="runPush" :disabled="running"><Icon name="upload" :size="18" /></button>
+          <button class="icon-btn" :title="$t('git.refresh')" @click="loadStatus"><Icon name="refresh" :size="18" /></button>
         </div>
       </div>
 
@@ -26,7 +26,7 @@
         <div class="git-section-header" @click="stagedCollapsed = !stagedCollapsed">
           <span>{{ stagedCollapsed ? '▸' : '▾' }}</span>
           <span>{{ $t('git.staged') }} ({{ stagedFiles.length }})</span>
-          <button class="mini-btn" :title="$t('git.unstage') + ' all'" @click.stop="unstageAll"><Icon name="minus" :size="12" /></button>
+          <button class="mini-btn" :title="$t('git.unstage') + ' all'" @click.stop="unstageAll"><Icon name="minus" :size="14" /></button>
         </div>
         <template v-if="!stagedCollapsed">
           <div
@@ -38,7 +38,7 @@
           >
             <span class="git-file-status" :class="statusClass(f.indexStatus)">{{ f.indexStatus }}</span>
             <span class="git-file-name">{{ f.path }}</span>
-            <button class="mini-btn" :title="$t('git.unstage')" @click.stop="unstageFile(f.path)"><Icon name="minus" :size="12" /></button>
+            <button class="mini-btn" :title="$t('git.unstage')" @click.stop="unstageFile(f.path)"><Icon name="minus" :size="14" /></button>
           </div>
         </template>
       </div>
@@ -48,7 +48,7 @@
         <div class="git-section-header" @click="changesCollapsed = !changesCollapsed">
           <span>{{ changesCollapsed ? '▸' : '▾' }}</span>
           <span>{{ $t('git.changes') }} ({{ unstagedFiles.length }})</span>
-          <button class="mini-btn" :title="$t('git.stage') + ' all'" @click.stop="stageAll"><Icon name="plus" :size="12" /></button>
+          <button class="mini-btn" :title="$t('git.stage') + ' all'" @click.stop="stageAll"><Icon name="plus" :size="14" /></button>
         </div>
         <template v-if="!changesCollapsed">
           <div v-if="unstagedFiles.length === 0" class="git-file-empty">{{ $t('git.noUnstagedChanges') }}</div>
@@ -61,7 +61,7 @@
           >
             <span class="git-file-status" :class="statusClass(f.workingStatus)">{{ f.workingStatus }}</span>
             <span class="git-file-name">{{ f.path }}</span>
-            <button class="mini-btn" :title="$t('git.stage')" @click.stop="stageFile(f.path)"><Icon name="plus" :size="12" /></button>
+            <button class="mini-btn" :title="$t('git.stage')" @click.stop="stageFile(f.path)"><Icon name="plus" :size="14" /></button>
           </div>
         </template>
       </div>
@@ -383,43 +383,44 @@ function formatDate(d: string): string {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .git-empty { padding: 16px; color: var(--text-secondary); text-align: center; }
 .git-header {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
+  min-height: 44px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border-color);
-  gap: 4px;
+  gap: 6px;
 }
 .git-branch {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: 1;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
 }
 .git-branch:hover { background: var(--bg-hover); }
 .git-branch-icon { display: inline-flex; align-items: center; color: var(--text-secondary); }
 .branch-name { font-weight: 600; color: var(--text-accent); }
 .badge-up { color: var(--text-success); font-size: 10px; }
-.badge-down { color: #f59e0b; font-size: 10px; }
-.git-actions { display: flex; gap: 2px; }
-.git-progress { padding: 4px 8px; font-size: 11px; color: var(--text-secondary); font-style: italic; }
-.git-error { padding: 4px 8px; font-size: 11px; color: var(--text-danger); background: rgba(244,67,71,0.1); }
+.badge-down { color: var(--text-warning); font-size: 11px; }
+.git-actions { display: flex; gap: 4px; }
+.git-progress { padding: 6px 10px; font-size: var(--text-xs); color: var(--text-secondary); font-style: italic; }
+.git-error { padding: 6px 10px; font-size: var(--text-xs); color: var(--text-danger); background: var(--danger-soft); }
 .git-section { border-bottom: 1px solid var(--border-color); }
 .git-section-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 7px 10px;
   font-weight: 600;
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -427,12 +428,12 @@ function formatDate(d: string): string {
 .mini-btn {
   margin-left: auto;
   font-size: 13px;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   color: var(--text-secondary);
 }
 .mini-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
@@ -451,10 +452,10 @@ function formatDate(d: string): string {
   font-size: 11px;
   flex-shrink: 0;
 }
-.status-m { color: #f59e0b; }
+.status-m { color: var(--text-warning); }
 .status-a { color: var(--text-success); }
 .status-d { color: var(--text-danger); }
-.status-r { color: #7c3aed; }
+.status-r { color: var(--text-violet); }
 .status-u { color: var(--text-secondary); }
 .status-c { color: var(--text-danger); }
 .git-file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

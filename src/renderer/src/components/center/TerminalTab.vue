@@ -202,19 +202,31 @@ async function initTerminal() {
 }
 
 function terminalTheme() {
-  const dark = settingsStore.settings.theme === 'dark'
-  return dark ? {
-    background: '#1e1e1e', foreground: '#d4d4d4',
-    cursor: '#d4d4d4', selectionBackground: '#264f78',
-    black: '#1e1e1e', red: '#f44747', green: '#4ec9b0',
-    yellow: '#dcdcaa', blue: '#569cd6', magenta: '#c678dd',
-    cyan: '#9cdcfe', white: '#d4d4d4'
-  } : {
-    background: '#ffffff', foreground: '#1e1e1e',
-    cursor: '#1e1e1e', selectionBackground: '#add6ff',
-    black: '#1e1e1e', red: '#d32f2f', green: '#007462',
-    yellow: '#7b5900', blue: '#0070c1', magenta: '#7c3aed',
-    cyan: '#007462', white: '#f3f3f3'
+  const css = getComputedStyle(document.querySelector('.app') ?? document.documentElement)
+  const v = (name: string) => css.getPropertyValue(name).trim()
+  return {
+    background: v('--terminal-bg'),
+    foreground: v('--terminal-fg'),
+    cursor: v('--terminal-cursor'),
+    cursorAccent: v('--terminal-bg'),
+    selectionBackground: v('--terminal-selection'),
+    selectionForeground: v('--terminal-selection-fg'),
+    black: v('--ansi-black'),
+    red: v('--ansi-red'),
+    green: v('--ansi-green'),
+    yellow: v('--ansi-yellow'),
+    blue: v('--ansi-blue'),
+    magenta: v('--ansi-magenta'),
+    cyan: v('--ansi-cyan'),
+    white: v('--ansi-white'),
+    brightBlack: v('--ansi-bright-black'),
+    brightRed: v('--ansi-bright-red'),
+    brightGreen: v('--ansi-bright-green'),
+    brightYellow: v('--ansi-bright-yellow'),
+    brightBlue: v('--ansi-bright-blue'),
+    brightMagenta: v('--ansi-bright-magenta'),
+    brightCyan: v('--ansi-bright-cyan'),
+    brightWhite: v('--ansi-bright-white')
   }
 }
 
@@ -244,7 +256,9 @@ function showTerminalMenu(e: MouseEvent) {
 }
 
 watch(() => settingsStore.settings.theme, () => {
-  term?.options.theme && (term.options.theme = terminalTheme())
+  requestAnimationFrame(() => {
+    if (term) term.options.theme = terminalTheme()
+  })
 })
 
 watch(() => settingsStore.settings.terminalFontSize, (size) => {
@@ -263,17 +277,27 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #1e1e1e;
+  background: var(--terminal-bg);
 }
 .terminal-container {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
+/* xterm forces a black viewport; keep its surface in the theme. */
+.terminal-wrap :deep(.xterm-viewport),
+.terminal-wrap :deep(.xterm-screen),
+.terminal-wrap :deep(.xterm-scrollable-element) {
+  background-color: var(--terminal-bg) !important;
+}
+.terminal-wrap :deep(.xterm-viewport)::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-pill);
+}
 .terminal-exited {
   padding: 8px 12px;
   background: var(--bg-tertiary);
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
