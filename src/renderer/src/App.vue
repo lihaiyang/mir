@@ -479,13 +479,11 @@ onUnmounted(() => {
   flex-shrink: 0;
   overflow: hidden;
   border-right: 1px solid var(--border-hairline);
-  transition: width var(--transition-base) var(--ease-out);
 }
 .right-pane {
   flex-shrink: 0;
   overflow: hidden;
   border-left: 1px solid var(--border-hairline);
-  transition: width var(--transition-base) var(--ease-out);
 }
 /* Drag hot-zone only: the visible divider is the 1px panel border, so the
    line stays uniform and aligned with the titlebar splitters. The hot-zone
