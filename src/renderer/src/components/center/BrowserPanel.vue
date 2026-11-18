@@ -12,9 +12,9 @@
           @mousedown.middle="browserStore.closeTab(tab.id, projectId)"
         >
           <span class="bp-tab-title">{{ tab.title || tab.url || $t('browser.newTab') }}</span>
-          <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id, projectId)"><Icon name="x" :size="10" /></button>
+          <button class="bp-tab-close" @click.stop="browserStore.closeTab(tab.id, projectId)"><Icon name="x" :size="12" /></button>
         </div>
-        <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab(undefined, projectId)"><Icon name="plus" :size="13" /></button>
+        <button class="bp-new-tab" :title="$t('browser.newTab')" @click="browserStore.openTab(undefined, projectId)"><Icon name="plus" :size="16" /></button>
       </div>
     </Teleport>
 
@@ -291,9 +291,9 @@ onUnmounted(() => {
 }
 .bp-tabbar {
   display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 0 6px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
   height: 100%;
   background: transparent;
   overflow-x: auto;
@@ -304,13 +304,15 @@ onUnmounted(() => {
 .bp-tab {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-  height: 26px;
-  min-width: 90px;
-  font-size: 11px;
-  border-radius: 6px 6px 0 0;
-  border-top: 2px solid transparent;
+  gap: 8px;
+  padding: 0 12px;
+  height: 34px;
+  margin: 2px 0;
+  min-width: 100px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   max-width: 200px;
@@ -321,37 +323,41 @@ onUnmounted(() => {
   transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .bp-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
-/* Same active highlight as project TabBar tabs: taller + top accent line */
 .bp-tab.active {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border-top: 2px solid var(--text-accent);
-  height: calc(var(--tab-height, 30px) - 1px);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-1);
 }
 .bp-tab-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 160px;
 }
 .bp-tab-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
   color: var(--text-faint);
   cursor: pointer;
+  opacity: 0;
   -webkit-app-region: no-drag;
 }
+.bp-tab:hover .bp-tab-close,
+.bp-tab.active .bp-tab-close { opacity: 1; }
+.bp-tab.active .bp-tab-close { color: var(--text-on-accent); opacity: 0.72; }
+.bp-tab.active .bp-tab-close:hover { background: var(--on-accent-soft); color: var(--text-on-accent); opacity: 1; }
 .bp-tab-close:hover { background: var(--bg-hover); color: var(--text-danger); }
 .bp-new-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
