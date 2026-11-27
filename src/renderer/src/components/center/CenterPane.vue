@@ -95,7 +95,7 @@
       <div v-else-if="!paneTree" class="no-tabs-hint">
         <div class="empty-icon"><Icon name="terminal" :size="28" /></div>
         <p>{{ $t('centerPane.noTabs') }}</p>
-        <button class="btn-primary" @click="createTab('terminal')"><Icon name="plus" :size="13" /> {{ $t('centerPane.newTab') }}</button>
+        <button class="btn-primary" @click="createTab('terminal')" :aria-label="$t('centerPane.newTab')"><Icon name="plus" :size="13" /> {{ $t('centerPane.newTab') }}</button>
       </div>
     </template>
   </div>
@@ -522,6 +522,7 @@ async function openFolder() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-bottom: calc(var(--titlebar-height, 38px) + 8px);
   color: var(--text-secondary);
   gap: 12px;
 }
@@ -533,6 +534,7 @@ async function openFolder() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-bottom: calc(var(--titlebar-height, 38px) + 8px);
   gap: 10px;
   color: var(--text-secondary);
 }
@@ -542,12 +544,12 @@ async function openFolder() {
   margin-bottom: 4px;
 }
 .welcome-title {
-  font-size: 20px;
+  font-size: calc(var(--base-font-size) * 1.3333);
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
-.welcome-hint { font-size: 13px; max-width: 340px; text-align: center; }
+.welcome-hint { font-size: var(--text-sm); max-width: 340px; text-align: center; }
 .welcome-shortcuts {
   margin-top: 16px;
   background: var(--bg-secondary);
@@ -557,7 +559,7 @@ async function openFolder() {
   min-width: 320px;
 }
 .welcome-sc-title {
-  font-size: 10px;
+  font-size: var(--text-3xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -569,7 +571,7 @@ async function openFolder() {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--text-primary);
   padding: 4px 0;
 }

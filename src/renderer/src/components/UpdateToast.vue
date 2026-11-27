@@ -6,20 +6,20 @@
           <span class="text">{{ t('updater.ready', { version: state.version }) }}</span>
         </div>
         <div class="row actions">
-          <button class="btn primary" @click="restartNow">{{ t('updater.restartNow') }}</button>
-          <button class="btn" @click="dismiss">{{ t('updater.onQuit') }}</button>
+          <button class="btn-primary" @click="restartNow">{{ t('updater.restartNow') }}</button>
+          <button class="btn-secondary" @click="dismiss">{{ t('updater.onQuit') }}</button>
         </div>
       </template>
       <template v-else-if="state.status === 'not-available'">
         <div class="row">
           <span class="text">{{ t('updater.upToDate') }}</span>
-          <button class="btn" @click="dismiss">{{ t('common.close') }}</button>
+          <button class="btn-secondary" @click="dismiss">{{ t('common.close') }}</button>
         </div>
       </template>
       <template v-else-if="state.status === 'error'">
         <div class="row">
           <span class="text error">{{ t('updater.checkError', { message: state.message }) }}</span>
-          <button class="btn" @click="dismiss">{{ t('common.close') }}</button>
+          <button class="btn-secondary" @click="dismiss">{{ t('common.close') }}</button>
         </div>
       </template>
     </div>
@@ -99,19 +99,16 @@ onUnmounted(() => {
 
 <style scoped>
 .update-toast {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  width: 340px;
-  background: var(--bg-secondary);
+  width: 350px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 12px 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  z-index: 9999;
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-2);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .row {
   display: flex;
@@ -120,9 +117,9 @@ onUnmounted(() => {
   gap: 10px;
 }
 .text {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: var(--leading-sm);
 }
 .text.error {
   color: var(--text-danger);
@@ -130,30 +127,9 @@ onUnmounted(() => {
 .actions {
   justify-content: flex-end;
 }
-.btn {
-  font-size: 12px;
-  padding: 4px 12px;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.btn:hover {
-  background: var(--bg-hover);
-}
-.btn.primary {
-  background: var(--text-accent);
-  color: #fff;
-  border-color: transparent;
-}
-.btn.primary:hover {
-  filter: brightness(1.1);
-}
-
 .updater-slide-enter-active,
 .updater-slide-leave-active {
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition: transform var(--transition-base) var(--ease-out), opacity var(--transition-base) ease;
 }
 .updater-slide-enter-from,
 .updater-slide-leave-to {

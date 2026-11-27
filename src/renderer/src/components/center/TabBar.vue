@@ -1,17 +1,29 @@
 <template>
-  <div ref="tabBarRef" class="tab-bar" @wheel.prevent="onTabScroll" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop">
+  <div
+    ref="tabBarRef"
+    class="tab-bar"
+    role="tablist"
+    :aria-label="t('tab.tabList')"
+    :class="{ 'is-reordering': draggingTabIdx !== null }"
+    :data-group-id="groupId"
+    :data-project-id="projectId"
+    @wheel.prevent="onTabScroll"
+  >
     <div
       v-for="(tab, idx) in tabs"
       :key="tab.id"
+      :ref="(el: unknown) => setTabEl(tab.id, el)"
       class="tab"
+      role="tab"
+      :aria-selected="tab.id === activeTabId"
+      :tabindex="tab.id === activeTabId ? 0 : -1"
       :class="{ active: tab.id === activeTabId, modified: tab.modified }"
-      draggable="true"
-      @click="tabStore.setActiveTab(projectId, tab.id)"
+      :style="tabDragStyle(idx)"
+      @mousedown.left="onTabMouseDown($event, idx, tab)"
+      @click="onTabClick(tab.id)"
+      @keydown="onTabKeydown($event, idx, tab)"
       @mousedown.middle.prevent="confirmCloseTab(tab)"
       @contextmenu.prevent="showTabMenu($event, tab, idx)"
-      @dragstart="onTabDragStart($event, tab, idx)"
-      @dragover.prevent
-      @drop="dragDrop(idx)"
     >
       <span class="tab-icon"><Icon :name="tabIcon(tab.type)" :size="16" /></span>
       <span
@@ -31,19 +43,37 @@
       <span v-if="tab.modified" class="tab-modified-dot"></span>
       <button
         class="tab-close"
+        @mousedown.stop
         @click.stop="confirmCloseTab(tab)"
-      ><Icon name="x" :size="12" /></button>
+       :aria-label="t('tab.close')"><Icon name="x" :size="12" /></button>
     </div>
+
+    <!-- Floating drag ghost for project tab -->
+    <Teleport to="body">
+      <div
+        v-if="dragGhost"
+        class="tab-ghost"
+        :class="{ active: dragGhost.active }"
+        :style="{
+          left: dragGhost.x + 'px',
+          top: dragGhost.y + 'px',
+          width: dragGhost.width + 'px'
+        }"
+      >
+        <span class="tab-ghost-icon"><Icon :name="dragGhost.icon" :size="16" /></span>
+        <span class="tab-ghost-title">{{ dragGhost.title }}</span>
+      </div>
+    </Teleport>
     <div class="tab-toolbar" ref="toolbarRef">
       <template v-if="!toolbarOverflow">
-        <button class="tab-action-btn" :title="t('tab.terminal')" @click.stop="createTab('terminal')"><Icon name="terminal" :size="17" /></button>
-        <button class="tab-action-btn" :title="t('tab.fileEditor')" @click.stop="createTab('editor')"><Icon name="file-text" :size="17" /></button>
-        <button class="tab-action-btn" :title="t('tab.browser')" @click.stop="createTab('browser')"><Icon name="globe" :size="17" /></button>
-        <button class="tab-action-btn" :title="t('tab.splitDown')" @click.stop="splitPane('vertical')"><Icon name="rows" :size="17" /></button>
-        <button class="tab-action-btn" :title="t('tab.splitRight')" @click.stop="splitPane('horizontal')"><Icon name="columns" :size="17" /></button>
-        <button class="tab-action-btn" :title="t('tab.closePane')" @click.stop="closeThisPane"><Icon name="x" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.terminal')" @click.stop="createTab('terminal')" :aria-label="t('tab.terminal')"><Icon name="terminal" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.fileEditor')" @click.stop="createTab('editor')" :aria-label="t('tab.fileEditor')"><Icon name="file-text" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.browser')" @click.stop="createTab('browser')" :aria-label="t('tab.browser')"><Icon name="globe" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.splitDown')" @click.stop="splitPane('vertical')" :aria-label="t('tab.splitDown')"><Icon name="rows" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.splitRight')" @click.stop="splitPane('horizontal')" :aria-label="t('tab.splitRight')"><Icon name="columns" :size="17" /></button>
+        <button class="tab-action-btn" :title="t('tab.closePane')" @click.stop="closeThisPane" :aria-label="t('tab.closePane')"><Icon name="x" :size="17" /></button>
       </template>
-      <button v-else ref="moreBtnRef" class="tab-action-btn" @click.stop="toggleMoreDropdown"><Icon name="more" :size="17" /></button>
+      <button v-else ref="moreBtnRef" class="tab-action-btn" @click.stop="toggleMoreDropdown" :aria-label="t('tab.more')"><Icon name="more" :size="17" /></button>
     </div>
 
     <!-- Overflow dropdown -->
@@ -158,55 +188,234 @@ const editingTabId = ref<string | null>(null)
 const editTabTitle = ref('')
 const tabTitleInput = ref<HTMLInputElement | null>(null)
 
-// Drag reorder (within same pane)
-let dragFromIdx = -1
-function onTabDragStart(e: DragEvent, tab: Tab, idx: number) {
-  dragFromIdx = idx
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', JSON.stringify({
-      tabId: tab.id,
-      fromGroupId: props.groupId,
-      tabType: tab.type,
-      tabUrl: tab.browserUrl || '',
-      tabTitle: tab.title
-    }))
+// Chrome-style live pointer drag reorder (plus cross-pane move)
+const tabEls = new Map<string, HTMLElement>()
+function setTabEl(tabId: string, el: unknown) {
+  if (el instanceof HTMLElement) tabEls.set(tabId, el)
+  else tabEls.delete(tabId)
+}
+
+const draggingTabIdx = ref<number | null>(null)
+const dragTargetIdx = ref<number | null>(null)
+const dragStride = ref(0)
+const dragGhost = ref<{
+  title: string
+  icon: string
+  active: boolean
+  x: number
+  y: number
+  width: number
+} | null>(null)
+
+let pendingDrag: {
+  idx: number
+  tab: Tab
+  startX: number
+  startY: number
+  offsetX: number
+  offsetY: number
+  top: number
+  width: number
+  stride: number
+  slotCenters: number[]
+  minX: number
+  maxX: number
+  moved: boolean
+} | null = null
+let targetDropBar: HTMLElement | null = null
+let suppressNextTabClick = false
+
+function tabDragStyle(idx: number): Record<string, string> | undefined {
+  const from = draggingTabIdx.value
+  const to = dragTargetIdx.value
+  if (from === null || to === null) return undefined
+  if (idx === from) return { opacity: '0', pointerEvents: 'none' }
+  const stride = dragStride.value
+  if (from < to && idx > from && idx <= to) {
+    return { transform: `translateX(${-stride}px)` }
   }
-}
-function dragDrop(toIdx: number) {
-  if (dragFromIdx !== toIdx && dragFromIdx !== -1) {
-    tabStore.reorderTabs(props.projectId, props.groupId, dragFromIdx, toIdx)
+  if (from > to && idx >= to && idx < from) {
+    return { transform: `translateX(${stride}px)` }
   }
-  dragFromIdx = -1
+  return { transform: 'translateX(0px)' }
 }
 
-// Cross-pane drag
-let dragOverCount = 0
-
-function onDragEnter(e: DragEvent) {
-  dragOverCount++
-  if (e.dataTransfer?.types.includes('text/plain')) {
-    // dragOver handled by parent via class
-  }
-}
-
-function onDragLeave(_e: DragEvent) {
-  dragOverCount--
-}
-
-function onDrop(e: DragEvent) {
-  dragOverCount = 0
-  dragFromIdx = -1
-
-  const raw = e.dataTransfer?.getData('text/plain')
-  if (!raw) return
-
-  try {
-    const data = JSON.parse(raw)
-    if (data.tabId && data.fromGroupId && data.fromGroupId !== props.groupId) {
-      tabStore.moveTab(props.projectId, data.tabId, props.groupId)
+function computeTargetSlot(ghostCenterX: number, slotCenters: number[]): number {
+  let best = 0
+  let bestDist = Infinity
+  for (let i = 0; i < slotCenters.length; i++) {
+    const d = Math.abs(ghostCenterX - slotCenters[i])
+    if (d < bestDist) {
+      bestDist = d
+      best = i
     }
-  } catch { /* ignore */ }
+  }
+  return best
+}
+
+function clearTargetDropBar() {
+  if (targetDropBar) {
+    targetDropBar.classList.remove('tab-bar-drop-target')
+    targetDropBar = null
+  }
+}
+
+function onTabMouseDown(e: MouseEvent, idx: number, tab: Tab) {
+  if (e.button !== 0 || editingTabId.value === tab.id) return
+  const target = e.target as HTMLElement | null
+  if (target?.closest('.tab-close')) return
+  const el = tabEls.get(tab.id)
+  const rect = el?.getBoundingClientRect()
+  const slotRects = tabs.value.map(t => tabEls.get(t.id)?.getBoundingClientRect())
+  const slotCenters = slotRects.map((r, i) => (r ? r.left + r.width / 2 : i * 140))
+  const firstLeft = slotRects[0]?.left ?? (rect?.left ?? 0)
+  const lastRect = slotRects[slotRects.length - 1]
+  const width = rect ? rect.width : 140
+  const maxX = lastRect ? lastRect.right - width : firstLeft + 400
+  pendingDrag = {
+    idx,
+    tab,
+    startX: e.clientX,
+    startY: e.clientY,
+    offsetX: rect ? e.clientX - rect.left : 60,
+    offsetY: rect ? e.clientY - rect.top : 15,
+    top: rect ? rect.top : 4,
+    width,
+    stride: width + 4,
+    slotCenters,
+    minX: firstLeft - 8,
+    maxX: maxX + 8,
+    moved: false
+  }
+  window.addEventListener('mousemove', onTabPointerMove)
+  window.addEventListener('mouseup', onTabPointerUp)
+  window.addEventListener('keydown', onTabDragKeyDown)
+  window.addEventListener('blur', cleanupTabDrag)
+}
+
+function onTabDragKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && pendingDrag?.moved) {
+    e.preventDefault()
+    e.stopPropagation()
+    cleanupTabDrag()
+  }
+}
+
+function findOtherTabBarAt(clientX: number, clientY: number): HTMLElement | null {
+  const els = document.elementsFromPoint(clientX, clientY)
+  for (const el of els) {
+    const bar = (el as HTMLElement).closest?.('.tab-bar[data-group-id]') as HTMLElement | null
+    if (bar && bar.dataset.projectId === props.projectId && bar.dataset.groupId !== props.groupId) {
+      return bar
+    }
+  }
+  return null
+}
+
+function onTabPointerMove(e: MouseEvent) {
+  if (!pendingDrag) return
+  const dx = e.clientX - pendingDrag.startX
+  const dy = e.clientY - pendingDrag.startY
+  if (!pendingDrag.moved) {
+    if (Math.hypot(dx, dy) < 5) return
+    pendingDrag.moved = true
+    draggingTabIdx.value = pendingDrag.idx
+    dragTargetIdx.value = pendingDrag.idx
+    dragStride.value = pendingDrag.stride
+    document.body.classList.add('mir-dragging')
+    document.body.style.cursor = 'grabbing'
+  }
+
+  const otherBar = findOtherTabBarAt(e.clientX, e.clientY)
+  if (otherBar) {
+    if (targetDropBar !== otherBar) {
+      clearTargetDropBar()
+      targetDropBar = otherBar
+      targetDropBar.classList.add('tab-bar-drop-target')
+    }
+    dragTargetIdx.value = null
+    dragGhost.value = {
+      title: pendingDrag.tab.title,
+      icon: tabIcon(pendingDrag.tab.type),
+      active: pendingDrag.tab.id === activeTabId.value,
+      x: e.clientX - pendingDrag.offsetX,
+      y: e.clientY - pendingDrag.offsetY,
+      width: pendingDrag.width
+    }
+    return
+  }
+
+  clearTargetDropBar()
+  const rawX = e.clientX - pendingDrag.offsetX
+  const clampedX = Math.max(pendingDrag.minX, Math.min(pendingDrag.maxX, rawX))
+  dragGhost.value = {
+    title: pendingDrag.tab.title,
+    icon: tabIcon(pendingDrag.tab.type),
+    active: pendingDrag.tab.id === activeTabId.value,
+    x: clampedX,
+    y: pendingDrag.top,
+    width: pendingDrag.width
+  }
+  dragTargetIdx.value = computeTargetSlot(clampedX + pendingDrag.width / 2, pendingDrag.slotCenters)
+}
+
+function cleanupTabDrag() {
+  window.removeEventListener('mousemove', onTabPointerMove)
+  window.removeEventListener('mouseup', onTabPointerUp)
+  window.removeEventListener('keydown', onTabDragKeyDown)
+  window.removeEventListener('blur', cleanupTabDrag)
+  document.body.classList.remove('mir-dragging')
+  document.body.style.cursor = ''
+  clearTargetDropBar()
+  pendingDrag = null
+  draggingTabIdx.value = null
+  dragTargetIdx.value = null
+  dragStride.value = 0
+  dragGhost.value = null
+}
+
+function onTabPointerUp() {
+  if (!pendingDrag) return
+  const wasMoved = pendingDrag.moved
+  const fromIdx = pendingDrag.idx
+  const tabId = pendingDrag.tab.id
+  const toIdx = dragTargetIdx.value
+  const dropGroupId = targetDropBar?.dataset.groupId || null
+  cleanupTabDrag()
+  if (wasMoved) {
+    suppressNextTabClick = true
+    setTimeout(() => { suppressNextTabClick = false }, 0)
+    if (dropGroupId && dropGroupId !== props.groupId) {
+      tabStore.moveTab(props.projectId, tabId, dropGroupId)
+    } else if (toIdx !== null && toIdx !== fromIdx) {
+      tabStore.reorderTabs(props.projectId, props.groupId, fromIdx, toIdx)
+    }
+  }
+}
+
+function onTabClick(tabId: string) {
+  if (suppressNextTabClick) return
+  tabStore.setActiveTab(props.projectId, tabId)
+}
+
+function onTabKeydown(e: KeyboardEvent, idx: number, tab: Tab) {
+  // Only handle keys aimed at the tab itself, not at the rename input or close button
+  if (e.target !== e.currentTarget) return
+  const list = tabs.value
+  if (!list.length) return
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    onTabClick(tab.id)
+    return
+  }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault()
+    const dir = e.key === 'ArrowRight' ? 1 : -1
+    const next = list[(idx + dir + list.length) % list.length]
+    if (!next) return
+    tabStore.setActiveTab(props.projectId, next.id)
+    tabEls.get(next.id)?.focus()
+  }
 }
 
 function tabIcon(type: TabType): string {
@@ -311,6 +520,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  cleanupTabDrag()
   document.removeEventListener('click', handleClickOutside)
   resizeObserver?.disconnect()
 })
@@ -323,7 +533,6 @@ onUnmounted(() => {
   height: var(--tab-height, 40px);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-hairline);
-  box-shadow: inset 0 1px 0 var(--border-subtle);
   overflow-x: auto;
   overflow-y: hidden;
   flex-shrink: 0;
@@ -334,15 +543,15 @@ onUnmounted(() => {
 }
 .tab-bar::-webkit-scrollbar { height: 0; }
 
-/* Active tabs are solid rounded plates — no underline, no trapezoid. */
 .tab {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  height: 34px;
-  margin: 2px 0;
-  min-width: 100px;
+  gap: 6px;
+  padding: 0 10px;
+  height: 28px;
+  margin: 0;
+  min-width: 90px;
   max-width: 200px;
   cursor: pointer;
   font-size: var(--text-sm);
@@ -350,16 +559,31 @@ onUnmounted(() => {
   color: var(--text-secondary);
   user-select: none;
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid transparent;
   background: transparent;
   -webkit-app-region: no-drag;
-  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease, border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease, opacity var(--transition-fast) ease, transform var(--transition-fast) ease;
+}
+.tab-bar.is-reordering .tab {
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.tab-bar.tab-bar-drop-target {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .tab:hover { background: var(--bg-hover); color: var(--text-primary); }
 .tab.active {
-  background: var(--accent);
-  color: var(--text-on-accent);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 500;
+  border-color: var(--border-hairline);
   box-shadow: var(--shadow-1);
+}
+/* Keep the keyboard focus ring visible even on the active tab (its shadow-1 would win otherwise) */
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .tab-icon {
@@ -367,8 +591,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--text-faint);
+  transition: color var(--transition-fast) ease;
 }
-.tab.active .tab-icon { color: var(--text-on-accent); }
+.tab.active .tab-icon { color: var(--accent-strong); }
 .tab-title {
   flex: 1;
   overflow: hidden;
@@ -391,22 +616,23 @@ onUnmounted(() => {
   background: var(--text-warning);
   flex-shrink: 0;
 }
-.tab.active .tab-modified-dot { background: var(--text-on-accent); }
+.tab.active .tab-modified-dot { background: var(--text-warning); }
 .tab-close {
   color: var(--text-faint);
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-xs);
   opacity: 0;
+  transition: opacity var(--transition-fast) ease, background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .tab:hover .tab-close,
 .tab.active .tab-close { opacity: 1; }
-.tab.active .tab-close { color: var(--text-on-accent); opacity: 0.72; }
-.tab.active .tab-close:hover { background: var(--on-accent-soft); color: var(--text-on-accent); opacity: 1; }
+.tab.active .tab-close { color: var(--text-secondary); opacity: 0.8; }
+.tab.active .tab-close:hover { background: var(--bg-hover); color: var(--text-danger); opacity: 1; }
 .tab-close:hover { background: var(--bg-hover); color: var(--text-danger); }
 
 .tab-toolbar {
@@ -415,16 +641,16 @@ onUnmounted(() => {
   flex-shrink: 0;
   height: 100%;
   margin-left: auto;
-  gap: 2px;
+  gap: 4px;
   -webkit-app-region: no-drag;
 }
 .tab-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  width: 28px;
   padding: 0;
-  height: 32px;
+  height: 28px;
   border-radius: var(--radius-xs);
   color: var(--text-faint);
 }
@@ -467,4 +693,49 @@ onUnmounted(() => {
   margin: 4px 6px;
 }
 .tab-dropdown-desc { font-size: var(--text-xs); color: var(--text-secondary); }
+</style>
+
+<style>
+.tab-ghost {
+  position: fixed;
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.96;
+  transform: scale(1.03);
+}
+.tab-ghost.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.tab-ghost-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.tab-ghost.active .tab-ghost-icon {
+  color: var(--accent-strong);
+}
+.tab-ghost-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

@@ -31,7 +31,7 @@
                   type="button"
                   :title="command.description"
                   @click="seedComposer(`/${command.name} `)"
-                >
+                 :aria-label="command.description">
                   <span class="chat-command-name">/{{ command.name }}</span>
                   <span class="chat-command-desc">{{ command.description }}</span>
                 </button>
@@ -53,7 +53,7 @@
           class="chat-jump"
           type="button"
           @click="jumpToLatest"
-        >
+         :aria-label="t('acp.chat.jumpLatest', 'Jump to latest')">
           <Icon name="arrow-down" :size="12" />
           <span>{{ t('acp.chat.jumpLatest', 'Jump to latest') }}</span>
         </button>
@@ -92,15 +92,15 @@
           </option>
         </select>
         <button
-          class="chat-primary-btn"
+          class="btn-primary chat-primary-btn"
           type="button"
           :disabled="!pickedAgentId || creating"
           @click="startSession"
-        >
+         :aria-label="creating ? t('acp.chat.creating', 'Starting…') : t('acp.chat.startSession', 'Start session')">
           <Icon name="plus" :size="12" />
           <span>{{ creating ? t('acp.chat.creating', 'Starting…') : t('acp.chat.startSession', 'Start session') }}</span>
         </button>
-        <button class="chat-secondary-btn" type="button" @click="openAgentsPanel">
+        <button class="btn-secondary chat-secondary-btn" type="button" @click="openAgentsPanel">
           {{ t('acp.chat.openAgents', 'Agent panel') }}
         </button>
       </div>
@@ -313,12 +313,12 @@ function seedComposer(text: string): void {
   composerSeed.value = { text, key: seedCounter }
 }
 
-function onSend(text: string): void {
+function onSend(payload: { text: string; images: Array<{ data: string; mimeType: string; name?: string }> }): void {
   const current = session.value
-  if (!current || !text) return
+  if (!current || (!payload.text && payload.images.length === 0)) return
   stick.value = true
   showJump.value = false
-  acpStore.sendPrompt(current.sessionId, text).catch(() => undefined)
+  acpStore.sendPrompt(current.sessionId, payload.text, [], payload.images).catch(() => undefined)
   scrollToBottom()
 }
 
@@ -494,7 +494,7 @@ function openAgentsPanel(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-4) calc(var(--titlebar-height, 38px) + var(--space-4));
   text-align: center;
 }
 .chat-missing-icon { color: var(--text-faint); opacity: 0.7; }
@@ -540,29 +540,23 @@ function openAgentsPanel(): void {
   font-size: var(--text-sm);
 }
 
+/* Sizing only — the base look comes from the shared .btn-primary / .btn-secondary classes */
 .chat-primary-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 34px;
   padding: 0 var(--space-4);
-  border-radius: var(--radius-sm);
-  background: var(--text-primary);
-  color: var(--bg-primary);
   font-size: var(--text-sm);
-  font-weight: 600;
 }
-.chat-primary-btn:hover:not(:disabled) { filter: brightness(0.94); background: var(--text-primary); }
 
 .chat-secondary-btn {
   height: 34px;
   padding: 0 var(--space-4);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
-.chat-secondary-btn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg-hover); }
+.chat-secondary-btn:hover { color: var(--text-primary); }
 
 .spin { animation: spin 1.1s linear infinite; }
 @keyframes spin {

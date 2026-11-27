@@ -3,13 +3,13 @@
     <TitleBar />
 
     <div class="main-layout">
-      <!-- Left pane -->
-      <div class="left-pane" :style="layout.leftCollapsed ? { width: '40px' } : { width: layout.leftWidth + 'px' }">
+      <!-- Left pane (collapses completely; toggle lives in TitleBar like Antigravity/Codex) -->
+      <div v-show="!layout.leftCollapsed" class="left-pane" :style="{ width: layout.leftWidth + 'px' }">
         <LeftPane />
       </div>
 
       <!-- Splitter L -->
-      <div class="splitter" :class="{ dragging: draggingSide === 'left' }" @mousedown="startResize('left', $event)" />
+      <div v-show="!layout.leftCollapsed" class="splitter" :class="{ dragging: draggingSide === 'left' }" @mousedown="startResize('left', $event)" />
 
       <!-- Center pane -->
       <div class="center-pane" style="flex:1;min-width:0">
@@ -17,12 +17,13 @@
       </div>
 
       <!-- Splitter R -->
-      <div class="splitter" :class="{ dragging: draggingSide === 'right' }" @mousedown="startResize('right', $event)" />
+      <div v-show="!layout.rightCollapsed" class="splitter" :class="{ dragging: draggingSide === 'right' }" @mousedown="startResize('right', $event)" />
 
-      <!-- Right pane -->
+      <!-- Right pane (collapses completely; toggle lives in TitleBar) -->
       <div
+        v-show="!layout.rightCollapsed"
         class="right-pane"
-        :style="layout.rightCollapsed ? { width: '40px' } : { width: layout.rightWidth + 'px' }"
+        :style="{ width: layout.rightWidth + 'px' }"
       >
         <RightPane />
       </div>
@@ -31,8 +32,10 @@
     <!-- Global modals -->
      <CommandPalette v-if="showPalette" @close="showPalette = false" />
      <ContextMenuHost />
-     <UpdateToast />
-     <NotificationToast ref="notificationToast" />
+     <ToastHost>
+       <UpdateToast />
+       <NotificationToast ref="notificationToast" />
+     </ToastHost>
      <QuickOpenModal v-if="showQuickOpen" @close="showQuickOpen = false" @open="openQuickOpenFile" />
      <WorkspaceModal v-if="showWorkspaces" @close="showWorkspaces = false" />
      <SettingsOverlay v-if="uiStore.overlayMode" :mode="uiStore.overlayMode" @close="uiStore.closeOverlay()" />
@@ -51,7 +54,8 @@ import { useSettingsStore } from './stores/settings'
 import { useTabStore } from './stores/tabs'
 import { useUIStore } from './stores/ui'
 import { useWebPageStore } from './stores/webPages'
-import { useBrowserStore, browserReloadBus, PINNED_BROWSER_PROJECT_ID } from './stores/browser'
+import { useBrowserStore, browserReloadBus, browserActionBus, PINNED_BROWSER_PROJECT_ID } from './stores/browser'
+import { useBookmarkStore } from './stores/bookmarks'
 import { useTerminalStore } from './stores/terminal'
 import { useWorkspaceStore } from './stores/workspaces'
 import { useRecentStore } from './stores/recent'
@@ -67,6 +71,7 @@ import CommandPalette from './components/CommandPalette.vue'
 import UpdateToast from './components/UpdateToast.vue'
 import StatusBar from './components/StatusBar.vue'
 import NotificationToast from './components/NotificationToast.vue'
+import ToastHost from './components/ui/ToastHost.vue'
 import QuickOpenModal from './components/QuickOpenModal.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
 import SettingsOverlay from './components/SettingsOverlay.vue'
@@ -81,6 +86,7 @@ const settingsStore = useSettingsStore()
 const tabStore = useTabStore()
 const webPageStore = useWebPageStore()
 const browserStore = useBrowserStore()
+const bookmarkStore = useBookmarkStore()
 const uiStore = useUIStore()
 const terminalStore = useTerminalStore()
 const workspaceStore = useWorkspaceStore()
@@ -94,6 +100,21 @@ const showWorkspaces = ref(false)
 
 provide('showPalette', showPalette)
 
+const unsubs: Array<() => void> = []
+
+function onBeforeUnload() {
+  layout.doPersist()
+  tabStore.doPersist()
+  terminalStore.persistNow()
+}
+
+function onWindowFocus() {
+  const p = projectStore.activeProject
+  if (p && !(!layout.rightCollapsed && layout.rightActivePanel === 'git')) {
+    loadGitStatusForStatusBar(p.path)
+  }
+}
+
 onMounted(async () => {
   await settingsStore.load()
   locale.value = settingsStore.settings.language
@@ -104,27 +125,17 @@ onMounted(async () => {
   await tabStore.load()
   await webPageStore.load()
   await browserStore.load()
+  await bookmarkStore.load()
   syncBrowserProjectsToOrder()
   await terminalStore.load()
   await workspaceStore.load()
   pruneTerminalSessions()
-  // Re-prune whenever terminal tabs change: without this, closing a terminal
-  // tab leaves its scrollback session (up to 256KB) in the store — and in
-  // mir-state.json — until the next app launch.
-  watch(() => {
-    const ids: string[] = []
-    for (const p of projectStore.projects) {
-      for (const t of tabStore.getAllTabs(p.id)) {
-        if (t.type === 'terminal') ids.push(t.id)
-      }
-    }
-    return ids.join(',')
-  }, () => { pruneTerminalSessions() })
   await seedDefaults()
   settingsStore.applyTheme()
   window.electronAPI.setAutoUpdate(settingsStore.settings.autoUpdate).catch(() => {})
-  window.electronAPI.onReloadBrowser(() => { browserReloadBus.nonce++ })
-  window.electronAPI.onWebviewNewWindow(handleWebviewNewWindow)
+  unsubs.push(window.electronAPI.onReloadBrowser(() => { browserReloadBus.nonce++ }))
+  unsubs.push(window.electronAPI.onBrowserAction(handleBrowserAction))
+  unsubs.push(window.electronAPI.onWebviewNewWindow(handleWebviewNewWindow))
   setupShortcuts()
   registerBuiltinCommands()
   await initRendererPlugins()
@@ -153,6 +164,7 @@ onMounted(async () => {
   })
 
   window.addEventListener('mir-notification', onMirNotification)
+  window.addEventListener('focus', onWindowFocus)
 
   // Load git status immediately if a project is already active on startup
   if (projectStore.activeProject) {
@@ -160,11 +172,7 @@ onMounted(async () => {
   }
 
   // Flush any pending debounced persists when window is closing
-  window.addEventListener('beforeunload', () => {
-    layout.doPersist()
-    tabStore.doPersist()
-    terminalStore.persistNow()
-  })
+  window.addEventListener('beforeunload', onBeforeUnload)
 
   // Listen for editor asking to open the global command palette
   window.addEventListener('open-command-palette', onOpenCommandPalette)
@@ -384,16 +392,131 @@ function setupShortcuts() {
   window.addEventListener('keydown', handleGlobalKey)
 }
 
+function dispatchBrowserAction(action: string, index?: number) {
+  browserActionBus.action = action
+  browserActionBus.index = index
+  browserActionBus.nonce++
+}
+
+function handleBrowserAction(payload: { action: string; index?: number }) {
+  const { action, index } = payload
+  const isBrowserActive = browserStore.active && !!browserStore.activeProjectId
+
+  if (action === 'close-tab') {
+    if (isBrowserActive) {
+      const bpid = browserStore.activeProjectId!
+      const activeTabId = browserStore.getActiveTabId(bpid)
+      if (activeTabId) browserStore.closeTab(activeTabId, bpid)
+      return
+    }
+    const pid = projectStore.activeProjectId
+    if (!pid) return
+    const fgId = tabStore.getFocusedGroupId(pid)
+    if (!fgId) return
+    const activeTab = tabStore.getGroupActiveTab(pid, fgId)
+    if (activeTab) {
+      if (activeTab.modified && !confirm(t('editor.unsavedCloseConfirm', { name: activeTab.title }))) return
+      tabStore.closeTab(pid, activeTab.id)
+    }
+    return
+  }
+
+  if (action === 'new-tab') {
+    if (isBrowserActive) {
+      const bpid = browserStore.activeProjectId!
+      browserStore.openTab(undefined, bpid)
+      dispatchBrowserAction('focus-address')
+      return
+    }
+    if (projectStore.activeProjectId) {
+      tabStore.addTab(projectStore.activeProjectId, 'terminal')
+    }
+    return
+  }
+
+  if (action === 'reopen-tab') {
+    if (isBrowserActive) {
+      browserStore.reopenClosedTab(browserStore.activeProjectId!)
+    } else {
+      reopenLastClosedTab()
+    }
+    return
+  }
+
+  if (action === 'next-tab' || action === 'prev-tab') {
+    const dir = action === 'next-tab' ? 1 : -1
+    if (isBrowserActive) {
+      browserStore.cycleTab(dir, browserStore.activeProjectId!)
+      return
+    }
+    const pid = projectStore.activeProjectId
+    if (!pid) return
+    const fgId = tabStore.getFocusedGroupId(pid)
+    if (!fgId) return
+    const tabs = tabStore.getGroupTabs(pid, fgId)
+    const activeId = tabStore.getGroupActiveTabId(pid, fgId)
+    const idx = tabs.findIndex(tab => tab.id === activeId)
+    if (idx !== -1 && tabs.length > 1) {
+      const next = (idx + dir + tabs.length) % tabs.length
+      if (tabs[next]) tabStore.setActiveTab(pid, tabs[next].id)
+    }
+    return
+  }
+
+  if (action === 'switch-tab' || action === 'switch-tab-last') {
+    if (isBrowserActive) {
+      browserStore.switchToTabIndex(action === 'switch-tab-last' ? -1 : (index ?? 0), browserStore.activeProjectId!)
+    }
+    return
+  }
+
+  if (action === 'toggle-bookmarks-bar') {
+    void settingsStore.update({ showBookmarksBar: !settingsStore.settings.showBookmarksBar })
+    return
+  }
+
+  dispatchBrowserAction(action, index)
+}
+
 function handleGlobalKey(e: KeyboardEvent) {
   const s = settingsStore.settings.shortcuts
 
   if (matchesShortcut(e, s.settings)) { e.preventDefault(); openSettings(); return }
   if (matchesShortcut(e, s.commandPalette)) { e.preventDefault(); showPalette.value = true; return }
+
+  const mod = e.ctrlKey || e.metaKey
+  if (browserStore.active && browserStore.activeProjectId) {
+    const k = e.key.toLowerCase()
+    if (e.ctrlKey && !e.metaKey && !e.altKey && e.key === 'Tab') {
+      e.preventDefault()
+      handleBrowserAction({ action: e.shiftKey ? 'prev-tab' : 'next-tab' })
+      return
+    }
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault()
+      handleBrowserAction({ action: e.key === 'ArrowLeft' ? 'back' : 'forward' })
+      return
+    }
+    if (mod && !e.altKey) {
+      if (k === 't') { e.preventDefault(); handleBrowserAction({ action: e.shiftKey ? 'reopen-tab' : 'new-tab' }); return }
+      if (k === 'l' && !e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'focus-address' }); return }
+      if (k === 'f' && !e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'find' }); return }
+      if (k === 'd' && !e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'bookmark' }); return }
+      if (k === 'b' && e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'toggle-bookmarks-bar' }); return }
+      if (e.key === '[' && !e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'back' }); return }
+      if (e.key === ']' && !e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'forward' }); return }
+      if (!e.shiftKey && e.key >= '1' && e.key <= '8') { e.preventDefault(); handleBrowserAction({ action: 'switch-tab', index: Number(e.key) - 1 }); return }
+      if (!e.shiftKey && e.key === '9') { e.preventDefault(); handleBrowserAction({ action: 'switch-tab-last' }); return }
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); handleBrowserAction({ action: 'zoom-in' }); return }
+      if (e.key === '-' || e.key === '_') { e.preventDefault(); handleBrowserAction({ action: 'zoom-out' }); return }
+      if (e.key === '0' && !e.shiftKey) { e.preventDefault(); handleBrowserAction({ action: 'zoom-reset' }); return }
+    }
+  }
+
   if (matchesShortcut(e, s.find)) { e.preventDefault(); dispatchEditorAction('editor-find'); return }
   if (matchesShortcut(e, s.save)) { e.preventDefault(); dispatchEditorAction('editor-save'); return }
 
   // Hardcoded global shortcuts not yet exposed in settings
-  const mod = e.ctrlKey || e.metaKey
   if (mod && e.shiftKey && e.key === 'F') { e.preventDefault(); layout.rightActivePanel = 'search'; layout.rightCollapsed = false; layout.persist(); return }
   if (mod && e.key === 'p') { e.preventDefault(); showQuickOpen.value = true; return }
   if (mod && e.shiftKey && e.key === 'T') { e.preventDefault(); reopenLastClosedTab(); return }
@@ -435,9 +558,11 @@ function onMirNotification(e: Event) {
 
 async function loadGitStatusForStatusBar(projectPath: string) {
   try {
-    const s = await window.electronAPI.gitStatus(projectPath) as { branch: string; ahead: number; behind: number } | null
+    const s = await window.electronAPI.gitStatus(projectPath)
     if (s) {
       window.dispatchEvent(new CustomEvent('statusbar-git', { detail: { branch: s.branch, ahead: s.ahead ?? 0, behind: s.behind ?? 0 } }))
+    } else {
+      window.dispatchEvent(new CustomEvent('statusbar-git', { detail: { branch: null, ahead: 0, behind: 0 } }))
     }
   } catch { /* ignore */ }
 }
@@ -446,6 +571,8 @@ let gitStatusInterval: ReturnType<typeof setInterval> | null = null
 function startGitStatusPolling() {
   if (gitStatusInterval) clearInterval(gitStatusInterval)
   gitStatusInterval = setInterval(() => {
+    if (document.hidden) return
+    if (!layout.rightCollapsed && layout.rightActivePanel === 'git') return
     const p = projectStore.activeProject
     if (p) loadGitStatusForStatusBar(p.path)
   }, 10000)
@@ -453,11 +580,19 @@ function startGitStatusPolling() {
 startGitStatusPolling()
 
 onUnmounted(() => {
+  if (gitStatusInterval) {
+    clearInterval(gitStatusInterval)
+    gitStatusInterval = null
+  }
+  for (const off of unsubs) off()
+  unsubs.length = 0
   window.removeEventListener('keydown', handleGlobalKey)
   window.removeEventListener('mousemove', onMouseMove)
   endDragShield()
   window.removeEventListener('open-command-palette', onOpenCommandPalette)
   window.removeEventListener('mir-notification', onMirNotification)
+  window.removeEventListener('focus', onWindowFocus)
+  window.removeEventListener('beforeunload', onBeforeUnload)
 })
 </script>
 
@@ -466,7 +601,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--bg-primary);
+  background: var(--bg-sunken, var(--bg-secondary));
   color: var(--text-primary);
 }
 .main-layout {
@@ -474,31 +609,49 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  padding: 0 8px 6px;
+}
+.left-pane,
+.center-pane,
+.right-pane {
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--shadow-1);
 }
 .left-pane {
   flex-shrink: 0;
-  overflow: hidden;
-  border-right: 1px solid var(--border-hairline);
+  background: var(--bg-secondary);
 }
 .right-pane {
   flex-shrink: 0;
-  overflow: hidden;
-  border-left: 1px solid var(--border-hairline);
+  background: var(--bg-secondary);
 }
-/* Drag hot-zone only: the visible divider is the 1px panel border, so the
-   line stays uniform and aligned with the titlebar splitters. The hot-zone
-   turns into a subtle accent glow while dragging/hovering. */
+/* Floating-island gap acts as the resize handle: subtle hairline pill at rest, accented on hover/drag. */
 .splitter {
-  width: 4px;
-  margin: 0 -2px;
+  position: relative;
+  width: 8px;
   cursor: col-resize;
   background: transparent;
   flex-shrink: 0;
-  transition: background var(--transition-fast) ease;
 }
-.splitter:hover,
-.splitter.dragging {
+.splitter::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--border-hairline);
+  transition: background var(--transition-fast) ease, height var(--transition-fast) ease;
+}
+.splitter:hover::after,
+.splitter.dragging::after {
   background: var(--accent-strong);
+  height: 56px;
 }
 </style>
 

@@ -1,4 +1,5 @@
 :root {
+  /* Default only — Settings › Font size rewrites this inline on <html> */
   --base-font-size: 15px;
 
   /* ── Dark theme (default): DSH-inspired quiet instrument ──
@@ -29,7 +30,7 @@
   --text-warning: #f59e0b;
   --text-violet: #a78bfa;
 
-  --accent: #5686fe;
+  --accent: #3f6ae0;
   --accent-strong: #7aaaff;
   --accent-soft: rgba(86, 134, 254, 0.16);
   --accent-ring: rgba(122, 170, 255, 0.55);
@@ -74,6 +75,8 @@
 
   --tab-height: 40px;
   --titlebar-height: 42px;
+  /* Shared height for the first row of the left/right side panels so they line up */
+  --pane-header-height: 36px;
 
   /* Spacing scale — 4px base */
   --space-1: 4px;
@@ -106,20 +109,26 @@
   /* Focus ring */
   --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent-ring);
 
-  /* Type scale — one tier larger, looser leading */
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-md: 14px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 19px;
+  /* Type scale — every size is a ratio of --base-font-size so the
+     Settings › Font size control actually scales the UI. Ratios are
+     chosen so the default 15px base renders exactly as before. */
+  --text-4xs: calc(var(--base-font-size) * 0.5333);   /*  8px @ 15 */
+  --text-3xs: calc(var(--base-font-size) * 0.6667);   /* 10px @ 15 */
+  --text-2xs: calc(var(--base-font-size) * 0.7333);   /* 11px @ 15 */
+  --text-xs: calc(var(--base-font-size) * 0.8);       /* 12px @ 15 */
+  --text-sm: calc(var(--base-font-size) * 0.8667);    /* 13px @ 15 */
+  --text-md: calc(var(--base-font-size) * 0.9333);    /* 14px @ 15 */
+  --text-base: var(--base-font-size);                 /* 15px @ 15 */
+  --text-lg: calc(var(--base-font-size) * 1.1333);    /* 17px @ 15 */
+  --text-xl: calc(var(--base-font-size) * 1.2667);    /* 19px @ 15 */
 
-  --leading-xs: 18px;
-  --leading-sm: 20px;
-  --leading-md: 22px;
-  --leading-base: 24px;
-  --leading-lg: 26px;
-  --leading-xl: 32px;
+  /* Unitless leading so line boxes follow the scaled font size */
+  --leading-xs: 1.5;
+  --leading-sm: 1.5385;
+  --leading-md: 1.5714;
+  --leading-base: 1.6;
+  --leading-lg: 1.5294;
+  --leading-xl: 1.6842;
 
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial,
@@ -129,13 +138,13 @@
 }
 
 [data-theme='light'] {
-  --bg-primary: #f4f5f8;
-  --bg-secondary: #ffffff;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fb;
   --bg-tertiary: #eef0f4;
   --bg-elevated: #ffffff;
-  --bg-hover: #e7eaf0;
-  --bg-active: rgba(14, 128, 200, 0.14);
-  --bg-selected: rgba(14, 128, 200, 0.10);
+  --bg-hover: #eaedf2;
+  --bg-active: rgba(11, 109, 169, 0.12);
+  --bg-selected: rgba(11, 109, 169, 0.08);
   --bg-sunken: #eceef2;
   --border-color: rgba(15, 23, 42, 0.10);
   --border-subtle: rgba(15, 23, 42, 0.06);
@@ -143,18 +152,18 @@
   --border-hairline: rgba(15, 23, 42, 0.08);
   --text-primary: #16181d;
   --text-secondary: #5c6470;
-  --text-faint: #8b93a0;
-  --text-accent: #0e80c8;
+  --text-faint: #636b78;
+  --text-accent: #0b6da9;
   --text-on-accent: #ffffff;
   --text-danger: #d64545;
   --text-success: #007462;
   --text-warning: #8a6d1a;
   --text-violet: #6d28d9;
   --violet-soft: rgba(109, 40, 217, 0.10);
-  --accent: #0e80c8;
-  --accent-strong: #0b6da9;
-  --accent-soft: rgba(14, 128, 200, 0.12);
-  --accent-ring: rgba(14, 128, 200, 0.35);
+  --accent: #0b6da9;
+  --accent-strong: #095c8f;
+  --accent-soft: rgba(11, 109, 169, 0.12);
+  --accent-ring: rgba(11, 109, 169, 0.35);
   --on-accent-soft: rgba(255, 255, 255, 0.22);
   --diff-add-bg: #e8f6ec;
   --diff-add-text: #1a7f37;

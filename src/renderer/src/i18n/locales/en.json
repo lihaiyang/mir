@@ -27,7 +27,9 @@
     "saved": "Saved",
     "reset": "Reset",
     "edit": "Edit",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "maximize": "Maximize",
+    "restore": "Restore"
   },
   "titlebar": {
     "leftTitle": "Items",
@@ -39,6 +41,7 @@
   },
   "leftPane": {
     "emptyHint": "Drop a folder or browser tab here\nor click + to add",
+    "openTabsCount": "{count} open tab(s)",
     "addWebPageTitle": "Add Web Page",
     "pageTitle": "Page title",
     "removeTitle": "Remove \"{name}\"?",
@@ -98,7 +101,9 @@
     "rename": "Rename",
     "noTabs": "No tabs open",
     "newTab": "+ New Tab",
-    "acpChat": "ACP"
+    "acpChat": "ACP",
+    "more": "More tabs",
+    "tabList": "Editor tabs"
   },
   "rightPane": {
     "files": "Files",
@@ -139,7 +144,18 @@
     "autoUpdate": "Auto Update",
     "showPanelIcons": "Show Panel Icons",
     "markdownPreview": "Markdown Preview",
-    "acp": "ACP Agents"
+    "acp": "ACP Agents",
+    "browserHomeUrl": "Custom Browser Homepage",
+    "browserHomeUrlPlaceholder": "Leave empty for built-in Start Page (mir://newtab), or enter https://...",
+    "builtinStartPage": "Built-in Start Page",
+    "showBookmarksBar": "Show Bookmarks Bar",
+    "openBookmarksInNewTab": "Open bookmarks in new tab by default",
+    "searchPlaceholder": "Search settings…",
+
+    "clearSearch": "Clear search",    "groupGeneral": "General",
+    "groupWorkspace": "Workspace",
+    "groupExtensions": "AI & Extensions",
+    "accentColor": "Accent Color"
   },
   "git": {
     "noProject": "No project selected",
@@ -187,7 +203,8 @@
     "restart": "Restart",
     "copy": "Copy",
     "paste": "Paste",
-    "clear": "Clear"
+    "clear": "Clear",
+    "previousSession": "Previous session"
   },
   "fileTree": {
     "openInEditor": "Open in Editor",
@@ -212,15 +229,41 @@
   },
   "browser": {
     "placeholder": "Enter URL or search...",
-    "bookmark": "Bookmark",
+    "bookmark": "Bookmark this page",
+    "bookmarks": "Bookmarks",
+    "home": "Home",
     "devTools": "DevTools",
     "back": "Back",
     "forward": "Forward",
     "reload": "Reload",
+    "stop": "Stop loading",
     "removeBookmark": "Remove Bookmark",
+    "addBookmark": "Add Bookmark",
+    "editBookmark": "Edit Bookmark",
+    "bookmarkTitle": "Title",
+    "bookmarkUrl": "URL",
+    "bookmarkFolder": "Folder",
+    "bookmarkFolderPlaceholder": "Optional folder (empty shows on bar)",
+    "allBookmarks": "All",
+    "noBookmarks": "No bookmarks yet. Click the star icon or add one here.",
+    "searchBookmarks": "Search bookmarks...",
+    "openInNewTab": "Open in New Tab",
+    "customizeHomepage": "Customize Homepage",
+    "startPagePlaceholder": "Search or enter URL...",
     "newTab": "New Tab",
     "noTabs": "No tabs",
-    "tabs": "tabs"
+    "pinnedProject": "Browser",
+    "projectName": "Browser {index}",
+    "tabs": "tabs",
+    "findInPage": "Find in page...",
+
+    "findPrev": "Previous match",
+    "findNext": "Next match",    "findNoMatch": "No results",
+    "zoomReset": "Reset zoom",
+    "duplicateTab": "Duplicate Tab",
+    "closeOthers": "Close Other Tabs",
+    "closeToRight": "Close Tabs to the Right",
+    "copyUrl": "Copy URL"
   },
   "agentCommands": {
     "title": "AI Agent Commands",
@@ -307,7 +350,8 @@
     "uninstallConfirm": "Uninstall \"{name}\"? This deletes the plugin folder.",
     "restartHint": "Changes take effect after restarting the app.",
     "installed": "Installed: {id}. Restart to activate.",
-    "manage": "Plugins: Manage"
+    "manage": "Plugins: Manage",
+    "reloaded": "Plugins reloaded"
   },
   "acp": {
     "chatTab": "ACP Chat",
@@ -395,11 +439,15 @@
       },
       "truncated": "truncated",
       "unsupportedContent": "Unsupported content: {type}",
-      "untitled": "Tool call"
+      "untitled": "Tool call",
+      "openTerminal": "Open in MIR Terminal"
     },
     "notice": {
       "cancelled": "Turn cancelled",
+      "turnEnded": "Turn ended: {reason}",
       "authRequired": "{agent} requires authentication.",
+      "authRequiredWithMethods": "{agent} requires authentication: {methods}. Finish it in the Agents panel on the right.",
+      "branchedFrom": "Branched from \"{title}\"",
       "loadFailed": "Failed to load session: {error}",
       "sendFailed": "Failed to send: {error}"
     },
@@ -417,6 +465,7 @@
       "empty": "Registry unavailable",
       "add": "Add",
       "added": "Added",
+      "installed": "Installed",
       "unavailable": "Not available on this platform",
       "loading": "Loading registry…",
       "repository": "Repository:"
@@ -457,7 +506,18 @@
       "browse": "Browse",
       "sessionCount": "{count} sessions",
       "smoothStreaming": "Smooth reveal for batched replies",
-      "smoothStreamingHint": "Typewriter-style reveal when an agent delivers a whole message at once (e.g. DeepSeek Harness). Presentation only: the wire still carries no token deltas."
+      "smoothStreamingHint": "Typewriter-style reveal when an agent delivers a whole message at once (e.g. DeepSeek Harness). Presentation only: the wire still carries no token deltas.",
+      "tabGeneral": "General",
+      "permissionSafe": "Auto-approve read-only & safe commands",
+      "restrictFs": "Restrict file writes to workspace",
+      "restrictFsHint": "Block agents from writing files outside the session working directory.",
+      "autoOpenModifiedFiles": "Auto-open files written by Agent",
+      "autoOpenModifiedFilesHint": "Automatically open modified files in the editor and mark them in the file tree.",
+      "mcpServers": "MCP Servers",
+      "addMcp": "Add MCP",
+      "saveMcp": "Save MCP",
+      "noMcpServers": "No MCP servers configured. Enabled stdio servers are injected into new ACP sessions.",
+      "mcpName": "Name"
     },
     "load": "Load",
     "restore": "Restore session",
@@ -490,7 +550,8 @@
       "hint": "Enter to send · Shift+Enter for newline",
       "placeholder": "Ask the agent…",
       "send": "Send",
-      "stop": "Stop"
+      "stop": "Stop",
+      "attachImage": "Attach image"
     },
     "header": {
       "disconnect": "Disconnect agent",
@@ -507,7 +568,29 @@
       },
       "stop": "Stop",
       "unknownAgent": "Agent",
-      "usageTitle": "{used} / {size} tokens"
+      "usageTitle": "{used} / {size} tokens",
+      "fork": "Fork session"
+    },
+    "workflowTab": "Workflow",
+    "fileModified": "Modified by Agent",
+    "dirHasModified": "Contains Agent-modified files",
+    "clearModified": "Clear agent modified markers",
+    "searchHistory": "Search chat history…",
+    "searchEmpty": "No matching chats",
+    "commandAudit": "Command Audit",
+    "importProjectConfig": "Import .mir/agents.json",
+    "noProjectAgentsFile": "No .mir/agents.json found in active project.",
+    "workflow": {
+      "title": "Multi-Agent Workflow",
+      "open": "New Multi-Agent Workflow",
+      "addStep": "Add step",
+      "run": "Run Workflow",
+      "running": "Running…",
+      "initialInput": "Initial Task / Context",
+      "inputPlaceholder": "Describe the overall goal or paste context for step 1…",
+      "serial": "Serial (Pipeline)",
+      "parallel": "Parallel with prev",
+      "promptPlaceholder": "Prompt for this step (supports {{input}} and {{prev}})"
     }
   },
   "harness": {

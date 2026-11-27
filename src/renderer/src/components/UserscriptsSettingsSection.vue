@@ -62,7 +62,7 @@
 
         <div class="us-card-actions">
           <label class="us-toggle" :title="t('userscripts.enable')">
-            <input type="checkbox" :checked="script.enabled" @change="toggle(script, $event)" />
+            <input role="switch" type="checkbox" :checked="script.enabled" @change="toggle(script, $event)" />
             <span>{{ t('userscripts.enabled') }}</span>
           </label>
           <button class="us-btn us-btn-sm" :disabled="busy" @click="edit(script)">{{ t('common.edit') }}</button>
@@ -259,12 +259,12 @@ onMounted(load)
   word-break: break-word;
 }
 .userscripts-error {
-  color: var(--danger-color, #e5534b);
-  background: color-mix(in srgb, var(--danger-color, #e5534b) 12%, transparent);
+  color: var(--text-danger);
+  background: var(--danger-soft);
 }
 .userscripts-notice {
   color: var(--text-secondary);
-  background: var(--bg-hover, rgba(127, 127, 127, 0.1));
+  background: var(--bg-hover);
 }
 
 .userscripts-actions {
@@ -281,26 +281,26 @@ onMounted(load)
   color: var(--text-primary);
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: background var(--transition-fast) ease, border-color var(--transition-fast) ease;
 }
 .us-btn:hover:not(:disabled) {
-  background: var(--bg-hover, rgba(127, 127, 127, 0.12));
+  background: var(--bg-hover);
 }
 .us-btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
 .us-btn-primary {
-  border-color: var(--accent-color, #3b82f6);
-  color: var(--accent-color, #3b82f6);
+  border-color: var(--accent);
+  color: var(--text-accent);
 }
 .us-btn-sm {
   padding: 3px 8px;
   font-size: var(--text-xs);
 }
 .us-btn-danger:hover:not(:disabled) {
-  border-color: var(--danger-color, #e5534b);
-  color: var(--danger-color, #e5534b);
+  border-color: var(--text-danger);
+  color: var(--text-danger);
 }
 
 .userscripts-paste {
@@ -407,7 +407,7 @@ onMounted(load)
   font-size: var(--text-xs);
 }
 .us-card-warn {
-  color: var(--warning-color, #d29922);
+  color: var(--text-warning);
   font-size: var(--text-xs);
   line-height: 1.5;
   word-break: break-word;

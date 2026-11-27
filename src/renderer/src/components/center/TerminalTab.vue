@@ -118,7 +118,7 @@ async function initTerminal() {
   // Restore previous session scrollback as read-only history above the fresh shell.
   if (saved?.scrollback) {
     term.write(saved.scrollback)
-    term.write('\r\n──── 上次会话 ────\r\n')
+    term.write(`\r\n──── ${t('terminal.previousSession')} ────\r\n`)
   }
 
   unsubData = window.electronAPI.onPtyData(props.tab.id, (data) => {

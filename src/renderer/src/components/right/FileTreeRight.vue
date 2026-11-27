@@ -4,13 +4,35 @@
     <template v-else>
       <div class="tree-header">
         <span class="tree-root-name" :title="activeProject.path">{{ rootName }}</span>
-        <label class="show-hidden-toggle" title="Show hidden files">
-          <input type="checkbox" v-model="showHidden" @change="loadTree" />
+        <label class="show-hidden-toggle" :title="$t('fileTree.showHidden')">
+          <input
+            type="checkbox"
+            v-model="showHidden"
+            :aria-label="$t('fileTree.showHidden')"
+            @change="loadTree"
+          />
           <span class="toggle-label">.</span>
         </label>
-        <button class="icon-btn" :title="$t('fileTree.refresh')" @click="loadTree"><Icon name="refresh" :size="18" /></button>
+        <button
+          v-if="hasModifiedFiles"
+          class="icon-btn"
+          :title="$t('acp.clearModified', 'Clear agent modified markers')"
+          :aria-label="$t('acp.clearModified', 'Clear agent modified markers')"
+          @click="acpStore.clearModifiedFiles()"
+        ><Icon name="check-circle" :size="16" /></button>
+        <button
+          class="icon-btn"
+          :title="$t('fileTree.refresh')"
+          :aria-label="$t('fileTree.refresh')"
+          @click="loadTree"
+        ><Icon name="refresh" :size="16" /></button>
       </div>
-      <div class="tree-scroll" @contextmenu.prevent="showRootMenu">
+      <div
+        class="tree-scroll"
+        role="tree"
+        :aria-label="rootName"
+        @contextmenu.prevent="showRootMenu"
+      >
         <RightTreeNode
           v-for="node in nodes"
           :key="node.path"
@@ -25,40 +47,35 @@
       </div>
     </template>
 
-    <!-- New item dialog -->
-    <div v-if="newItemDialog" class="modal-overlay" @click.self="newItemDialog = null">
-      <div class="modal">
-        <div class="modal-title">{{ newItemDialog.isDir ? $t('fileTree.newFolder') : $t('fileTree.newFile') }}</div>
-        <input
-          ref="newItemInput"
-          v-model="newItemName"
-          :placeholder="newItemDialog.isDir ? 'folder-name' : 'filename.ts'"
-          style="width:100%"
-          @keydown.enter="confirmNewItem"
-          @keydown.esc="newItemDialog = null"
-        />
-        <div class="modal-actions">
-          <button class="btn-secondary" @click="newItemDialog = null">{{ $t('common.cancel') }}</button>
-          <button class="btn-primary" @click="confirmNewItem">{{ $t('fileTree.create') }}</button>
-        </div>
-      </div>
-    </div>
+    <!-- New item dialog (shared implementation) -->
+    <PromptDialog
+      :open="newItemDialog !== null"
+      :title="newItemDialog?.isDir ? $t('fileTree.newFolder') : $t('fileTree.newFile')"
+      :placeholder="newItemDialog?.isDir ? 'folder-name' : 'filename.ts'"
+      :confirm-text="$t('fileTree.create')"
+      @confirm="confirmNewItem"
+      @cancel="newItemDialog = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, provide } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../../stores/projects'
 import { useTabStore } from '../../stores/tabs'
+import { useAcpStore } from '../../stores/acp'
 import { useFileTree, type FileNode } from '../../composables/useFileTree'
 import { useContextMenu } from '../../composables/useContextMenu'
 import RightTreeNode from './RightTreeNode.vue'
 import Icon from '../ui/Icon.vue'
+import PromptDialog from '../ui/PromptDialog.vue'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
 const tabStore = useTabStore()
+const acpStore = useAcpStore()
+const hasModifiedFiles = computed(() => Object.keys(acpStore.agentModifiedFiles).length > 0)
 const { readDir, joinPath } = useFileTree()
 const { show: showMenu } = useContextMenu()
 
@@ -69,6 +86,15 @@ const nodes = ref<FileNode[]>([])
 const showHidden = ref(false)
 const refreshNonce = ref(0)
 
+// Roving tabindex for the tree: one tab stop, arrow keys move within.
+const focusedPath = ref('')
+provide('fileTreeFocus', {
+  focusedPath,
+  setFocus: (p: string) => {
+    focusedPath.value = p
+  }
+})
+
 async function loadTree() {
   if (!activeProject.value) return
   nodes.value = await readDir(activeProject.value.path, showHidden.value)
@@ -78,11 +104,18 @@ async function loadTree() {
 watch(() => activeProject.value?.id, () => loadTree(), { immediate: true })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
+function onExternalFileWritten() {
+  void loadTree()
+}
 onMounted(() => {
-  pollTimer = setInterval(loadTree, 3000)
+  pollTimer = setInterval(() => {
+    if (!document.hidden) void loadTree()
+  }, 3000)
+  window.addEventListener('mir-file-written', onExternalFileWritten)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  window.removeEventListener('mir-file-written', onExternalFileWritten)
 })
 
 function showRootMenu(e: MouseEvent) {
@@ -93,18 +126,14 @@ function showRootMenu(e: MouseEvent) {
 }
 
 const newItemDialog = ref<{ isDir: boolean } | null>(null)
-const newItemName = ref('')
-const newItemInput = ref<HTMLInputElement | null>(null)
 
 function createItem(isDir: boolean) {
   newItemDialog.value = { isDir }
-  newItemName.value = ''
-  nextTick(() => newItemInput.value?.focus())
 }
 
-async function confirmNewItem() {
-  if (!activeProject.value || !newItemDialog.value || !newItemName.value.trim()) return
-  const p = joinPath(activeProject.value.path, newItemName.value.trim())
+async function confirmNewItem(name: string) {
+  if (!activeProject.value || !newItemDialog.value || !name.trim()) return
+  const p = joinPath(activeProject.value.path, name.trim())
   if (newItemDialog.value.isDir) await window.electronAPI.mkdir(p)
   else await window.electronAPI.writeFile(p, '')
   newItemDialog.value = null
@@ -134,16 +163,15 @@ async function openInEditor(fp: string) {
 }
 .no-project {
   padding: 16px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   text-align: center;
 }
 .tree-header {
   display: flex;
   align-items: center;
-  min-height: 44px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border-color);
+  min-height: var(--pane-header-height);
+  padding: 8px 8px 4px 14px;
   gap: 4px;
   flex-shrink: 0;
 }
@@ -167,9 +195,19 @@ async function openInEditor(fp: string) {
   flex-shrink: 0;
 }
 .show-hidden-toggle:hover { background: var(--bg-hover); }
-.show-hidden-toggle input { display: none; }
+.show-hidden-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.show-hidden-toggle input:focus-visible + .toggle-label {
+  box-shadow: var(--focus-ring);
+  border-radius: 3px;
+}
 .toggle-label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--text-secondary);
   width: 16px;

@@ -5,57 +5,108 @@
       <p class="acp-settings-desc">{{ t('acp.settings.description') }}</p>
     </header>
 
+    <div class="acp-tabs" role="tablist">
+      <button
+        v-for="tab in subTabs"
+        :key="tab.id"
+        type="button"
+        role="tab"
+        class="acp-tab-btn"
+        :class="{ active: activeSubTab === tab.id }"
+        @click="activeSubTab = tab.id"
+      >
+        <span>{{ tab.label }}</span>
+        <span v-if="tab.badge !== undefined" class="acp-tab-badge">{{ tab.badge }}</span>
+      </button>
+    </div>
+
     <div v-if="errorMsg" class="acp-error">{{ errorMsg }}</div>
 
     <!-- MIR Harness (built-in agent) ---------------------------------- -->
-    <div class="acp-harness">
-      <div class="acp-divider">
-        <span class="acp-divider-title">{{ t('harness.sectionTitle') }}</span>
-      </div>
+    <div v-show="activeSubTab === 'harness'" class="acp-harness">
       <HarnessSettingsSection />
     </div>
 
     <!-- General ------------------------------------------------------- -->
-    <div class="settings-group">
-      <label class="settings-label">{{ t('acp.settings.permissionMode') }}</label>
-      <select v-model="draft.autoApprovePermissions" class="settings-select" @change="saveGeneral">
-        <option value="ask">{{ t('acp.settings.permissionAsk') }}</option>
-        <option value="allowAll">{{ t('acp.settings.permissionAllowAll') }}</option>
-      </select>
-    </div>
+    <div v-show="activeSubTab === 'general'" class="acp-card-stack">
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-label">{{ t('acp.settings.permissionMode') }}</div>
+          </div>
+          <select v-model="draft.autoApprovePermissions" class="settings-select" @change="saveGeneral">
+            <option value="ask">{{ t('acp.settings.permissionAsk') }}</option>
+            <option value="safe">{{ t('acp.settings.permissionSafe', 'Auto-approve read-only & safe commands') }}</option>
+            <option value="allowAll">{{ t('acp.settings.permissionAllowAll') }}</option>
+          </select>
+        </div>
 
-    <div class="settings-group settings-group-row">
-      <label class="settings-label" style="flex: 1">{{ t('acp.settings.logTraffic') }}</label>
-      <input type="checkbox" v-model="draft.logTraffic" @change="saveGeneral" />
-    </div>
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-label">{{ t('acp.settings.restrictFs', 'Restrict file writes to workspace') }}</div>
+            <div class="acp-hint">{{ t('acp.settings.restrictFsHint', 'Block agents from writing files outside the session working directory.') }}</div>
+          </div>
+          <label class="toggle">
+            <input role="switch" type="checkbox" v-model="draft.restrictFsToWorkspace" @change="saveGeneral" />
+            <span class="toggle-track" />
+          </label>
+        </div>
 
-    <div class="settings-group">
-      <div class="settings-group settings-group-row">
-        <label class="settings-label" style="flex: 1">{{ t('acp.settings.smoothStreaming') }}</label>
-        <input type="checkbox" v-model="draft.smoothStreaming" @change="saveGeneral" />
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-label">{{ t('acp.settings.autoOpenModifiedFiles', 'Auto-open files written by Agent') }}</div>
+            <div class="acp-hint">{{ t('acp.settings.autoOpenModifiedFilesHint', 'Automatically open modified files in the editor and mark them in the file tree.') }}</div>
+          </div>
+          <label class="toggle">
+            <input role="switch" type="checkbox" v-model="draft.autoOpenModifiedFiles" @change="saveGeneral" />
+            <span class="toggle-track" />
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-label">{{ t('acp.settings.smoothStreaming') }}</div>
+            <div class="acp-hint">{{ t('acp.settings.smoothStreamingHint') }}</div>
+          </div>
+          <label class="toggle">
+            <input role="switch" type="checkbox" v-model="draft.smoothStreaming" @change="saveGeneral" />
+            <span class="toggle-track" />
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-label">{{ t('acp.settings.logTraffic') }}</div>
+          </div>
+          <label class="toggle">
+            <input role="switch" type="checkbox" v-model="draft.logTraffic" @change="saveGeneral" />
+            <span class="toggle-track" />
+          </label>
+        </div>
       </div>
-      <div class="acp-hint">{{ t('acp.settings.smoothStreamingHint') }}</div>
-    </div>
 
-    <div class="settings-group">
-      <label class="settings-label">{{ t('acp.settings.defaultCwd') }}</label>
-      <div class="acp-row">
-        <input
-          v-model="draft.defaultWorkingDirectory"
-          class="settings-input"
-          :placeholder="t('acp.settings.defaultCwdHint')"
-          @keydown.enter="saveGeneral"
-          @blur="saveGeneral"
-        />
-        <button class="acp-btn" type="button" @click="browseWorkingDirectory">
-          {{ t('acp.settings.browse') }}
-        </button>
+      <div class="settings-card">
+        <div class="settings-row settings-row-col">
+          <div class="row-label">{{ t('acp.settings.defaultCwd') }}</div>
+          <div class="acp-row">
+            <input
+              v-model="draft.defaultWorkingDirectory"
+              class="settings-input"
+              :placeholder="t('acp.settings.defaultCwdHint')"
+              @keydown.enter="saveGeneral"
+              @blur="saveGeneral"
+            />
+            <button class="acp-btn" type="button" @click="browseWorkingDirectory">
+              {{ t('acp.settings.browse') }}
+            </button>
+          </div>
+          <div class="acp-hint">{{ t('acp.settings.defaultCwdHint') }}</div>
+        </div>
       </div>
-      <div class="acp-hint">{{ t('acp.settings.defaultCwdHint') }}</div>
     </div>
 
     <!-- Agents -------------------------------------------------------- -->
-    <div class="acp-block">
+    <div v-show="activeSubTab === 'agents'" class="acp-block acp-block--plain">
       <div class="acp-block-head">
         <span class="acp-block-title">{{ t('acp.settings.agents') }}</span>
         <span v-if="saved" class="acp-saved">{{ t('acp.settings.saved') }}</span>
@@ -82,7 +133,7 @@
             type="button"
             :title="isExpanded(agent.id) ? t('common.collapse') : t('common.expand')"
             @click="toggleExpanded(agent.id)"
-          >
+           :aria-label="isExpanded(agent.id) ? t('common.collapse') : t('common.expand')">
             <Icon :name="isExpanded(agent.id) ? 'chevron-down' : 'chevron-right'" :size="12" />
           </button>
           <input
@@ -128,7 +179,7 @@
       <div v-if="showRegistry" class="acp-registry">
         <div class="acp-registry-head">
           <input v-model="registryQuery" class="settings-input" :placeholder="t('acp.registry.search')" />
-          <button class="icon-btn" type="button" :title="t('common.close')" @click="showRegistry = false">
+          <button class="icon-btn" type="button" :title="t('common.close')" @click="showRegistry = false" :aria-label="t('common.close')">
             <Icon name="x" :size="13" />
           </button>
         </div>
@@ -138,6 +189,7 @@
         <div v-else class="acp-registry-list">
           <div v-for="item in filteredRegistry" :key="item.id" class="acp-registry-row">
             <span class="acp-registry-name" :title="item.description || item.name">{{ item.name }}</span>
+            <span v-if="item.installed" class="acp-registry-installed">{{ t('acp.registry.installed') }}</span>
             <span v-if="item.unavailableReason" class="acp-registry-unavailable">{{ item.unavailableReason }}</span>
             <button
               class="acp-btn acp-btn-sm"
@@ -150,8 +202,73 @@
       </div>
     </div>
 
+    <!-- MCP Servers --------------------------------------------------- -->
+    <div v-show="activeSubTab === 'mcp'" class="acp-block acp-block--plain">
+      <div class="acp-block-head">
+        <span class="acp-block-title">{{ t('acp.settings.mcpServers', 'MCP Servers') }}</span>
+        <div class="acp-block-actions">
+          <button class="acp-btn" type="button" @click="addMcpServer">{{ t('acp.settings.addMcp', 'Add MCP') }}</button>
+          <button class="acp-btn acp-btn-primary" type="button" :disabled="saving" @click="saveMcpServers">
+            {{ t('acp.settings.saveMcp', 'Save MCP') }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="draft.mcpServers.length === 0" class="acp-hint">
+        {{ t('acp.settings.noMcpServers', 'No MCP servers configured. Enabled stdio servers are injected into new ACP sessions.') }}
+      </div>
+
+      <div
+        v-for="server in draft.mcpServers"
+        :key="server.id"
+        class="acp-agent-card"
+        :class="{ 'is-disabled': server.enabled === false }"
+      >
+        <div class="acp-agent-summary">
+          <button
+            class="acp-expand"
+            type="button"
+            @click="toggleExpanded('mcp:' + server.id)"
+           :aria-label="isExpanded('mcp:' + server.id) ? t('common.collapse') : t('common.expand')">
+            <Icon :name="isExpanded('mcp:' + server.id) ? 'chevron-down' : 'chevron-right'" :size="12" />
+          </button>
+          <input
+            type="checkbox"
+            v-model="server.enabled"
+            @change="saveMcpServers"
+          />
+          <span class="acp-agent-name">{{ server.name || server.id }}</span>
+          <span class="acp-agent-cmd">{{ server.command }}</span>
+          <button
+            class="acp-btn acp-btn-sm acp-btn-danger"
+            type="button"
+            @click="removeMcpServer(server.id)"
+          >{{ t('common.remove') }}</button>
+        </div>
+
+        <div v-if="isExpanded('mcp:' + server.id)" class="acp-agent-fields">
+          <label class="acp-field">
+            <span class="settings-label">{{ t('acp.settings.mcpName', 'Name') }}</span>
+            <input v-model="server.name" class="settings-input" placeholder="filesystem" />
+          </label>
+          <label class="acp-field">
+            <span class="settings-label">{{ t('acp.settings.command') }}</span>
+            <input v-model="server.command" class="settings-input" placeholder="npx" />
+          </label>
+          <label class="acp-field">
+            <span class="settings-label">{{ t('acp.settings.args') }}</span>
+            <textarea v-model="server.argsText" class="settings-input acp-textarea" rows="2" placeholder="-y&#10;@modelcontextprotocol/server-filesystem" />
+          </label>
+          <label class="acp-field">
+            <span class="settings-label">{{ t('acp.settings.env') }}</span>
+            <textarea v-model="server.envText" class="settings-input acp-textarea" rows="2" placeholder="KEY=VALUE" />
+          </label>
+        </div>
+      </div>
+    </div>
+
     <!-- Runtime (read-only) ------------------------------------------- -->
-    <div class="acp-block">
+    <div v-show="activeSubTab === 'runtime'" class="acp-block acp-block--plain">
       <div class="acp-block-head">
         <span class="acp-block-title">{{ t('acp.settings.runtime') }}</span>
         <div class="acp-block-actions">
@@ -182,6 +299,7 @@ import type {
   AcpAgentStatus,
   AcpAutoApprove,
   AcpConfig,
+  AcpMcpServerConfig,
   AcpRegistryAgent
 } from '@shared/acp'
 import { useAcpStore } from '../stores/acp'
@@ -194,16 +312,34 @@ interface AgentDraft extends AcpAgentConfig {
   envText: string
 }
 
+interface McpServerDraft extends AcpMcpServerConfig {
+  argsText: string
+  envText: string
+}
+
 interface ConfigDraft {
   agents: AgentDraft[]
+  mcpServers: McpServerDraft[]
   autoApprovePermissions: AcpAutoApprove
   logTraffic: boolean
   smoothStreaming: boolean
+  autoOpenModifiedFiles: boolean
+  restrictFsToWorkspace: boolean
   defaultWorkingDirectory: string
 }
 
 const { t } = useI18n()
 const acpStore = useAcpStore()
+
+type SubTabId = 'general' | 'harness' | 'agents' | 'mcp' | 'runtime'
+const activeSubTab = ref<SubTabId>('general')
+const subTabs = computed<Array<{ id: SubTabId; label: string; badge?: number }>>(() => [
+  { id: 'general', label: t('acp.settings.tabGeneral', 'General') },
+  { id: 'harness', label: 'MIR Harness' },
+  { id: 'agents', label: t('acp.settings.agents'), badge: draft.value.agents.length },
+  { id: 'mcp', label: t('acp.settings.mcpServers', 'MCP Servers'), badge: draft.value.mcpServers.length },
+  { id: 'runtime', label: t('acp.settings.runtime') }
+])
 
 const saving = ref(false)
 const saved = ref(false)
@@ -242,9 +378,20 @@ function toDraft(config: AcpConfig): ConfigDraft {
         .map(([key, value]) => `${key}=${value}`)
         .join('\n')
     })),
+    mcpServers: (config.mcpServers ?? []).map((s) => ({
+      ...s,
+      args: [...(s.args ?? [])],
+      env: { ...(s.env ?? {}) },
+      argsText: (s.args ?? []).join('\n'),
+      envText: Object.entries(s.env ?? {})
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n')
+    })),
     autoApprovePermissions: config.autoApprovePermissions,
     logTraffic: config.logTraffic,
     smoothStreaming: config.smoothStreaming,
+    autoOpenModifiedFiles: config.autoOpenModifiedFiles !== false,
+    restrictFsToWorkspace: config.restrictFsToWorkspace === true,
     defaultWorkingDirectory: config.defaultWorkingDirectory ?? ''
   }
 }
@@ -286,11 +433,28 @@ function toConfig(draft: ConfigDraft): AcpConfig {
     if (description) config.description = description
     return config
   })
+  const mcpServers: AcpMcpServerConfig[] = draft.mcpServers.map((s) => {
+    const command = s.command.trim() || 'npx'
+    const server: AcpMcpServerConfig = {
+      id: s.id,
+      name: s.name.trim() || command || s.id,
+      command,
+      enabled: s.enabled !== false
+    }
+    const args = argsFromText(s.argsText)
+    if (args.length > 0) server.args = args
+    const env = envFromText(s.envText)
+    if (env) server.env = env
+    return server
+  })
   return {
     agents,
+    mcpServers,
     autoApprovePermissions: draft.autoApprovePermissions,
     logTraffic: draft.logTraffic,
     smoothStreaming: draft.smoothStreaming,
+    autoOpenModifiedFiles: draft.autoOpenModifiedFiles,
+    restrictFsToWorkspace: draft.restrictFsToWorkspace,
     defaultWorkingDirectory: draft.defaultWorkingDirectory.trim()
   }
 }
@@ -384,6 +548,8 @@ async function saveGeneral(): Promise<void> {
     current.autoApprovePermissions === draft.value.autoApprovePermissions &&
     current.logTraffic === draft.value.logTraffic &&
     current.smoothStreaming === draft.value.smoothStreaming &&
+    (current.autoOpenModifiedFiles !== false) === draft.value.autoOpenModifiedFiles &&
+    (current.restrictFsToWorkspace === true) === draft.value.restrictFsToWorkspace &&
     (current.defaultWorkingDirectory ?? '') === draft.value.defaultWorkingDirectory.trim()
   if (unchanged) return
   await persist(
@@ -391,6 +557,8 @@ async function saveGeneral(): Promise<void> {
       autoApprovePermissions: draft.value.autoApprovePermissions,
       logTraffic: draft.value.logTraffic,
       smoothStreaming: draft.value.smoothStreaming,
+      autoOpenModifiedFiles: draft.value.autoOpenModifiedFiles,
+      restrictFsToWorkspace: draft.value.restrictFsToWorkspace,
       defaultWorkingDirectory: draft.value.defaultWorkingDirectory.trim()
     },
     false
@@ -400,6 +568,30 @@ async function saveGeneral(): Promise<void> {
 async function saveAgents(): Promise<void> {
   await persist({ agents: toConfig(draft.value).agents }, true)
   if (!errorMsg.value) seedSignature = agentSignature(acpStore.config.agents)
+}
+
+function addMcpServer(): void {
+  const id = `mcp-${Date.now().toString(36)}`
+  draft.value.mcpServers.push({
+    id,
+    name: 'New MCP',
+    command: 'npx',
+    args: [],
+    env: {},
+    enabled: true,
+    argsText: '',
+    envText: ''
+  })
+  expanded.value['mcp:' + id] = true
+}
+
+function removeMcpServer(id: string): void {
+  draft.value.mcpServers = draft.value.mcpServers.filter((s) => s.id !== id)
+  void saveMcpServers()
+}
+
+async function saveMcpServers(): Promise<void> {
+  await persist({ mcpServers: toConfig(draft.value).mcpServers }, true)
 }
 
 async function browseWorkingDirectory(): Promise<void> {
@@ -483,7 +675,11 @@ function isRegistryAgentAdded(agent: AcpRegistryAgent): boolean {
 
 const filteredRegistry = computed<AcpRegistryAgent[]>(() => {
   const query = registryQuery.value.trim().toLowerCase()
-  const all = [...acpStore.registry].sort((a, b) => a.name.localeCompare(b.name))
+  const rank = (a: AcpRegistryAgent): number => (a.installed ? 0 : !a.unavailableReason ? 1 : 2)
+  const all = [...acpStore.registry].sort((a, b) => {
+    const diff = rank(a) - rank(b)
+    return diff !== 0 ? diff : a.name.localeCompare(b.name)
+  })
   if (!query) return all
   return all.filter((agent) => {
     const haystack = `${agent.name} ${agent.id} ${agent.description ?? ''}`.toLowerCase()
@@ -568,13 +764,129 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 .acp-settings-title {
-  font-size: var(--text-lg);
+  margin: 0;
+  font-size: calc(var(--base-font-size) * 1.2);
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .acp-settings-desc {
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+.acp-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  align-self: flex-start;
+}
+.acp-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.acp-tab-btn:hover { color: var(--text-primary); }
+.acp-tab-btn.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-1);
+}
+.acp-tab-badge {
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: var(--text-3xs);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+.acp-tab-btn.active .acp-tab-badge {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.acp-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border-hairline);
+}
+.settings-row-col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.row-info { flex: 1; min-width: 0; }
+.row-label { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  position: relative;
+  transition: background var(--transition-fast) ease, border-color var(--transition-fast) ease;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform var(--transition-fast) ease, background var(--transition-fast) ease;
+}
+.toggle input:checked + .toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle input:checked + .toggle-track::after {
+  transform: translateX(16px);
+  background: var(--text-on-accent);
+}
+.toggle input:focus-visible + .toggle-track {
+  box-shadow: var(--focus-ring);
+}
+
+.acp-block--plain {
+  padding-top: 0 !important;
+  border-top: none !important;
 }
 
 /* MIR Harness block sits above the ACP groups; the divider keeps the two
@@ -628,13 +940,24 @@ onBeforeUnmount(() => {
 .settings-input {
   width: 100%;
   min-width: 0;
-  padding: 4px 8px;
-  font-size: var(--text-md);
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+}
+.settings-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .settings-select {
-  padding: 4px 8px;
-  font-size: var(--text-md);
-  align-self: flex-start;
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
   max-width: 100%;
 }
 
@@ -843,6 +1166,15 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--text-sm);
+}
+.acp-registry-installed {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+  color: var(--text-success);
+  font-size: var(--text-3xs);
+  font-weight: 600;
 }
 .acp-registry-unavailable {
   flex-shrink: 0;

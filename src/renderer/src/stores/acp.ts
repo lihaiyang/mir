@@ -3,10 +3,12 @@ import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import type {
   AcpAgentRuntimeInfo,
+  AcpChatSearchResult,
   AcpConfig,
   AcpEvent,
   AcpHistoryEntry,
   AcpPermissionRequest,
+  AcpPersistedChatItem,
   AcpPromptBlock,
   AcpRegistryAgent,
   AcpRemoteSession,
@@ -20,6 +22,7 @@ import type {
   ToolCallUpdate,
   UsageUpdate
 } from '@shared/acp'
+import i18n from '../i18n'
 import { useTabStore } from './tabs'
 import { useProjectStore } from './projects'
 
@@ -34,6 +37,7 @@ export interface UserChatItem {
   id: string
   at: number
   text: string
+  images?: Array<{ data: string; mimeType: string; name?: string }>
 }
 export interface AgentChatItem {
   kind: 'agent'
@@ -142,7 +146,9 @@ export const useAcpStore = defineStore('acp', () => {
     agents: [],
     autoApprovePermissions: 'ask',
     logTraffic: false,
-    smoothStreaming: false
+    smoothStreaming: false,
+    autoOpenModifiedFiles: true,
+    mcpServers: []
   })
   const agents = ref<AcpAgentRuntimeInfo[]>([])
   const sessions = ref<Record<string, AcpSessionState>>({})
@@ -150,6 +156,8 @@ export const useAcpStore = defineStore('acp', () => {
   const registry = ref<AcpRegistryAgent[]>([])
   const initialized = ref(false)
   const initializing = ref<Promise<void> | null>(null)
+  /** Agent 写入/修改过的文件路径（path -> timestamp） */
+  const agentModifiedFiles = ref<Record<string, number>>({})
 
   let unsubscribe: (() => void) | null = null
 
@@ -343,8 +351,15 @@ export const useAcpStore = defineStore('acp', () => {
           finishStreaming(state)
           if (event.error) pushNotice(state, 'error', event.error)
           else if (event.stopReason && event.stopReason !== 'end_turn') {
-            pushNotice(state, 'info', event.stopReason === 'cancelled' ? '已取消本轮' : `本轮结束：${event.stopReason}`)
+            pushNotice(
+              state,
+              'info',
+              event.stopReason === 'cancelled'
+                ? i18n.global.t('acp.notice.cancelled')
+                : i18n.global.t('acp.notice.turnEnded', { reason: event.stopReason })
+            )
           }
+          scheduleSaveChat(event.sessionId)
         }
         break
       }
@@ -353,7 +368,7 @@ export const useAcpStore = defineStore('acp', () => {
         break
       }
       case 'file-written': {
-        window.dispatchEvent(new CustomEvent('mir-file-written', { detail: { path: event.path } }))
+        handleFileWritten(event.path)
         break
       }
       case 'agent-stderr': {
@@ -374,6 +389,65 @@ export const useAcpStore = defineStore('acp', () => {
     }
   }
 
+  function handleFileWritten(filePath: string): void {
+    agentModifiedFiles.value[filePath] = now()
+    window.dispatchEvent(new CustomEvent('mir-file-written', { detail: { path: filePath } }))
+
+    if (config.value.autoOpenModifiedFiles === false) return
+    const projectStore = useProjectStore()
+    const tabStore = useTabStore()
+    const matchedProject =
+      projectStore.projects.find((p) => filePath.startsWith(p.path + '/') || filePath === p.path) ??
+      projectStore.activeProject ??
+      projectStore.projects[0]
+    if (!matchedProject) return
+
+    const alreadyOpen = tabStore
+      .getAllTabs(matchedProject.id)
+      .some((t) => t.type === 'file' && t.filePath === filePath)
+    if (!alreadyOpen) {
+      const name = filePath.split('/').pop() || filePath
+      void tabStore.addTab(matchedProject.id, 'file', {
+        title: name,
+        filePath
+      })
+    }
+  }
+
+  function isFileModified(filePath: string): boolean {
+    return filePath in agentModifiedFiles.value
+  }
+
+  function hasModifiedDescendant(dirPath: string): boolean {
+    const prefix = dirPath.endsWith('/') ? dirPath : `${dirPath}/`
+    return Object.keys(agentModifiedFiles.value).some((p) => p.startsWith(prefix))
+  }
+
+  function clearModifiedFiles(): void {
+    agentModifiedFiles.value = {}
+  }
+
+  const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  function scheduleSaveChat(sessionId: string): void {
+    const existing = saveTimers.get(sessionId)
+    if (existing) clearTimeout(existing)
+    const timer = setTimeout(() => {
+      saveTimers.delete(sessionId)
+      const state = sessions.value[sessionId]
+      if (!state || state.items.length === 0) return
+      void window.electronAPI.acpSaveChatItems({
+        sessionId,
+        agentId: state.session.agentId,
+        agentName: state.session.agentName,
+        title: state.session.title,
+        cwd: state.session.cwd,
+        items: JSON.parse(JSON.stringify(state.items)) as AcpPersistedChatItem[]
+      })
+    }, 400)
+    saveTimers.set(sessionId, timer)
+  }
+
   function attachPermission(request: AcpPermissionRequest): void {
     const state = sessions.value[request.sessionId]
     if (!state) {
@@ -388,8 +462,11 @@ export const useAcpStore = defineStore('acp', () => {
   function pushNoticeForAgent(agentId: string, methods: { id: string; name: string }[]): void {
     const agentName = configuredAgent(agentId)?.name ?? agentId
     const text = methods.length
-      ? `${agentName} 需要登录：${methods.map((m) => m.name).join(' / ')}（在右侧 Agents 面板完成认证）`
-      : `${agentName} 需要登录`
+      ? i18n.global.t('acp.notice.authRequiredWithMethods', {
+          agent: agentName,
+          methods: methods.map((m) => m.name).join(' / ')
+        })
+      : i18n.global.t('acp.notice.authRequired', { agent: agentName })
     for (const state of Object.values(sessions.value)) {
       if (state.session.agentId === agentId) pushNotice(state, 'warn', text)
     }
@@ -506,6 +583,9 @@ export const useAcpStore = defineStore('acp', () => {
         break
       }
     }
+    if (!replayingSessions.has(sessionId)) {
+      scheduleSaveChat(sessionId)
+    }
   }
 
   /* ------------------------------ 数据加载 ---------------------------- */
@@ -572,7 +652,7 @@ export const useAcpStore = defineStore('acp', () => {
       return detail
     } catch (e) {
       placeholder.loading = false
-      pushNotice(placeholder, 'error', `恢复会话失败：${(e as Error).message}`)
+      pushNotice(placeholder, 'error', i18n.global.t('acp.notice.loadFailed', { error: (e as Error).message }))
       throw e
     } finally {
       replayingSessions.delete(sessionId)
@@ -614,29 +694,108 @@ export const useAcpStore = defineStore('acp', () => {
 
   /* ------------------------------ 对话操作 ---------------------------- */
 
-  async function sendPrompt(sessionId: string, text: string, attachments: { uri: string; name: string; mimeType?: string }[] = []): Promise<void> {
+  async function sendPrompt(
+    sessionId: string,
+    text: string,
+    attachments: { uri: string; name: string; mimeType?: string }[] = [],
+    images: { data: string; mimeType: string; name?: string }[] = []
+  ): Promise<void> {
     const state = sessions.value[sessionId]
     const trimmed = text.trim()
     if (!state || state.promptInFlight) return
-    if (!trimmed && attachments.length === 0) return
+    if (!trimmed && attachments.length === 0 && images.length === 0) return
 
     const blocks: AcpPromptBlock[] = []
     if (trimmed) blocks.push({ type: 'text', text: trimmed })
     for (const a of attachments) {
       blocks.push({ type: 'resource_link', uri: a.uri, name: a.name, mimeType: a.mimeType })
     }
+    for (const img of images) {
+      blocks.push({ type: 'image', data: img.data, mimeType: img.mimeType, name: img.name })
+    }
 
-    state.items.push({ kind: 'user', id: itemId(), at: now(), text: trimmed })
+    state.items.push({
+      kind: 'user',
+      id: itemId(),
+      at: now(),
+      text: trimmed,
+      images: images.length ? images : undefined
+    })
     state.promptInFlight = true
     if (state.items.filter((i) => i.kind === 'user').length === 1) {
-      state.session.firstPrompt = trimmed
+      state.session.firstPrompt = trimmed || '[Image]'
     }
+    scheduleSaveChat(sessionId)
     try {
       await window.electronAPI.acpSendPrompt(sessionId, blocks)
     } catch (e) {
       state.promptInFlight = false
-      pushNotice(state, 'error', `发送失败：${(e as Error).message}`)
+      pushNotice(state, 'error', i18n.global.t('acp.notice.sendFailed', { error: (e as Error).message }))
+      scheduleSaveChat(sessionId)
     }
+  }
+
+  async function openLocalHistory(entry: {
+    sessionId: string
+    agentId: string
+    agentName?: string
+    title?: string
+    cwd?: string
+    createdAt?: number
+    lastActiveAt?: number
+  }): Promise<boolean> {
+    const saved = await window.electronAPI.acpLoadChatItems(entry.sessionId)
+    if (!saved || saved.items.length === 0) return false
+    const detail: AcpSessionDetail = {
+      sessionId: entry.sessionId,
+      agentId: entry.agentId || saved.agentId,
+      agentName: entry.agentName || saved.agentName || entry.agentId,
+      cwd: entry.cwd || saved.cwd || '',
+      title: entry.title || saved.title,
+      createdAt: entry.createdAt ?? saved.updatedAt,
+      updatedAt: entry.lastActiveAt ?? saved.updatedAt,
+      status: 'closed',
+      supportsLoad: Boolean(runtimeFor(entry.agentId)?.capabilities?.loadSession),
+      supportsResume: Boolean(runtimeFor(entry.agentId)?.capabilities?.resumeSession)
+    }
+    const state = ensureSessionState(detail)
+    state.items = saved.items.map((item) => ({
+      ...(item as unknown as ChatItem),
+      replay: true
+    }))
+    await openChatTab(entry.sessionId)
+    return true
+  }
+
+  async function searchChats(query: string): Promise<AcpChatSearchResult[]> {
+    return window.electronAPI.acpSearchChats(query)
+  }
+
+  /** 基于当前会话上下文创建分支会话 */
+  async function forkSession(sessionId: string): Promise<AcpSessionDetail | null> {
+    const source = sessions.value[sessionId]
+    if (!source) return null
+    const detail = await createSession(source.session.agentId, source.session.cwd || defaultCwd())
+    const recentSummary = source.items
+      .filter((i): i is UserChatItem | AgentChatItem => i.kind === 'user' || i.kind === 'agent')
+      .slice(-8)
+      .map((i) => `[${i.kind === 'user' ? 'User' : 'Assistant'}]: ${i.text.slice(0, 300)}`)
+      .join('\n\n')
+    const target = sessions.value[detail.sessionId]
+    if (target && recentSummary) {
+      pushNotice(
+        target,
+        'info',
+        i18n.global.t('acp.notice.branchedFrom', {
+          title: source.session.title || source.session.sessionId.slice(0, 8)
+        })
+      )
+      await sendPrompt(
+        detail.sessionId,
+        `这是从上一个会话分支出来的新会话。以下是之前对话的上下文摘要，请了解后等待我的进一步指令：\n\n${recentSummary}`
+      )
+    }
+    return detail
   }
 
   async function cancelPrompt(sessionId: string): Promise<void> {
@@ -714,6 +873,7 @@ export const useAcpStore = defineStore('acp', () => {
     history,
     registry,
     initialized,
+    agentModifiedFiles,
     // getters
     agentList,
     allSessions,
@@ -722,6 +882,9 @@ export const useAcpStore = defineStore('acp', () => {
     configuredAgent,
     getSession,
     pendingPermissionFor,
+    isFileModified,
+    hasModifiedDescendant,
+    clearModifiedFiles,
     // lifecycle
     init,
     dispose,
@@ -741,6 +904,9 @@ export const useAcpStore = defineStore('acp', () => {
     disconnectAgent,
     forgetSession,
     authenticate,
+    openLocalHistory,
+    searchChats,
+    forkSession,
     // chat
     sendPrompt,
     cancelPrompt,

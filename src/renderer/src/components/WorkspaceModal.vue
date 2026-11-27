@@ -37,8 +37,8 @@
             <span class="ws-name" @click="switchTo(name)">{{ name }}</span>
             <span class="ws-time">{{ formatTime(workspaceStore.workspaces[name].updatedAt) }}</span>
           </template>
-          <button class="ws-btn" :title="$t('common.rename')" @click="startRename(name)"><Icon name="file-text" :size="12" /></button>
-          <button class="ws-btn danger" :title="$t('common.remove')" @click="remove(name)"><Icon name="x" :size="12" /></button>
+          <button class="ws-btn" :title="$t('common.rename')" @click="startRename(name)" :aria-label="$t('common.rename')"><Icon name="file-text" :size="12" /></button>
+          <button class="ws-btn danger" :title="$t('common.remove')" @click="remove(name)" :aria-label="$t('common.remove')"><Icon name="x" :size="12" /></button>
         </div>
       </div>
 

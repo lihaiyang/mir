@@ -4,10 +4,10 @@
     <div class="pm-header">
       <span class="pm-title">{{ t('plugins.title') }}</span>
       <div class="pm-header-actions">
-        <button class="pm-btn" @click="openFolder" :disabled="!pluginsDir" :title="t('plugins.openFolder')"><Icon name="folder-open" :size="13" /> {{ t('plugins.openFolder') }}</button>
-        <button class="pm-btn" @click="showGitModal = true"><Icon name="git-branch" :size="13" /> {{ t('plugins.installFromGit') }}</button>
-        <button class="pm-btn pm-btn-primary" @click="installFromDir"><Icon name="folder-plus" :size="13" /> {{ t('plugins.installFromFolder') }}</button>
-        <button class="pm-btn" @click="reload" title="Refresh"><Icon name="refresh" :size="13" /></button>
+        <button class="pm-btn" @click="openFolder" :disabled="!pluginsDir" :title="t('plugins.openFolder')" :aria-label="t('plugins.openFolder')"><Icon name="folder-open" :size="13" /> {{ t('plugins.openFolder') }}</button>
+        <button class="pm-btn" @click="showGitModal = true" :aria-label="t('plugins.installFromGit')"><Icon name="git-branch" :size="13" /> {{ t('plugins.installFromGit') }}</button>
+        <button class="pm-btn pm-btn-primary" @click="installFromDir" :aria-label="t('plugins.installFromFolder')"><Icon name="folder-plus" :size="13" /> {{ t('plugins.installFromFolder') }}</button>
+        <button class="pm-btn" @click="reload" title="Refresh" aria-label="Refresh"><Icon name="refresh" :size="13" /></button>
       </div>
     </div>
 
@@ -187,8 +187,15 @@ async function installFromGit() {
   }
 }
 
-function reload() {
-  load()
+async function reload() {
+  for (const p of plugins.value) {
+    if (p.enabled) {
+      await window.electronAPI.pluginDisable(p.manifest.id)
+      await window.electronAPI.pluginEnable(p.manifest.id)
+    }
+  }
+  await load()
+  installMsg.value = { success: true, text: t('plugins.reloaded', 'Plugins reloaded') }
 }
 
 onMounted(() => {

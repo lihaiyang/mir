@@ -47,7 +47,7 @@ onMounted(() => {
   background: var(--bg-primary);
 }
 .md-preview {
-  font-size: 14px;
+  font-size: var(--text-md);
   line-height: 1.7;
   color: var(--text-primary);
   max-width: 800px;

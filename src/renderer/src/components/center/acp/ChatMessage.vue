@@ -2,7 +2,18 @@
   <div class="chat-message" :class="`chat-message--${item.kind}`" :title="timeLabel">
     <!-- User message: right-aligned plain-text bubble -->
     <div v-if="item.kind === 'user'" class="user-row">
-      <div class="user-bubble">{{ item.text }}</div>
+      <div class="user-bubble">
+        <div v-if="item.images?.length" class="user-images">
+          <img
+            v-for="(img, idx) in item.images"
+            :key="idx"
+            :src="`data:${img.mimeType};base64,${img.data}`"
+            :alt="img.name || 'image'"
+            class="user-image"
+          />
+        </div>
+        <span v-if="item.text">{{ item.text }}</span>
+      </div>
     </div>
 
     <!-- Agent message: markdown, streamed -->
@@ -22,7 +33,7 @@
 
     <!-- Thought block: collapsible, muted, collapsed once finished -->
     <div v-else-if="item.kind === 'thought'" class="thought-row">
-      <button class="thought-head" type="button" @click="expanded = !expanded">
+      <button class="thought-head" type="button" @click="expanded = !expanded" :aria-label="t('acp.chat.thinking', 'Thinking')">
         <span class="thought-chevron" :class="{ 'is-open': expanded }">
           <Icon name="chevron-right" :size="11" />
         </span>
@@ -160,6 +171,18 @@ function onMarkdownClick(event: MouseEvent): void {
 .user-row {
   display: flex;
   justify-content: flex-end;
+}
+.user-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.user-image {
+  max-width: 180px;
+  max-height: 140px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
 }
 .user-bubble {
   max-width: 76%;

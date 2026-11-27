@@ -6,7 +6,7 @@
       :title="t('acp.permission.cancel', 'Cancel request')"
       :disabled="submitting"
       @click="respond(null)"
-    >
+     :aria-label="t('acp.permission.cancel', 'Cancel request')">
       <Icon name="x" :size="12" />
     </button>
 
@@ -30,7 +30,7 @@
         type="button"
         :disabled="submitting"
         @click="respond(option.optionId)"
-      >
+       :aria-label="optionLabel(option)">
         <Icon :name="optionIcon(option.kind)" :size="12" />
         <span>{{ optionLabel(option) }}</span>
       </button>

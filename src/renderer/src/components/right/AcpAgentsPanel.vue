@@ -4,14 +4,14 @@
     <div class="acp-header">
       <span class="acp-header-title">{{ t('acp.agents') }}</span>
       <div class="acp-header-actions">
-        <button class="icon-btn" :title="t('acp.refresh')" :disabled="refreshing" @click="refreshAll">
+        <button class="icon-btn" :title="t('acp.workflow.open', 'New Multi-Agent Workflow')" @click="openWorkflow" :aria-label="t('acp.workflow.open', 'New Multi-Agent Workflow')">
+          <Icon name="activity" :size="18" />
+        </button>
+        <button class="icon-btn" :title="t('acp.refresh')" :disabled="refreshing" @click="refreshAll" :aria-label="t('acp.refresh')">
           <Icon name="refresh" :size="18" />
         </button>
-        <button class="icon-btn" :title="t('acp.browseRegistry')" @click="openRegistry">
+        <button class="icon-btn" :title="t('acp.browseRegistry')" @click="openRegistry" :aria-label="t('acp.browseRegistry')">
           <Icon name="plus" :size="18" />
-        </button>
-        <button class="icon-btn" :title="t('acp.openSettings')" @click="openSettings">
-          <Icon name="settings" :size="18" />
         </button>
       </div>
     </div>
@@ -27,46 +27,60 @@
     </div>
 
     <template v-else>
-      <!-- Agents -->
+      <!-- Agents (compact list inspired by Zed/Cursor ACP panel) -->
       <div class="acp-agents">
         <div v-for="row in rows" :key="row.id" class="acp-agent" :class="{ 'is-disabled': !row.enabled }">
-          <div class="acp-agent-head">
+          <div class="acp-agent-head" :title="row.commandLine">
             <span class="acp-dot" :class="'dot-' + row.status" :title="statusLabel(row.status)" />
-            <span class="acp-agent-name" :title="row.name">{{ row.name }}</span>
-            <span v-if="row.pid" class="acp-pid">pid {{ row.pid }}</span>
+            <span class="acp-agent-name">{{ row.name }}</span>
+            <span v-if="row.pid" class="acp-pid">{{ row.pid }}</span>
+            <div class="acp-head-actions">
+              <button
+                v-if="row.canAuthenticate"
+                class="acp-icon-btn"
+                :title="t('acp.authenticate')"
+                :disabled="busyAgent === row.id"
+                @click="authenticate(row.id)"
+               :aria-label="t('acp.authenticate')">
+                <Icon name="lock" :size="12" />
+              </button>
+              <button
+                v-if="row.spawned"
+                class="acp-icon-btn acp-hover-action"
+                :title="t('acp.disconnect')"
+                :disabled="busyAgent === row.id"
+                @click="disconnect(row.id)"
+               :aria-label="t('acp.disconnect')">
+                <Icon name="x-circle" :size="12" />
+              </button>
+              <button
+                class="acp-icon-btn acp-hover-action"
+                :title="t('acp.restart')"
+                :disabled="busyAgent === row.id"
+                @click="restart(row.id)"
+               :aria-label="t('acp.restart')">
+                <Icon name="rotate" :size="12" />
+              </button>
+              <button
+                class="acp-new-btn"
+                :title="t('acp.newSession')"
+                :disabled="busyAgent === row.id"
+                @click="newSession(row.id)"
+               :aria-label="t('acp.newSession')">
+                <Icon name="plus" :size="12" />
+                <span>{{ t('acp.newSession') }}</span>
+              </button>
+            </div>
           </div>
-          <div class="acp-agent-cmd" :title="row.commandLine">{{ row.commandLine }}</div>
 
           <div v-if="row.error" class="acp-error acp-agent-error" :title="row.error">{{ row.error }}</div>
 
           <div v-if="row.stderrTail" class="acp-stderr-wrap">
-            <button class="acp-link" @click="toggleStderr(row.id)">
+            <button class="acp-link" @click="toggleStderr(row.id)" :aria-label="stderrOpen[row.id] ? t('acp.tool.hideDetails') : t('acp.tool.showDetails')">
               <Icon :name="stderrOpen[row.id] ? 'chevron-down' : 'chevron-right'" :size="11" />
               {{ stderrOpen[row.id] ? t('acp.tool.hideDetails') : t('acp.tool.showDetails') }}
             </button>
             <pre v-if="stderrOpen[row.id]" class="acp-stderr">{{ stderrTail(row.stderrTail) }}</pre>
-          </div>
-
-          <div v-if="row.capabilities.length > 0" class="acp-caps">
-            <span v-for="cap in row.capabilities" :key="cap" class="acp-badge">{{ capLabel(cap) }}</span>
-          </div>
-
-          <div class="acp-actions">
-            <button class="acp-btn acp-btn-primary" :disabled="busyAgent === row.id" @click="newSession(row.id)">
-              {{ t('acp.newSession') }}
-            </button>
-            <button
-              v-if="row.canAuthenticate"
-              class="acp-btn"
-              :disabled="busyAgent === row.id"
-              @click="authenticate(row.id)"
-            >{{ t('acp.authenticate') }}</button>
-            <button v-if="row.spawned" class="acp-btn" :disabled="busyAgent === row.id" @click="disconnect(row.id)">
-              {{ t('acp.disconnect') }}
-            </button>
-            <button class="acp-btn" :disabled="busyAgent === row.id" @click="restart(row.id)">
-              {{ t('acp.restart') }}
-            </button>
           </div>
 
           <!-- Live sessions -->
@@ -81,22 +95,48 @@
               <span class="acp-session-dot" :class="{ running: session.running }" />
               <span class="acp-session-title">{{ session.title }}</span>
               <span class="acp-session-time">{{ relativeTime(session.updatedAt) }}</span>
-              <button class="acp-icon-btn" :title="t('acp.copy')" @click.stop="copySessionId(session.sessionId)">
+              <button class="acp-icon-btn acp-hover-action" :title="t('acp.copy')" @click.stop="copySessionId(session.sessionId)" :aria-label="t('acp.copy')">
                 <Icon :name="copiedSessionId === session.sessionId ? 'check' : 'copy'" :size="11" />
               </button>
-              <button class="acp-icon-btn" :title="t('acp.close')" @click.stop="closeSession(session.sessionId)">
+              <button class="acp-icon-btn acp-hover-action" :title="t('acp.close')" @click.stop="closeSession(session.sessionId)" :aria-label="t('acp.close')">
                 <Icon name="x" :size="12" />
               </button>
             </div>
           </div>
-          <div v-else class="acp-hint">{{ t('acp.sessionsSection.empty') }}</div>
         </div>
       </div>
 
       <!-- History -->
       <div v-if="historyGroups.length > 0" class="acp-section">
         <div class="acp-section-title">{{ t('acp.history') }}</div>
-        <div v-for="(group, index) in historyGroups" :key="group.agentId" class="acp-history-group">
+        <div class="acp-history-search">
+          <Icon name="search" :size="13" class="acp-search-icon" />
+          <input
+            v-model="chatSearchQuery"
+            class="acp-search-input"
+            :placeholder="t('acp.searchHistory', 'Search chat history…')"
+            @input="onChatSearchInput"
+          />
+        </div>
+        <div v-if="chatSearchQuery.trim()" class="acp-search-results">
+          <div v-if="chatSearchResults.length === 0" class="acp-hint">
+            {{ t('acp.searchEmpty', 'No matching chats') }}
+          </div>
+          <div
+            v-for="hit in chatSearchResults"
+            :key="hit.sessionId"
+            class="acp-history-row acp-search-hit"
+            @click="openSearchHit(hit)"
+          >
+            <div class="acp-search-hit-top">
+              <span class="acp-history-title">{{ hit.title || hit.agentName }}</span>
+              <span class="acp-history-time">{{ relativeTime(hit.updatedAt) }}</span>
+            </div>
+            <div class="acp-search-snippet">{{ hit.snippet }}</div>
+          </div>
+        </div>
+        <template v-else>
+          <div v-for="(group, index) in historyGroups" :key="group.agentId" class="acp-history-group">
           <div class="acp-history-head" @click="toggleHistory(group.agentId, index)">
             <Icon :name="isHistoryOpen(group.agentId, index) ? 'chevron-down' : 'chevron-right'" :size="11" />
             <span class="acp-history-agent" :title="group.name">{{ group.name }}</span>
@@ -107,17 +147,37 @@
               v-for="entry in group.entries"
               :key="entry.sessionId"
               class="acp-history-row"
-              :title="t('acp.restore')"
+              :title="`${historyTitle(entry)}${entry.cwd ? ' — ' + entry.cwd : ''}`"
               @click="restoreSession(entry)"
             >
               <span class="acp-history-title">{{ historyTitle(entry) }}</span>
-              <span class="acp-history-cwd" :title="entry.cwd">{{ basename(entry.cwd) }}</span>
+              <span v-if="basename(entry.cwd)" class="acp-history-cwd">{{ basename(entry.cwd) }}</span>
               <span class="acp-history-time">{{ relativeTime(entry.lastActiveAt) }}</span>
-              <button class="acp-icon-btn" :title="t('acp.sessionsSection.forget')" @click.stop="forgetSession(entry)">
+              <button class="acp-icon-btn acp-hover-action" :title="t('acp.sessionsSection.forget')" @click.stop="forgetSession(entry)" :aria-label="t('acp.sessionsSection.forget')">
                 <Icon name="trash" :size="11" />
               </button>
             </div>
           </template>
+        </div>
+        </template>
+      </div>
+
+      <!-- Command Audit (execute tool calls across active sessions) -->
+      <div v-if="commandAuditRows.length > 0" class="acp-section">
+        <div class="acp-section-title" style="cursor: pointer" @click="auditOpen = !auditOpen">
+          <span>{{ auditOpen ? '▾' : '▸' }} {{ t('acp.commandAudit', 'Command Audit') }} ({{ commandAuditRows.length }})</span>
+        </div>
+        <div v-if="auditOpen" class="acp-audit-list">
+          <div
+            v-for="cmd in commandAuditRows"
+            :key="cmd.id"
+            class="acp-history-row"
+            @click="openSession(cmd.sessionId)"
+          >
+            <span class="acp-dot" :class="cmd.status === 'failed' ? 'dot-error' : cmd.status === 'completed' ? 'dot-ready' : 'dot-starting'" />
+            <span class="acp-history-title" :title="cmd.title">{{ cmd.title }}</span>
+            <span class="acp-history-time">{{ cmd.status }}</span>
+          </div>
         </div>
       </div>
 
@@ -128,7 +188,7 @@
           <select v-if="remoteAgents.length > 1" v-model="remoteAgentId" class="acp-select">
             <option v-for="agent in remoteAgents" :key="agent.id" :value="agent.id">{{ agent.name }}</option>
           </select>
-          <button class="acp-btn" :disabled="remoteLoading" @click="loadRemoteSessions">
+          <button class="acp-btn" :disabled="remoteLoading" @click="loadRemoteSessions" :aria-label="t('acp.loadFromAgent')">
             <Icon name="download" :size="11" />
             <span class="acp-btn-label">{{ t('acp.loadFromAgent') }}</span>
           </button>
@@ -153,7 +213,7 @@
       <div class="acp-modal">
         <div class="acp-modal-head">
           <span class="acp-modal-title">{{ t('acp.registry.title') }}</span>
-          <button class="icon-btn" :title="t('common.close')" @click="showRegistry = false">
+          <button class="icon-btn" :title="t('common.close')" @click="showRegistry = false" :aria-label="t('common.close')">
             <Icon name="x" :size="18" />
           </button>
         </div>
@@ -166,10 +226,11 @@
         </div>
         <div v-else-if="filteredRegistry.length === 0" class="acp-hint">{{ t('acp.registry.empty') }}</div>
         <div v-else class="acp-modal-list">
-          <div v-for="agent in filteredRegistry" :key="agent.id" class="acp-registry-item">
+          <div v-for="agent in filteredRegistry" :key="agent.id" class="acp-registry-item" :class="{ 'is-installed': agent.installed }">
             <div class="acp-registry-info">
               <div class="acp-registry-name">
                 <span class="acp-registry-label" :title="agent.name">{{ agent.name }}</span>
+                <span v-if="agent.installed" class="acp-registry-installed">{{ t('acp.registry.installed') }}</span>
                 <span v-if="agent.version" class="acp-registry-version">v{{ agent.version }}</span>
               </div>
               <div v-if="agent.description" class="acp-registry-desc">{{ agent.description }}</div>
@@ -204,6 +265,8 @@ import type {
   AcpRemoteSession
 } from '@shared/acp'
 import { useAcpStore } from '../../stores/acp'
+import { useProjectStore } from '../../stores/projects'
+import { useTabStore } from '../../stores/tabs'
 import { openSettings } from '../../composables/useGlobalActions'
 import Icon from '../ui/Icon.vue'
 
@@ -242,6 +305,71 @@ interface RemoteAgentOption {
 
 const { t, locale } = useI18n()
 const acpStore = useAcpStore()
+const projectStore = useProjectStore()
+const tabStore = useTabStore()
+const auditOpen = ref(false)
+
+const commandAuditRows = computed(() => {
+  const rows: Array<{ id: string; sessionId: string; title: string; status: string; at: number }> = []
+  for (const [sid, state] of Object.entries(acpStore.sessions)) {
+    for (const item of state.items) {
+      if (item.kind === 'tool' && item.toolCall.kind === 'execute') {
+        rows.push({
+          id: item.id,
+          sessionId: sid,
+          title: item.toolCall.title || 'Command',
+          status: item.toolCall.status || 'pending',
+          at: item.at
+        })
+      }
+    }
+  }
+  return rows.sort((a, b) => b.at - a.at).slice(0, 30)
+})
+
+function openWorkflow(): void {
+  const project = projectStore.activeProject ?? projectStore.projects[0]
+  if (!project) return
+  void tabStore.addTab(project.id, 'workflow', { title: t('acp.workflowTab', 'Workflow') })
+}
+
+async function importProjectAgents(): Promise<void> {
+  const project = projectStore.activeProject
+  if (!project) return
+  actionError.value = ''
+  try {
+    const data = await window.electronAPI.acpReadProjectAgents(project.path)
+    if (!data) {
+      actionError.value = t('acp.noProjectAgentsFile', 'No .mir/agents.json found in active project.')
+      return
+    }
+    const existingAgents = [...acpStore.config.agents]
+    const existingMcp = [...(acpStore.config.mcpServers ?? [])]
+    let added = 0
+    if (Array.isArray(data.agents)) {
+      for (const a of data.agents as AcpAgentConfig[]) {
+        if (a?.id && a?.command && !existingAgents.some((x) => x.id === a.id)) {
+          existingAgents.push(a)
+          added++
+        }
+      }
+    }
+    if (Array.isArray(data.mcpServers)) {
+      for (const m of data.mcpServers as any[]) {
+        if (m?.id && m?.command && !existingMcp.some((x) => x.id === m.id)) {
+          existingMcp.push(m)
+          added++
+        }
+      }
+    }
+    await acpStore.saveConfig({ agents: existingAgents, mcpServers: existingMcp })
+    window.dispatchEvent(new CustomEvent('mir-notification', {
+      detail: { type: 'success', text: `Imported ${added} items from .mir/agents.json` }
+    }))
+  } catch (e) {
+    actionError.value = errorText(e)
+  }
+}
 
 const refreshing = ref(false)
 const actionError = ref('')
@@ -249,6 +377,16 @@ const busyAgent = ref('')
 const stderrOpen = ref<Record<string, boolean>>({})
 const historyOpen = ref<Record<string, boolean>>({})
 const copiedSessionId = ref('')
+const chatSearchQuery = ref('')
+const chatSearchResults = ref<Array<{
+  sessionId: string
+  agentId: string
+  agentName: string
+  title?: string
+  updatedAt: number
+  snippet: string
+}>>([])
+let chatSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 const remoteAgentId = ref('')
 const remoteSessions = ref<AcpRemoteSession[]>([])
@@ -412,7 +550,11 @@ watch(
 
 const filteredRegistry = computed<AcpRegistryAgent[]>(() => {
   const query = registryQuery.value.trim().toLowerCase()
-  const all = [...acpStore.registry].sort((a, b) => a.name.localeCompare(b.name))
+  const rank = (a: AcpRegistryAgent): number => (a.installed ? 0 : !a.unavailableReason ? 1 : 2)
+  const all = [...acpStore.registry].sort((a, b) => {
+    const diff = rank(a) - rank(b)
+    return diff !== 0 ? diff : a.name.localeCompare(b.name)
+  })
   if (!query) return all
   return all.filter((agent) => {
     const haystack = `${agent.name} ${agent.id} ${agent.description ?? ''}`.toLowerCase()
@@ -515,12 +657,59 @@ function historyTitle(entry: AcpHistoryEntry): string {
   return truncate(entry.title || entry.firstPrompt || t('acp.sessionsSection.unnamed'), 120)
 }
 
+function onChatSearchInput(): void {
+  if (chatSearchTimer) clearTimeout(chatSearchTimer)
+  const q = chatSearchQuery.value.trim()
+  if (!q) {
+    chatSearchResults.value = []
+    return
+  }
+  chatSearchTimer = setTimeout(async () => {
+    try {
+      chatSearchResults.value = await acpStore.searchChats(q)
+    } catch {
+      chatSearchResults.value = []
+    }
+  }, 200)
+}
+
+async function openSearchHit(hit: {
+  sessionId: string
+  agentId: string
+  agentName: string
+  title?: string
+  updatedAt: number
+}): Promise<void> {
+  actionError.value = ''
+  const ok = await acpStore.openLocalHistory({
+    sessionId: hit.sessionId,
+    agentId: hit.agentId,
+    agentName: hit.agentName,
+    title: hit.title,
+    lastActiveAt: hit.updatedAt
+  })
+  if (!ok) {
+    await restoreSession({
+      sessionId: hit.sessionId,
+      agentId: hit.agentId,
+      cwd: '',
+      title: hit.title,
+      createdAt: hit.updatedAt,
+      lastActiveAt: hit.updatedAt
+    })
+  }
+}
+
 async function restoreSession(entry: AcpHistoryEntry): Promise<void> {
   actionError.value = ''
   try {
     await acpStore.loadSession(entry.agentId, entry.sessionId, entry.cwd)
   } catch (e) {
-    actionError.value = errorText(e)
+    // 若 Agent 不支持 session/load 或未连接，尝试回退到本地持久化历史（只读浏览）
+    const loadedLocal = await acpStore.openLocalHistory(entry)
+    if (!loadedLocal) {
+      actionError.value = errorText(e)
+    }
   }
 }
 
@@ -650,7 +839,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--bg-secondary);
+  background: transparent;
   font-size: var(--text-sm);
   color: var(--text-primary);
 }
@@ -659,9 +848,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 44px;
-  padding: 6px 8px 6px 12px;
-  border-bottom: 1px solid var(--border-color);
+  min-height: 40px;
+  padding: 8px 8px 4px 14px;
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -722,8 +910,8 @@ onBeforeUnmount(() => {
 .acp-agents {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2);
+  gap: 2px;
+  padding: 4px 8px 8px;
 }
 
 .acp-agent {
@@ -731,10 +919,14 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding: var(--space-2);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
   border-radius: var(--radius-md);
+  transition: background var(--transition-fast) ease;
+}
+.acp-agent:hover {
+  background: var(--bg-hover);
 }
 .acp-agent.is-disabled {
   opacity: 0.55;
@@ -742,22 +934,59 @@ onBeforeUnmount(() => {
 .acp-agent-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
+  min-height: 26px;
 }
 .acp-agent-name {
   flex: 1;
   min-width: 0;
-  font-weight: 600;
-  font-size: var(--text-md);
+  font-weight: 500;
+  font-size: var(--text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.acp-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.acp-hover-action {
+  opacity: 0;
+  transition: opacity var(--transition-fast) ease, background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.acp-agent:hover .acp-hover-action,
+.acp-session:hover .acp-hover-action,
+.acp-history-row:hover .acp-hover-action {
+  opacity: 1;
+}
+.acp-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.acp-new-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
 .acp-pid {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-3xs);
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-tertiary);
   color: var(--text-faint);
 }
 .acp-agent-cmd {
@@ -820,7 +1049,7 @@ onBeforeUnmount(() => {
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-3xs);
   line-height: 1.45;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -837,7 +1066,7 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-pill);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--text-3xs);
   line-height: 1.6;
   white-space: nowrap;
 }
@@ -854,26 +1083,31 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   max-width: 100%;
-  padding: 2px 8px;
-  border: 1px solid var(--border-color);
+  padding: 3px 10px;
+  border: 1px solid var(--border-hairline);
   border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--text-secondary);
   font-size: var(--text-xs);
   white-space: nowrap;
   overflow: hidden;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease, border-color var(--transition-fast) ease;
 }
 .acp-btn:not(:disabled):hover {
   background: var(--bg-hover);
-  border-color: var(--border-strong);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 .acp-btn-primary {
-  background: var(--bg-active);
+  background: var(--accent-soft);
   border-color: transparent;
-  color: var(--text-primary);
+  color: var(--accent-strong);
+  font-weight: 500;
 }
 .acp-btn-primary:not(:disabled):hover {
-  background: var(--bg-selected);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-color: transparent;
 }
 .acp-btn-sm {
   padding: 1px 6px;
@@ -887,11 +1121,10 @@ onBeforeUnmount(() => {
 .acp-sessions {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
-  border-top: 1px solid var(--border-color);
-  padding-top: 3px;
-  margin-top: 1px;
+  padding-top: 4px;
+  margin-top: 2px;
 }
 .acp-session {
   display: flex;
@@ -926,7 +1159,7 @@ onBeforeUnmount(() => {
 }
 .acp-session-time {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--text-3xs);
   color: var(--text-faint);
   white-space: nowrap;
 }
@@ -953,13 +1186,13 @@ onBeforeUnmount(() => {
 }
 
 .acp-section {
-  border-top: 1px solid var(--border-color);
-  padding: var(--space-2);
+  padding: 6px 10px 10px;
   min-width: 0;
 }
 .acp-section-title {
-  margin-bottom: 4px;
-  font-size: 10px;
+  margin-bottom: 6px;
+  padding-left: 4px;
+  font-size: var(--text-3xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -969,6 +1202,47 @@ onBeforeUnmount(() => {
 .acp-history-group {
   min-width: 0;
   margin-bottom: 2px;
+}
+.acp-history-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  margin: 2px 0 6px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  transition: background var(--transition-fast) ease, border-color var(--transition-fast) ease;
+}
+.acp-history-search:focus-within {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+}
+.acp-search-icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.acp-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  font-size: var(--text-xs);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+}
+.acp-search-results { display: flex; flex-direction: column; gap: 3px; }
+.acp-search-hit { flex-direction: column; align-items: stretch; gap: 2px; padding: 6px 8px; }
+.acp-search-hit-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.acp-search-snippet {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .acp-history-head {
   display: flex;
@@ -994,7 +1268,7 @@ onBeforeUnmount(() => {
 }
 .acp-history-count {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--text-3xs);
   color: var(--text-faint);
 }
 .acp-history-row {
@@ -1020,17 +1294,22 @@ onBeforeUnmount(() => {
 .acp-history-cwd,
 .acp-remote-cwd {
   flex-shrink: 0;
-  max-width: 40%;
+  max-width: 72px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0 5px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-tertiary);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-3xs);
   color: var(--text-faint);
 }
 .acp-history-time {
   flex-shrink: 0;
-  font-size: 10px;
+  min-width: 42px;
+  text-align: right;
+  font-size: var(--text-3xs);
   color: var(--text-faint);
   white-space: nowrap;
 }
@@ -1133,6 +1412,18 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
 }
+.acp-registry-item.is-installed {
+  border-left: 3px solid var(--text-success);
+}
+.acp-registry-installed {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+  color: var(--text-success);
+  font-size: var(--text-3xs);
+  font-weight: 600;
+}
 .acp-registry-info {
   flex: 1;
   min-width: 0;
@@ -1152,7 +1443,7 @@ onBeforeUnmount(() => {
 }
 .acp-registry-version {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--text-3xs);
   color: var(--text-faint);
 }
 .acp-registry-desc {
@@ -1165,7 +1456,7 @@ onBeforeUnmount(() => {
 .acp-registry-repo {
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-3xs);
   color: var(--text-faint);
   overflow: hidden;
   text-overflow: ellipsis;

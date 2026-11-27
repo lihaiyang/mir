@@ -1,30 +1,10 @@
 <template>
-  <!-- Collapsed icon bar -->
-  <div v-if="layout.leftCollapsed" class="left-pane-inner collapsed">
-    <div class="icon-bar">
-      <div class="icon-bar-btn" :title="$t('common.expand')" @click="layout.leftCollapsed = false; layout.persist()"><Icon name="chevrons-right" :size="16" /></div>
-      <div
-        v-for="item in barItems"
-        :key="item.orderKey"
-        class="icon-bar-btn"
-        :class="{ active: isItemActive(item), notifying: item.type === 'webpage' && item.data.hasNotification }"
-        :title="itemTitle(item)"
-        @click="onItemClick(item)"
-      >
-        <Icon :name="itemIcon(item)" :size="18" />
-        <span v-if="projectStore.isPinned(item.orderKey)" class="pin-badge"><Icon name="pin" :size="9" /></span>
-        <span v-if="unreadOf(item) > 0" class="icon-unread" :title="unreadTitle(item)">{{ unreadLabel(item) }}</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Expanded -->
-  <div v-else class="left-pane-inner" @dragover.prevent @drop="onDrop">
+  <!-- Sidebar content (collapse toggle lives in TitleBar) -->
+  <div class="left-pane-inner" @dragover.prevent @drop="onDrop">
       <div class="left-header">
-        <button class="icon-btn" :title="$t('common.collapse')" @click="layout.leftCollapsed = true; layout.persist()"><Icon name="chevrons-left" :size="16" /></button>
         <span class="left-title">{{ $t('titlebar.leftTitle') }}</span>
         <div class="add-wrapper" ref="addBtnRef">
-          <button class="icon-btn" title="Add" @click.stop="toggleAddMenu"><Icon name="plus" :size="16" /></button>
+          <button class="icon-btn" title="Add" @click.stop="toggleAddMenu" aria-label="Add"><Icon name="plus" :size="16" /></button>
           <div v-if="showAddMenu" class="add-dropdown" @click.stop @mouseleave="showAddMenu = false">
             <div class="add-dropdown-item" @click="addProject"><Icon name="folder" :size="16" /> {{ $t('titlebar.addProject') }}</div>
             <div class="add-dropdown-item" @click="startNewFolder"><Icon name="folder-plus" :size="16" /> {{ $t('leftPane.newFolder') }}</div>
@@ -87,15 +67,27 @@
           class="item-unread"
           :title="unreadTitle(row.item)"
         >{{ unreadLabel(row.item) }}</span>
+        <span
+          v-if="tabCountOf(row.item) > 0"
+          class="item-tab-count"
+          :title="$t('leftPane.openTabsCount', { count: tabCountOf(row.item) })"
+        >{{ tabCountOf(row.item) }}</span>
         <button
           class="item-pin-btn"
           :class="{ pinned: projectStore.isPinned(row.item.orderKey) }"
           :title="projectStore.isPinned(row.item.orderKey) ? $t('leftPane.unpin') : $t('leftPane.pinToTop')"
           @click.stop="projectStore.togglePin(row.item.orderKey)"
-        >
+         :aria-label="projectStore.isPinned(row.item.orderKey) ? $t('leftPane.unpin') : $t('leftPane.pinToTop')">
           <Icon name="pin" :size="12" />
         </button>
       </div>
+    </div>
+
+    <div class="left-footer">
+      <button class="left-settings-btn" type="button" :title="$t('common.settings')" @click="openSettings" :aria-label="$t('common.settings')">
+        <Icon name="settings" :size="16" />
+        <span>{{ $t('common.settings') }}</span>
+      </button>
     </div>
 
     <!-- Add web page dialog -->
@@ -150,7 +142,7 @@
     <div v-if="removingItem" class="modal-overlay" @click.self="removingItem = null">
       <div class="modal">
         <div class="modal-title">{{ $t('leftPane.removeTitle', { name: removingItem.title }) }}</div>
-        <p style="font-size:13px;color:var(--text-secondary)">
+        <p style="font-size: var(--text-sm);color:var(--text-secondary)">
           {{ removingItem.hint }}
         </p>
         <div class="modal-actions">
@@ -171,6 +163,7 @@ import { useBrowserStore, type BrowserProject, PINNED_BROWSER_PROJECT_ID } from 
 import { useLayoutStore } from '../../stores/layout'
 import { useTabStore } from '../../stores/tabs'
 import { useContextMenu } from '../../composables/useContextMenu'
+import { openSettings } from '../../composables/useGlobalActions'
 import AgentCommandsModal from './AgentCommandsModal.vue'
 import Icon from '../ui/Icon.vue'
 
@@ -234,15 +227,22 @@ const unpinnedItems = computed<OrderedItem[]>(() =>
   orderedItems.value.filter(item => !projectStore.isPinned(item.orderKey))
 )
 
-// Collapsed icon bar: pinned items first, then the rest.
-const barItems = computed<OrderedItem[]>(() => [...pinnedItems.value, ...unpinnedItems.value])
-
 // Single render list for the expanded pane. Drag / move-up / move-down use
 // `group` + `idx`, so the two sections sort independently.
 const displayItems = computed<DisplayItem[]>(() => [
   ...pinnedItems.value.map((item, idx) => ({ item, group: 'pinned' as const, idx })),
   ...unpinnedItems.value.map((item, idx) => ({ item, group: 'normal' as const, idx }))
 ])
+
+function tabCountOf(item: OrderedItem): number {
+  if (item.type === 'project') {
+    return tabStore.getProjectTabs((item.data as Project).id).length
+  }
+  if (item.type === 'browser') {
+    return (item.data as BrowserProject).tabs.length
+  }
+  return 0
+}
 
 function isItemActive(item: OrderedItem): boolean {
   if (item.type === 'project') {
@@ -746,9 +746,8 @@ function cancelEdit() { editing.value = false }
 .left-header {
   display: flex;
   align-items: center;
-  height: var(--titlebar-height);
-  padding: 0 12px;
-  border-bottom: 1px solid var(--border-hairline);
+  height: var(--pane-header-height);
+  padding: 8px 10px 4px 18px;
   gap: 6px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
@@ -809,19 +808,32 @@ function cancelEdit() { editing.value = false }
   position: relative;
   display: flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 4px 10px;
   cursor: pointer;
   border-radius: var(--radius-sm);
-  margin: 1px 6px;
-  gap: 8px;
-  min-height: 27px;
+  margin: 2px 8px;
+  gap: 9px;
+  min-height: 32px;
   flex-wrap: nowrap;
   overflow: hidden;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 .left-item:hover { background: var(--bg-hover); }
 .left-item.active {
   background: var(--bg-active);
   color: var(--text-primary);
+  font-weight: 500;
+}
+.left-item.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
 }
 .left-item.drag-source { opacity: 0.4; }
 /* Drop indicator: an absolutely-positioned line that does NOT change the
@@ -890,8 +902,7 @@ function cancelEdit() { editing.value = false }
 
 .item-name {
   flex: 0 1 auto;
-  min-width: 0;
-  max-width: 62%;
+  min-width: 40px;
   font-size: var(--text-md);
   line-height: var(--leading-md);
   font-weight: 500;
@@ -952,11 +963,34 @@ function cancelEdit() { editing.value = false }
   border-radius: var(--radius-pill);
   background: var(--warning-soft);
   color: var(--text-warning);
-  font-size: 10px;
+  font-size: var(--text-3xs);
   font-weight: 700;
   line-height: 1;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+}
+.item-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-faint);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease, border-color var(--transition-fast) ease;
+}
+.left-item.active .item-tab-count {
+  background: var(--bg-primary);
+  border-color: var(--border-color);
+  color: var(--text-accent);
 }
 .icon-bar-btn .icon-unread {
   position: absolute;
@@ -972,7 +1006,7 @@ function cancelEdit() { editing.value = false }
   border-radius: var(--radius-pill);
   background: var(--text-warning);
   color: var(--bg-primary);
-  font-size: 8px;
+  font-size: var(--text-4xs);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -1040,5 +1074,25 @@ function cancelEdit() { editing.value = false }
   padding: 6px 12px;
   font-size: var(--text-sm);
   white-space: nowrap;
+}
+.left-footer {
+  flex-shrink: 0;
+  padding: 8px 8px 10px;
+}
+.left-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.left-settings-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 </style>

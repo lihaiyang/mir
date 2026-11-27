@@ -95,7 +95,7 @@
               :disabled="fetchingModels || loading || saving || !draft.apiBase.trim()"
               :title="t('harness.models.fetchHint')"
               @click="fetchModels()"
-            >
+             :aria-label="t('harness.models.fetchHint')">
               {{ fetchingModels ? t('harness.models.fetching') : t('harness.models.fetch') }}
             </button>
             <button class="acp-btn" type="button" @click="addModel">{{ t('harness.models.add') }}</button>
@@ -126,7 +126,7 @@
             :disabled="draft.models.length <= 1"
             :title="draft.models.length <= 1 ? t('harness.models.keepOne') : t('common.remove')"
             @click="removeModel(index)"
-          >
+           :aria-label="draft.models.length <= 1 ? t('harness.models.keepOne') : t('common.remove')">
             {{ t('common.remove') }}
           </button>
           <div class="harness-model-grid">

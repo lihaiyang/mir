@@ -2,9 +2,9 @@
   <div class="browser-tab">
     <!-- Toolbar: hidden in standalone mode (toolbar lives in TitleBar instead) -->
     <div v-if="!isStandalone" class="browser-toolbar">
-      <button class="icon-btn" :disabled="!canGoBack" @click="goBack"><Icon name="chevron-left" :size="13" /></button>
-      <button class="icon-btn" :disabled="!canGoForward" @click="goForward"><Icon name="chevron-right" :size="13" /></button>
-      <button class="icon-btn" @click="reload"><Icon name="refresh" :size="13" /></button>
+      <button class="icon-btn" :disabled="!canGoBack" @click="goBack" :aria-label="$t('browser.back')"><Icon name="chevron-left" :size="13" /></button>
+      <button class="icon-btn" :disabled="!canGoForward" @click="goForward" :aria-label="$t('browser.forward')"><Icon name="chevron-right" :size="13" /></button>
+      <button class="icon-btn" @click="reload" :aria-label="$t('browser.reload')"><Icon name="refresh" :size="13" /></button>
       <input
         ref="urlInput"
         v-model="urlBar"
@@ -13,10 +13,10 @@
         @keydown.enter="navigateTo"
         @focus="($event.target as HTMLInputElement).select()"
       />
-      <button class="icon-btn" :class="{ bookmarked: isBookmarked }" @click="toggleBookmark" :title="$t('browser.bookmark')">
-        <Icon :name="isBookmarked ? 'check' : 'plus'" :size="13" />
+      <button class="icon-btn" :class="{ bookmarked: isBookmarked }" @click="toggleBookmark" :title="$t('browser.bookmark')" :aria-label="$t('browser.bookmark')">
+        <Icon name="star" :size="13" />
       </button>
-      <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
+      <button class="icon-btn" @click="openDevTools" :title="$t('browser.devTools')" :aria-label="$t('browser.devTools')"><Icon name="wrench" :size="13" /></button>
       <button
         v-if="userScriptCommands.length > 0"
         class="icon-btn us-menu-btn"
@@ -26,12 +26,12 @@
     </div>
 
     <!-- Bookmarks bar -->
-    <div v-if="bookmarks.length > 0" class="bookmarks-bar">
+    <div v-if="settingsStore.settings.showBookmarksBar && bookmarkStore.bookmarks.length > 0" class="bookmarks-bar">
       <span
-        v-for="bm in bookmarks"
-        :key="bm.url"
+        v-for="bm in bookmarkStore.bookmarks"
+        :key="bm.id"
         class="bookmark-item"
-        @click="navigate(bm.url)"
+        @click="openBookmark(bm.url)"
         @contextmenu.prevent="showBmMenu($event, bm)"
       >{{ bm.title }}</span>
     </div>
@@ -48,7 +48,6 @@
       @did-start-loading="onStartLoading"
       @did-stop-loading="onStopLoading"
       @dom-ready="onDomReady"
-      @console-message="onConsole"
       @did-fail-load="onFailLoad"
       @page-title-updated="onTitleUpdate"
       @ipc-message="onIpcMessage"
@@ -62,10 +61,12 @@ import { useI18n } from 'vue-i18n'
 import { useTabStore } from '../../stores/tabs'
 import { useProjectStore } from '../../stores/projects'
 import { useWebPageStore, standaloneNavBus } from '../../stores/webPages'
-import { browserReloadBus } from '../../stores/browser'
+import { browserReloadBus, browserActionBus, useBrowserStore, PINNED_BROWSER_PROJECT_ID } from '../../stores/browser'
+import { useBookmarkStore, type BookmarkItem } from '../../stores/bookmarks'
 import { useSettingsStore } from '../../stores/settings'
 import { useContextMenu } from '../../composables/useContextMenu'
 import Icon from '../ui/Icon.vue'
+import { injectSlimScrollbar } from '../../utils/webviewScrollbar'
 import type { Tab } from '../../stores/tabs'
 import type { WebviewTag } from 'electron'
 import {
@@ -82,12 +83,15 @@ const tabStore = useTabStore()
 const projectStore = useProjectStore()
 const webPageStore = useWebPageStore()
 const settingsStore = useSettingsStore()
+const browserStore = useBrowserStore()
+const bookmarkStore = useBookmarkStore()
 const { show: showMenu } = useContextMenu()
 
 // Standalone = this tab is a left-panel webpage browser (tab IDs start with "standalone-browser-")
 const isStandalone = computed(() => props.tab.id.startsWith('standalone-browser-'))
 
 const wv = ref<WebviewTag | null>(null)
+const urlInput = ref<HTMLInputElement | null>(null)
 const urlBar = ref(props.tab.browserUrl || 'https://www.google.com')
 const initialUrl = ref(props.tab.browserUrl || 'https://www.google.com')
 const canGoBack = ref(false)
@@ -96,14 +100,10 @@ const canGoForward = ref(false)
 /** 当前页面里脚本通过 GM_registerMenuCommand 注册的菜单项（由 preload 通过 ipc-message 下发） */
 const userScriptCommands = ref<UserScriptMenuCommand[]>([])
 
-interface Bookmark { title: string; url: string }
-const bookmarks = ref<Bookmark[]>([])
-
-const isBookmarked = computed(() => bookmarks.value.some(b => b.url === urlBar.value))
+const isBookmarked = computed(() => bookmarkStore.isBookmarked(urlBar.value))
 
 onMounted(async () => {
-  const bms = await window.electronAPI.storeGet('bookmarks') as Bookmark[] | null
-  if (Array.isArray(bms)) bookmarks.value = bms
+  await bookmarkStore.load()
 
   // Sync initial state to navBus for standalone mode
   if (isStandalone.value) {
@@ -197,6 +197,40 @@ watch(() => browserReloadBus.nonce, () => {
   }
 })
 
+let zoomFactor = 1
+function isActiveBrowserTab(): boolean {
+  if (isStandalone.value) {
+    return !!webPageStore.selectedWebPageId && props.tab.id === `standalone-browser-${webPageStore.selectedWebPageId}`
+  }
+  const p = projectStore.activeProject
+  if (!p || props.tab.projectId !== p.id) return false
+  const gid = tabStore.getFocusedGroupId(p.id)
+  return !!gid && tabStore.getGroupActiveTabId(p.id, gid) === props.tab.id
+}
+
+watch(() => browserActionBus.nonce, () => {
+  if (!isActiveBrowserTab()) return
+  switch (browserActionBus.action) {
+    case 'reload': wv.value?.reload(); break
+    case 'hard-reload': wv.value?.reloadIgnoringCache(); break
+    case 'focus-address': urlInput.value?.focus(); urlInput.value?.select(); break
+    case 'back': wv.value?.goBack(); break
+    case 'forward': wv.value?.goForward(); break
+    case 'zoom-in':
+      zoomFactor = Math.round(Math.min(3.0, zoomFactor + 0.1) * 100) / 100
+      wv.value?.setZoomFactor(zoomFactor)
+      break
+    case 'zoom-out':
+      zoomFactor = Math.round(Math.max(0.25, zoomFactor - 0.1) * 100) / 100
+      wv.value?.setZoomFactor(zoomFactor)
+      break
+    case 'zoom-reset':
+      zoomFactor = 1
+      wv.value?.setZoomFactor(1)
+      break
+  }
+})
+
 const LOG_PREFIX = '[BrowserTab]'
 
 function log(msg: string, ...args: any[]) {
@@ -218,17 +252,11 @@ function onStopLoading() {
 function onDomReady() {
   // Service worker registration is patched via the webview preload
   // (src/preload/webview.ts) which runs before any page script.
-}
-
-function onConsole(e: any) {
-  const msg = e.message || ''
-  // Suppress known-harmless ServiceWorker registration errors from
-  // pages inside the webview (Electron/Chromium document state races).
-  if (msg.includes('ServiceWorker') && msg.includes('invalid state')) return
-  log('console [' + e.level + ']', msg)
+  injectSlimScrollbar(wv.value)
 }
 
 function onFailLoad(e: any) {
+  if (!e.isMainFrame || e.errorCode === -3) return
   log('fail-load', {
     url: wv.value?.getURL(),
     errorCode: e.errorCode,
@@ -281,25 +309,40 @@ function updateTabState(url: string) {
   tabStore.updateTab(projectStore.activeProject.id, props.tab.id, { browserUrl: url })
 }
 
-async function toggleBookmark() {
-  const url = urlBar.value
-  const idx = bookmarks.value.findIndex(b => b.url === url)
-  if (idx !== -1) {
-    bookmarks.value.splice(idx, 1)
-  } else {
-    bookmarks.value.push({ title: new URL(url).hostname, url })
+function openBookmark(url: string) {
+  if (!settingsStore.settings.openBookmarksInNewTab) {
+    navigate(url)
+    return
   }
-  await window.electronAPI.storeSet('bookmarks', bookmarks.value)
+  if (isStandalone.value) {
+    browserStore.openTab(url, PINNED_BROWSER_PROJECT_ID)
+    void browserStore.activate()
+    projectStore.setActiveProject(null)
+    webPageStore.selectWebPage(null)
+  } else {
+    void tabStore.addTab(props.tab.projectId, 'browser', { title: '', browserUrl: url })
+  }
 }
 
-function showBmMenu(e: MouseEvent, bm: Bookmark) {
+async function toggleBookmark() {
+  const url = urlBar.value.trim()
+  if (!url) return
+  if (bookmarkStore.isBookmarked(url)) {
+    bookmarkStore.removeByUrl(url)
+  } else {
+    let title = url
+    try { title = new URL(url).hostname || url } catch { /* keep url */ }
+    bookmarkStore.addBookmark({ title, url })
+  }
+}
+
+function showBmMenu(e: MouseEvent, bm: BookmarkItem) {
   showMenu(e, [
     { label: t('common.open'), action: () => navigate(bm.url) },
     { label: t('contextMenu.copyUrl'), action: () => navigator.clipboard.writeText(bm.url) },
     { separator: true },
-    { label: t('browser.removeBookmark'), danger: true, action: async () => {
-      bookmarks.value = bookmarks.value.filter(b => b.url !== bm.url)
-      await window.electronAPI.storeSet('bookmarks', bookmarks.value)
+    { label: t('browser.removeBookmark'), danger: true, action: () => {
+      bookmarkStore.removeBookmark(bm.id)
     }}
   ])
 }
@@ -324,11 +367,11 @@ function showBmMenu(e: MouseEvent, bm: Bookmark) {
 }
 .url-input {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 4px 8px;
 }
 .icon-btn:disabled { opacity: 0.4; cursor: default; }
-.bookmarked { color: #f59e0b; }
+.bookmarked { color: var(--text-warning); }
 .bookmarks-bar {
   display: flex;
   align-items: center;
@@ -341,7 +384,7 @@ function showBmMenu(e: MouseEvent, bm: Bookmark) {
 }
 .bookmark-item {
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   cursor: pointer;
   border-radius: 3px;
   white-space: nowrap;

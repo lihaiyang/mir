@@ -11,8 +11,8 @@
         >
           <div class="agent-item-row">
             <input v-model="cmd.name" :placeholder="$t('agentCommands.namePlaceholder')" class="agent-name-input" />
-            <button class="icon-btn" :title="$t('agentCommands.launch')" @click="launch(cmd)"><Icon name="play" :size="13" /></button>
-            <button class="icon-btn danger" :title="$t('common.remove')" @click="removeCmd(cmd.id)"><Icon name="x" :size="14" /></button>
+            <button class="icon-btn" :title="$t('agentCommands.launch')" @click="launch(cmd)" :aria-label="$t('agentCommands.launch')"><Icon name="play" :size="13" /></button>
+            <button class="icon-btn danger" :title="$t('common.remove')" @click="removeCmd(cmd.id)" :aria-label="$t('common.remove')"><Icon name="x" :size="14" /></button>
           </div>
           <input v-model="cmd.command" :placeholder="$t('agentCommands.commandPlaceholder')" class="agent-cmd-input" />
           <input v-model="cmd.description" :placeholder="$t('agentCommands.descriptionPlaceholder')" class="agent-desc-input" />

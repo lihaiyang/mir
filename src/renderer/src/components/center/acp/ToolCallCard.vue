@@ -1,6 +1,6 @@
 <template>
   <div class="tool-card" :class="`tool-card--${status}`">
-    <button class="tool-head" type="button" @click="toggle">
+    <button class="tool-head" type="button" @click="toggle" :aria-label="title">
       <span class="tool-chevron" :class="{ 'is-open': expanded }">
         <Icon name="chevron-right" :size="11" />
       </span>
@@ -44,7 +44,7 @@
               type="button"
               :title="t('acp.tool.openFile', 'Open file')"
               @click="openFile(block.path)"
-            >
+             :aria-label="t('acp.tool.openFile', 'Open file')">
               <Icon name="external-link" :size="11" />
             </button>
           </div>
@@ -64,6 +64,14 @@
           <div class="tool-terminal-head">
             <Icon name="terminal" :size="12" />
             <span class="tool-terminal-id">{{ block.terminalId }}</span>
+            <button
+              class="tool-diff-open"
+              type="button"
+              :title="t('acp.tool.openTerminal', 'Open in MIR Terminal')"
+              @click="openTerminalTab"
+             :aria-label="t('acp.tool.openTerminal', 'Open in MIR Terminal')">
+              <Icon name="external-link" :size="11" />
+            </button>
           </div>
           <pre v-if="block.output" class="tool-terminal-out">{{ block.output }}</pre>
         </div>
@@ -83,7 +91,7 @@
           type="button"
           :title="locationTitle(location)"
           @click="openLocation(location)"
-        >
+         :aria-label="locationTitle(location)">
           <Icon name="file-text" :size="11" />
           <span class="location-name">{{ basename(location.path) }}</span>
           <span v-if="location.line" class="location-line">{{ location.line }}</span>
@@ -92,7 +100,7 @@
 
       <!-- raw payloads -->
       <div v-if="hasRaw" class="tool-raw">
-        <button class="tool-raw-toggle" type="button" @click="rawExpanded = !rawExpanded">
+        <button class="tool-raw-toggle" type="button" @click="rawExpanded = !rawExpanded" :aria-label="t('acp.tool.raw', 'Raw payload')">
           <span class="tool-chevron" :class="{ 'is-open': rawExpanded }">
             <Icon name="chevron-right" :size="10" />
           </span>
@@ -164,7 +172,18 @@ const hasRaw = computed(
   () => props.toolCall.rawInput !== undefined || props.toolCall.rawOutput !== undefined
 )
 
-const locations = computed<ToolLocation[]>(() => props.toolCall.locations ?? [])
+const locations = computed<ToolLocation[]>(() => {
+  if (props.toolCall.locations?.length) return props.toolCall.locations
+  const input = props.toolCall.rawInput
+  if (input && typeof input === 'object' && !Array.isArray(input)) {
+    const record = input as Record<string, unknown>
+    const rawPath = record.path ?? record.file_path ?? record.filePath
+    if (typeof rawPath === 'string' && rawPath.trim()) {
+      return [{ path: rawPath.trim() }]
+    }
+  }
+  return []
+})
 
 const rawInputText = computed(() => rawText(props.toolCall.rawInput))
 const rawOutputText = computed(() => rawText(props.toolCall.rawOutput))
@@ -318,6 +337,15 @@ function openFile(path: string, line?: number): void {
     title: basename(path) || path,
     filePath: path,
     fileLine: line
+  })
+}
+
+function openTerminalTab(): void {
+  const project = projectStore.activeProject
+  if (!project) return
+  void tabStore.addTab(project.id, 'terminal', {
+    terminalCwd: project.path,
+    title: 'Terminal'
   })
 }
 </script>
