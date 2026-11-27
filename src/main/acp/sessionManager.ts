@@ -11,6 +11,7 @@ import { PROTOCOL_VERSION, RequestError } from '@agentclientprotocol/sdk'
 import type {
   ClientSideConnection,
   ContentBlock,
+  McpServer,
   SessionConfigOption,
   SessionInfo,
   SessionModeState,
@@ -33,6 +34,7 @@ import type {
   AcpStateSnapshot
 } from '../../shared/acp'
 import { getAcpConfig, getAgentConfig } from './config'
+import { deleteChatItems } from './chatStore'
 import { listHistory, patchHistory, reconcile, removeHistory, upsertHistory } from './history'
 import {
   getRememberedSessionConfig,
@@ -53,6 +55,7 @@ import {
   respondPermission as respondToPermission
 } from './handlers/permission'
 import { disposeAllTerminals } from './handlers/terminal'
+import { registerSessionCwd, unregisterSessionCwd } from './handlers/fs'
 
 type SessionConfigSource = {
   modes?: SessionModeState | null
@@ -568,13 +571,28 @@ export async function ensureAgentConnected(agentId: string): Promise<AgentRuntim
 /* 会话生命周期                                                                  */
 /* -------------------------------------------------------------------------- */
 
+function configuredMcpServers(): McpServer[] {
+  const servers = getAcpConfig().mcpServers ?? []
+  return servers
+    .filter((s) => s.enabled !== false && s.command.trim())
+    .map((s) => ({
+      name: s.name || s.id,
+      command: s.command.trim(),
+      args: s.args ?? [],
+      env: Object.entries(s.env ?? {}).map(([name, value]) => ({ name, value }))
+    }))
+}
+
 export async function createSession(agentId: string, cwd?: string): Promise<AcpSessionDetail> {
   const runtime = await ensureAgentConnected(agentId)
   const connection = requireConnection(runtime)
   const workingDirectory = resolveCwd(cwd)
 
   try {
-    const response = await connection.newSession({ cwd: workingDirectory, mcpServers: [] })
+    const response = await connection.newSession({
+      cwd: workingDirectory,
+      mcpServers: configuredMcpServers()
+    })
     const detail = buildDetail(runtime, response.sessionId, workingDirectory, {
       models: response.models ?? undefined,
       configOptions: response.configOptions ?? undefined
@@ -585,6 +603,7 @@ export async function createSession(agentId: string, cwd?: string): Promise<AcpS
     await applyRememberedConfig(runtime, detail, connection)
 
     sessions.set(detail.sessionId, { detail, agentId, prompting: false })
+    registerSessionCwd(detail.sessionId, workingDirectory)
     emitAcpEvent({ type: 'session-created', session: { ...detail } })
     drainPendingUpdates(detail.sessionId)
     upsertHistory(historyEntryFromDetail(detail))
@@ -625,6 +644,7 @@ export async function loadSession(
 
   // 先登记占位会话：loadSession 期间 agent 会回放历史 session/update
   sessions.set(sessionId, { detail, agentId, prompting: false })
+  registerSessionCwd(sessionId, workingDirectory)
   emitAcpEvent({ type: 'session-created', session: { ...detail } })
   drainPendingUpdates(sessionId)
   emitStatus(runtime)
@@ -633,7 +653,7 @@ export async function loadSession(
     const response = await connection.loadSession({
       sessionId,
       cwd: workingDirectory,
-      mcpServers: []
+      mcpServers: configuredMcpServers()
     })
 
     const current = sessions.get(sessionId)
@@ -688,7 +708,7 @@ export async function resumeSession(
     const response = await connection.resumeSession({
       sessionId,
       cwd: workingDirectory,
-      mcpServers: []
+      mcpServers: configuredMcpServers()
     })
 
     detail.status = 'active'
@@ -722,6 +742,7 @@ export async function closeSession(sessionId: string): Promise<void> {
 
   const runtime = agents.get(session.agentId)
   cancelSessionPermissions(sessionId)
+  unregisterSessionCwd(sessionId)
 
   if (session.prompting && runtime?.connection) {
     try {
@@ -774,6 +795,13 @@ export async function disconnectAgent(agentId: string): Promise<void> {
 
 function toContentBlock(block: AcpPromptBlock): ContentBlock {
   if (block.type === 'text') return { type: 'text', text: block.text }
+  if (block.type === 'image') {
+    return {
+      type: 'image',
+      data: block.data,
+      mimeType: block.mimeType
+    }
+  }
   const content: ContentBlock = {
     type: 'resource_link',
     uri: block.uri,
@@ -1093,6 +1121,7 @@ export function getHistory(): AcpHistoryEntry[] {
 /** 只删除本地摘要；正在运行的会话保持不动（renderer 的 forget 也仅刷新历史列表） */
 export async function forgetSession(agentId: string, sessionId: string): Promise<void> {
   removeHistory(agentId, sessionId)
+  deleteChatItems(sessionId)
 }
 
 export function respondPermission(requestId: string, optionId: string | null): void {

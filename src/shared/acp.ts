@@ -50,7 +50,16 @@ export interface AcpAgentConfig {
   enabled?: boolean
 }
 
-export type AcpAutoApprove = 'ask' | 'allowAll'
+export interface AcpMcpServerConfig {
+  id: string
+  name: string
+  command: string
+  args?: string[]
+  env?: Record<string, string>
+  enabled?: boolean
+}
+
+export type AcpAutoApprove = 'ask' | 'safe' | 'allowAll'
 
 export interface AcpConfig {
   agents: AcpAgentConfig[]
@@ -64,8 +73,14 @@ export interface AcpConfig {
    * 会把这类整段文本匀速展开，纯粹是呈现效果，不改变协议流量。
    */
   smoothStreaming: boolean
+  /** Agent 写入文件后自动在编辑器中打开 */
+  autoOpenModifiedFiles?: boolean
+  /** 严格限制 Agent 只能写入工作目录内的文件 */
+  restrictFsToWorkspace?: boolean
   /** 新建会话时的默认工作目录（空则用当前项目路径） */
   defaultWorkingDirectory?: string
+  /** 注入给 ACP 会话的 MCP Server 列表 */
+  mcpServers?: AcpMcpServerConfig[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -166,6 +181,8 @@ export interface AcpRegistryAgent {
   args?: string[]
   /** 无法在当前平台运行时给出说明 */
   unavailableReason?: string
+  /** 本机是否已安装（检测到可执行命令或全局包） */
+  installed?: boolean
 }
 
 /* -------------------------------------------------------------------------- */
@@ -175,6 +192,30 @@ export interface AcpRegistryAgent {
 export type AcpPromptBlock =
   | { type: 'text'; text: string }
   | { type: 'resource_link'; uri: string; name: string; mimeType?: string }
+  | { type: 'image'; data: string; mimeType: string; name?: string }
+
+export interface AcpPersistedChatItem {
+  kind: 'user' | 'agent' | 'thought' | 'tool' | 'plan' | 'notice'
+  id: string
+  at: number
+  text?: string
+  images?: Array<{ data: string; mimeType: string; name?: string }>
+  messageId?: string
+  streaming?: boolean
+  replay?: boolean
+  toolCall?: ToolCall
+  entries?: PlanEntry[]
+  level?: 'info' | 'warn' | 'error'
+}
+
+export interface AcpChatSearchResult {
+  sessionId: string
+  agentId: string
+  agentName: string
+  title?: string
+  updatedAt: number
+  snippet: string
+}
 
 export interface AcpPermissionRequest {
   requestId: string
@@ -259,5 +300,7 @@ export const DEFAULT_ACP_CONFIG: AcpConfig = {
   logTraffic: false,
   // 默认开启：DeepSeek Harness 等 Agent 按设计整段下发文本，开启后观感更接近流式；
   // 真正流式的 Agent（pi 等）增量很小，会原样透传，不受影响。
-  smoothStreaming: true
+  smoothStreaming: true,
+  autoOpenModifiedFiles: true,
+  mcpServers: []
 }

@@ -2,10 +2,12 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { SearchMatch } from '../main/search'
 import type { UpdaterEvent } from '../main/updater'
 import type {
+  AcpChatSearchResult,
   AcpConfig,
   AcpEvent,
   AcpHistoryEntry,
   AcpPermissionRequest,
+  AcpPersistedChatItem,
   AcpPromptBlock,
   AcpRemoteSession,
   AcpRegistryAgent,
@@ -28,7 +30,7 @@ import type {
 contextBridge.exposeInMainWorld('electronAPI', {
   // Store
   storeGet: (key: string) => ipcRenderer.invoke('store:get', key),
-  storeSet: (key: string, value: unknown) => ipcRenderer.invoke('store:set', key, JSON.parse(JSON.stringify(value))),
+  storeSet: (key: string, value: unknown) => ipcRenderer.invoke('store:set', key, value),
   storeDelete: (key: string) => ipcRenderer.invoke('store:delete', key),
 
   // Dialog
@@ -111,6 +113,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('shortcut:reload-browser', listener)
     return () => ipcRenderer.removeListener('shortcut:reload-browser', listener)
   },
+  onBrowserAction: (cb: (payload: { action: string; index?: number }) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, payload: { action: string; index?: number }) => cb(payload)
+    ipcRenderer.on('shortcut:browser-action', listener)
+    return () => ipcRenderer.removeListener('shortcut:browser-action', listener)
+  },
   onWebviewNewWindow: (cb: (url: string) => void) => {
     const listener = (_e: Electron.IpcRendererEvent, url: string) => cb(url)
     ipcRenderer.on('webview:new-window', listener)
@@ -188,6 +195,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }): Promise<HarnessModelDiscoveryResult> => ipcRenderer.invoke('acp:discover-harness-models', params),
   acpGetTraffic: (): Promise<AcpTrafficEntry[]> => ipcRenderer.invoke('acp:get-traffic'),
   acpGetPermissions: (): Promise<AcpPermissionRequest[]> => ipcRenderer.invoke('acp:get-permissions'),
+  acpSaveChatItems: (params: {
+    sessionId: string
+    agentId: string
+    agentName: string
+    title?: string
+    cwd?: string
+    items: AcpPersistedChatItem[]
+  }): Promise<void> => ipcRenderer.invoke('acp:save-chat-items', params),
+  acpLoadChatItems: (sessionId: string): Promise<{
+    sessionId: string
+    agentId: string
+    agentName: string
+    title?: string
+    cwd?: string
+    updatedAt: number
+    items: AcpPersistedChatItem[]
+  } | null> => ipcRenderer.invoke('acp:load-chat-items', sessionId),
+  acpDeleteChatItems: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke('acp:delete-chat-items', sessionId),
+  acpSearchChats: (query: string): Promise<AcpChatSearchResult[]> =>
+    ipcRenderer.invoke('acp:search-chats', query),
+  acpReadProjectAgents: (projectPath: string): Promise<{ agents?: unknown[]; mcpServers?: unknown[] } | null> =>
+    ipcRenderer.invoke('acp:read-project-agents', projectPath),
   onAcpEvent: (cb: (event: AcpEvent) => void) => {
     const listener = (_e: Electron.IpcRendererEvent, event: AcpEvent) => cb(event)
     ipcRenderer.on('acp:event', listener)

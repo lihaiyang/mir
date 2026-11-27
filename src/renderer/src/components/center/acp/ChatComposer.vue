@@ -18,7 +18,28 @@
       </button>
     </div>
 
-    <div class="composer-box">
+    <div
+      class="composer-box"
+      :class="{ 'is-dragover': dragOver }"
+      @dragover.prevent="dragOver = true"
+      @dragleave.prevent="dragOver = false"
+      @drop.prevent="onDrop"
+    >
+      <!-- Pending image attachments -->
+      <div v-if="images.length > 0" class="composer-images">
+        <div v-for="(img, idx) in images" :key="idx" class="composer-image-chip">
+          <img :src="`data:${img.mimeType};base64,${img.data}`" :alt="img.name || 'image'" class="composer-image-thumb" />
+          <button
+            type="button"
+            class="composer-image-remove"
+            :title="t('common.remove', 'Remove')"
+            @click="removeImage(idx)"
+           :aria-label="t('common.remove', 'Remove')">
+            <Icon name="x" :size="10" />
+          </button>
+        </div>
+      </div>
+
       <textarea
         ref="inputEl"
         v-model="text"
@@ -28,8 +49,26 @@
         :disabled="disabled"
         @keydown="onKeydown"
         @input="resize"
+        @paste="onPaste"
       />
       <div class="composer-bar">
+        <input
+          ref="fileInputEl"
+          type="file"
+          accept="image/*"
+          multiple
+          class="composer-file-input"
+          @change="onFileSelect"
+        />
+        <button
+          class="composer-attach"
+          type="button"
+          :disabled="disabled || busy"
+          :title="t('acp.composer.attachImage', 'Attach image')"
+          @click="fileInputEl?.click()"
+         :aria-label="t('acp.composer.attachImage', 'Attach image')">
+          <Icon name="plus" :size="13" />
+        </button>
         <span class="composer-hint">{{ hintText }}</span>
         <button
           v-if="busy"
@@ -37,7 +76,7 @@
           type="button"
           :title="t('acp.composer.stop', 'Stop')"
           @click="emit('cancel')"
-        >
+         :aria-label="t('acp.composer.stop', 'Stop')">
           <Icon name="x" :size="12" />
           <span>{{ t('acp.composer.stop', 'Stop') }}</span>
         </button>
@@ -48,7 +87,7 @@
           :disabled="!canSend"
           :title="t('acp.composer.send', 'Send')"
           @click="submit"
-        >
+         :aria-label="t('acp.composer.send', 'Send')">
           <Icon name="send" :size="13" />
         </button>
       </div>
@@ -82,14 +121,24 @@ const props = withDefaults(
   }
 )
 
-const emit = defineEmits<{ send: [text: string]; cancel: [] }>()
+export interface ComposerImage {
+  data: string
+  mimeType: string
+  name?: string
+}
+
+const emit = defineEmits<{ send: [payload: { text: string; images: ComposerImage[] }]; cancel: [] }>()
 
 const { t } = useI18n()
 
 const MAX_TEXTAREA_HEIGHT = 160
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 const inputEl = ref<HTMLTextAreaElement | null>(null)
+const fileInputEl = ref<HTMLInputElement | null>(null)
 const text = ref('')
+const images = ref<ComposerImage[]>([])
+const dragOver = ref(false)
 const activeIndex = ref(0)
 const dismissed = ref(false)
 
@@ -103,7 +152,9 @@ const hintText = computed(() =>
     : t('acp.composer.hint', 'Enter to send · Shift+Enter for newline')
 )
 
-const canSend = computed(() => !props.disabled && !props.busy && text.value.trim().length > 0)
+const canSend = computed(
+  () => !props.disabled && !props.busy && (text.value.trim().length > 0 || images.value.length > 0)
+)
 
 /** Current `/xxx` query while the user is typing a command name. */
 const commandQuery = computed<string | null>(() => {
@@ -162,12 +213,78 @@ function resize(): void {
   el.style.overflowY = el.scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden'
 }
 
+function readFileAsImage(file: File): Promise<ComposerImage | null> {
+  if (!file.type.startsWith('image/') || file.size > MAX_IMAGE_BYTES) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      const comma = result.indexOf(',')
+      if (comma < 0) {
+        resolve(null)
+        return
+      }
+      resolve({
+        data: result.slice(comma + 1),
+        mimeType: file.type || 'image/png',
+        name: file.name
+      })
+    }
+    reader.onerror = () => resolve(null)
+    reader.readAsDataURL(file)
+  })
+}
+
+async function addImageFiles(files: FileList | File[]): Promise<void> {
+  for (const file of Array.from(files)) {
+    const img = await readFileAsImage(file)
+    if (img) images.value.push(img)
+  }
+}
+
+function removeImage(index: number): void {
+  images.value.splice(index, 1)
+}
+
+function onPaste(event: ClipboardEvent): void {
+  const items = event.clipboardData?.items
+  if (!items) return
+  const imageFiles: File[] = []
+  for (const item of Array.from(items)) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const f = item.getAsFile()
+      if (f) imageFiles.push(f)
+    }
+  }
+  if (imageFiles.length > 0) {
+    event.preventDefault()
+    void addImageFiles(imageFiles)
+  }
+}
+
+function onDrop(event: DragEvent): void {
+  dragOver.value = false
+  if (props.disabled || props.busy) return
+  const files = event.dataTransfer?.files
+  if (files?.length) void addImageFiles(files)
+}
+
+function onFileSelect(event: Event): void {
+  const input = event.target as HTMLInputElement
+  if (input.files?.length) {
+    void addImageFiles(input.files)
+    input.value = ''
+  }
+}
+
 function submit(): void {
   if (!canSend.value) return
   const value = text.value.trim()
-  if (!value) return
-  emit('send', value)
+  const attachedImages = [...images.value]
+  if (!value && attachedImages.length === 0) return
+  emit('send', { text: value, images: attachedImages })
   text.value = ''
+  images.value = []
   dismissed.value = true
   void nextTick(() => {
     resize()
@@ -242,6 +359,61 @@ function onKeydown(event: KeyboardEvent): void {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
+.composer-box.is-dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.composer-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px var(--space-4) 0;
+}
+.composer-image-chip {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+.composer-image-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.composer-image-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.composer-file-input { display: none; }
+.composer-attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+.composer-attach:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.composer-attach:disabled { opacity: 0.4; }
 .composer.is-disabled .composer-box { opacity: 0.6; }
 
 .composer-input {

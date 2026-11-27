@@ -42,7 +42,7 @@ interface ElectronAPI {
   ptyClose: (id: string) => Promise<void>
   onPtyData: (id: string, cb: (data: string) => void) => () => void
   onPtyExit: (id: string, cb: (code: number) => void) => () => void
-  gitStatus: (cwd: string) => Promise<GitStatus>
+  gitStatus: (cwd: string) => Promise<GitStatus | null>
   gitLog: (cwd: string) => Promise<GitCommit[]>
   gitDiff: (cwd: string, file?: string) => Promise<string>
   gitDiffStaged: (cwd: string, file?: string) => Promise<string>
@@ -68,6 +68,7 @@ interface ElectronAPI {
   getVersion: () => Promise<string>
   getPath: (name: string) => Promise<string>
   onReloadBrowser: (cb: () => void) => () => void
+  onBrowserAction: (cb: (payload: { action: string; index?: number }) => void) => () => void
   onWebviewNewWindow: (cb: (url: string) => void) => () => void
   checkForUpdates: () => Promise<void>
   applyUpdate: () => Promise<void>
@@ -118,6 +119,26 @@ interface ElectronAPI {
   }) => Promise<import('@shared/harnessModels').HarnessModelDiscoveryResult>
   acpGetTraffic: () => Promise<import('@shared/acp').AcpTrafficEntry[]>
   acpGetPermissions: () => Promise<import('@shared/acp').AcpPermissionRequest[]>
+  acpSaveChatItems: (params: {
+    sessionId: string
+    agentId: string
+    agentName: string
+    title?: string
+    cwd?: string
+    items: import('@shared/acp').AcpPersistedChatItem[]
+  }) => Promise<void>
+  acpLoadChatItems: (sessionId: string) => Promise<{
+    sessionId: string
+    agentId: string
+    agentName: string
+    title?: string
+    cwd?: string
+    updatedAt: number
+    items: import('@shared/acp').AcpPersistedChatItem[]
+  } | null>
+  acpDeleteChatItems: (sessionId: string) => Promise<void>
+  acpSearchChats: (query: string) => Promise<import('@shared/acp').AcpChatSearchResult[]>
+  acpReadProjectAgents: (projectPath: string) => Promise<{ agents?: unknown[]; mcpServers?: unknown[] } | null>
   onAcpEvent: (cb: (event: import('@shared/acp').AcpEvent) => void) => () => void
 
   // Userscripts（油猴脚本）— see src/shared/userscripts.ts
